@@ -29,7 +29,8 @@
 - Etappe 1: fertig, gemergt (PR #1).
 - Etappe 2: fertig, gemergt (PR #2). Echtes DEM, Platzhalter-Fahrer gleitet entlang Falllinie ab Schareck.
 - Etappe 3: fertig. Fahrphysik in `player.js` (Kanten-Grip/Carving, Reibung, Luftwiderstand, Sprung, Absprung an Kanten, Sturz bei harter Landung), Eingabe `input.js`.
-- Nächste: Etappe 4.
+- Etappe 4: fertig. HUD in `src/hud.js` (km/h, Höhe, Pistenname, Fahrzeit, Max). Pistenname vorläufig per nächstem POI (`pisteName()`), in Etappe 6 durch echte Pistenerkennung ersetzen.
+- Nächste: Etappe 5.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -39,6 +40,7 @@
 - `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, pois`
 - `src/player.js` – Skifahrer: Physik + Pose, `state` (pos, vel, dir, heading, speed, grounded, crashed, reset)
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
+- `src/hud.js` – `createHud(terrain).update(state, dt)`, `pisteName(pos, pois)`
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
