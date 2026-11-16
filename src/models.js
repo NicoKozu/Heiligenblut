@@ -26,6 +26,7 @@ function outfit(colors) {
   diffuseColor.rgb = oc;`);
   };
   m.customProgramCacheKey = () => 'outfit';
+  m.userData.u = u;
   return m;
 }
 
@@ -79,7 +80,8 @@ function rig(src, colors) {
     root.updateMatrixWorld(true);
   }
 
-  return { root, b, aim, local, begin, plant };
+  const dress = c => { for (const k in c) body.userData.u['o' + k]?.value.set(c[k]); };
+  return { root, b, aim, local, begin, plant, dress };
 }
 
 function poleMesh() {
@@ -94,6 +96,7 @@ function poleMesh() {
 export function createSkier(src) {
   const group = new THREE.Group();
   const f = rig(src, { Jacket: 0xc8202a, Sleeve: 0xa81822, Pants: 0x1d2b3a, Boots: 0x303438, Gloves: 0x1a1a1a, Helmet: 0x222222 });
+  const dress = c => { f.dress(c); if (c.Gear != null) skiMat.color.set(c.Gear); };
   group.add(f.root);
   const skiGeo = new THREE.BoxGeometry(0.09, 0.03, 1.7);
   const skiMat = mat(0xf2c200, 0.4);
@@ -142,7 +145,7 @@ export function createSkier(src) {
     }
   }
 
-  return { object: group, pose };
+  return { object: group, pose, dress };
 }
 
 export function createBoarder(src) {
@@ -160,6 +163,7 @@ export function createBoarder(src) {
   tail.position.z = -0.65;
   tail.rotation.y = Math.PI / 2;
   for (const m of [board, nose, tail]) m.castShadow = true;
+  const dress = c => { f.dress(c); if (c.Gear != null) board.material.color.set(c.Gear); };
   rigG.add(board, nose, tail, f.root);
   group.add(rigG);
   const t = new THREE.Vector3();
@@ -187,5 +191,5 @@ export function createBoarder(src) {
     rigG.rotation.y = (p.fakie ? Math.PI : 0) + 1.2 * p.brake;
   }
 
-  return { object: group, pose };
+  return { object: group, pose, dress };
 }
