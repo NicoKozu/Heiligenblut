@@ -33,7 +33,8 @@
 - Etappe 5: fertig. Q schaltet Ski/Snowboard (nur am Boden). Physik-Parameter je Modus in `MODES` (`player.js`), Modelle in `src/models.js`. Board: Seitrutschen (S), mehr Drift, höherer Ollie, schnelle Air-Spins, Fakie-Landung; Landung quer zur Fahrtrichtung = Sturz (beide Modi). Kamera folgt `state.look` (in der Luft eingefroren).
 - Etappe 6: fertig. Pisten in `public/pistes.json` (Verlauf per Kostenpfad auf DEM berechnet, Skript im Scratchpad), Laden/Präparieren/Markierung/Netze/Schilder/Erkennung in `src/pistes.js`. Gelände entlang Pisten geglättet (`terrain.groom`), Cord-Band, Stangen (Kappe in Pistenfarbe), Fangnetze an Abbruchkanten mit Kollision, Startschild + Nummernschilder alle 500 m. HUD zeigt Piste (farbig) oder „abseits“. Tasten 1–4 = Pistenstart, R = letzter Start. Kamera hält Sichtlinie über Kuppen.
 - Etappe 7: fertig. Lift in `src/lift.js`: 2 Sektionen (Gondel Rossbach Talstation→Rossbach, Gondel Schareck Rossbach→Schareck), Seilprofil mit Durchhang, Masten automatisch nach Bodenfreiheit gesetzt (nicht an Pistenstarts, auf Pisten mit Prallschutz), umlaufende Kabinen (InstancedMesh, 5 m/s), Stationen mit Kollision. E an Talstation/Rossbach = einsteigen, W in Gondel = Zeitraffer ×8, Ausstieg automatisch am nächstgelegenen Pistenstart. Taste 0 = Talstation. HUD zeigt Liftname + Hinweiszeile (`state.hint`).
-- Nächste: Etappe 8.
+- Etappe 8: fertig. `src/scenery.js`: ~114k Bäume (Fichten unten, Lärchen winterkahl oben, Waldgrenze ~2.150 m, Rauschen für Lichtungen, frei von Pisten/Lift/Stationen), Chunks à 500 m mit LOD (nah 1,3 km / fern 3,8 km), Baum-Kollision (Sturz ab 7 m/s). Hütten Rossbach Klause, Schareck, Fleißalm (Lage automatisch: flach, abseits Piste/Lift, Gelände eingeebnet, Terrasse, Namensschild, Kollision). `src/effects.js`: Spurrillen (Ringpuffer, Breite nach Seitrutschen), Schneestaub (Points-Shader; Carven/Bremsen/Landung/Sturz). Liftmasten aus Etappe 7.
+- Nächste: Etappe 9.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -49,6 +50,8 @@
 - `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max) }`, `LEVELS`
 - `public/pistes.json` – Pisten (id, name, level, width, pts [x,z] alle 20 m)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
+- `src/scenery.js` – `createScenery(terrain, pistes, lift)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
+- `src/effects.js` – `createEffects(terrain)` → `{ group, update(dt, state, riding, canvasH), burst(state, n, v) }`
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
 - `public/` – eigene Assets (Fotos etc.)
