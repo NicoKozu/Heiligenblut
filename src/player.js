@@ -27,9 +27,9 @@ const MODES = {
 
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 
-export function createPlayer(terrain) {
+export function createPlayer(terrain, assets) {
   const group = new THREE.Group();
-  const models = { ski: createSkier(), board: createBoarder() };
+  const models = { ski: createSkier(assets.figure), board: createBoarder(assets.figure) };
   group.add(models.ski.object, models.board.object);
 
   const state = {

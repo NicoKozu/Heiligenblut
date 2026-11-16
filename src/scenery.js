@@ -6,6 +6,9 @@ const NEAR = 1300;
 const FAR = 3800;
 const GRID = 12;
 const CELL = 16;
+const DET = 170;
+const CAP = 700;
+const TS = 7;
 
 function rng(s) {
   return () => {
@@ -42,6 +45,31 @@ function treeGeos() {
   const spruceLow = paint(new THREE.ConeGeometry(0.28, 0.92, 5, 1, true).translate(0, 0.54, 0), C(0xc9d3dc), C(0x1c3526), 0.1, 1);
   const larchLow = paint(new THREE.ConeGeometry(0.18, 0.85, 4, 1, true).translate(0, 0.58, 0), C(0x9a8e80), C(0x6a5644), 0.15, 1);
   return { spruce: [spruce, spruceLow], larch: [larch, larchLow] };
+}
+
+function hider(u) {
+  return s => {
+    s.uniforms.uDet = { value: u };
+    s.vertexShader = 'uniform vec4 uDet;\n' + s.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  #ifdef USE_INSTANCING
+  vec2 dq = (modelMatrix * instanceMatrix[3]).xz - uDet.xy;
+  if (dot(dq, dq) < uDet.z * uDet.z) transformed = vec3(0.0);
+  #endif`);
+  };
+}
+
+function leafMat(map, tint, snow, twig) {
+  const m = new THREE.MeshLambertMaterial({ map, color: tint, alphaTest: 0.5, side: THREE.DoubleSide });
+  m.onBeforeCompile = s => {
+    s.uniforms.uSnow = { value: snow };
+    s.vertexShader = 'varying float vSnow;\n' + s.vertexShader.replace('#include <uv_vertex>', `#include <uv_vertex>
+  vSnow = smoothstep(0.45, 0.95, abs(normal.y));`);
+    s.fragmentShader = 'varying float vSnow;\nuniform float uSnow;\n' + s.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.97), vSnow * uSnow);
+  ${twig ? 'diffuseColor.a = (diffuseColor.a - 0.5) * 2.5 + 0.2;' : ''}`);
+  };
+  m.customProgramCacheKey = () => 'leaf' + (twig ? 1 : 0);
+  return m;
 }
 
 function segDist(x, z, a, b) {
@@ -131,7 +159,14 @@ function buildHut(o, mats) {
   return { group: g, hl: l / 2 + 0.3, hw: w / 2 + 0.3, top: top + rh, reach: Math.max(w + 2, l + deck * 2) / 2 + 3 };
 }
 
-export function createScenery(terrain, pistes, lift) {
+export function detailMaterials(assets) {
+  return {
+    bark: new THREE.MeshLambertMaterial({ color: 0x4a3626 }),
+    leafMats: [leafMat(assets.leaves, new THREE.Color(0.24, 0.4, 0.3), 0.6, false), leafMat(assets.leaves, new THREE.Color(0.5, 0.42, 0.36), 0.3, true)]
+  };
+}
+
+export function createScenery(terrain, pistes, lift, assets) {
   const group = new THREE.Group();
   const stations = lift.sections.flatMap(s => [s.a, s.b]);
   const towers = lift.sections.flatMap(s => s.towers.map(t => [t.x, t.z]));
@@ -188,6 +223,11 @@ export function createScenery(terrain, pistes, lift) {
 
   const geos = treeGeos();
   const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const detU = new THREE.Vector4(0, 0, 0, 0);
+  treeMat.onBeforeCompile = hider(detU);
+  treeMat.customProgramCacheKey = () => 'thide';
+  const depthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  depthMat.onBeforeCompile = hider(detU);
   const { originX, originZ, nx, nz, cell } = terrain.meta;
   const W = (nx - 1) * cell, D = (nz - 1) * cell;
   const cx = Math.ceil(W / CHUNK), cz = Math.ceil(D / CHUNK);
@@ -214,9 +254,10 @@ export function createScenery(terrain, pistes, lift) {
       const s = (larch ? 13 : 16) * (0.55 + rand() * 0.6) * (0.45 + 0.55 * tl);
       const k = Math.floor((px - originX) / CHUNK) + Math.floor((pz - originZ) / CHUNK) * cx;
       const key = k * 2 + (larch ? 1 : 0);
+      const rot = rand() * Math.PI * 2, b = 0.85 + rand() * 0.3;
       if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push([px, y - 0.3, pz, s, rand() * Math.PI * 2, 0.85 + rand() * 0.3]);
-      T.push(px, pz, y, s);
+      buckets.get(key).push([px, y - 0.3, pz, s, rot, b]);
+      T.push(px, pz, y, s, rot, b, larch ? 1 : 0);
     }
   }
 
@@ -235,6 +276,7 @@ export function createScenery(terrain, pistes, lift) {
     far.instanceMatrix = near.instanceMatrix;
     far.instanceColor = near.instanceColor;
     near.castShadow = true;
+    near.customDepthMaterial = depthMat;
     near.computeBoundingSphere();
     far.boundingSphere = near.boundingSphere;
     const k = key >> 1;
@@ -245,15 +287,57 @@ export function createScenery(terrain, pistes, lift) {
   }
 
   const grid = new Map();
-  const N = T.length / 4;
+  const N = T.length / TS;
   for (let i = 0; i < N; i++) {
-    const k = Math.floor(T[i * 4] / CELL) * 65536 + Math.floor(T[i * 4 + 1] / CELL);
+    const k = Math.floor(T[i * TS] / CELL) * 65536 + Math.floor(T[i * TS + 1] / CELL);
     if (!grid.has(k)) grid.set(k, []);
     grid.get(k).push(i);
   }
 
+  const { bark, leafMats } = detailMaterials(assets);
+  const pools = [];
+  for (let t = 0; t < 2; t++) for (const v of assets.spruce) {
+    const a = new THREE.InstancedMesh(v.bark, bark, CAP), l = new THREE.InstancedMesh(v.leaves, leafMats[t], CAP);
+    a.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    a.setColorAt(0, new THREE.Color());
+    l.instanceMatrix = a.instanceMatrix;
+    l.instanceColor = a.instanceColor;
+    for (const o of [a, l]) { o.count = 0; o.frustumCulled = false; o.castShadow = true; group.add(o); }
+    pools.push({ a, l, n: 0 });
+  }
+  const NV = assets.spruce.length;
+  let lx = Infinity, lz = Infinity;
+
+  function refresh(px, pz) {
+    lx = px; lz = pz;
+    for (const p of pools) p.n = 0;
+    const r = Math.ceil(DET / CELL), gx = Math.floor(px / CELL), gz = Math.floor(pz / CELL);
+    for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) {
+      const list = grid.get((gx + a) * 65536 + gz + b);
+      if (!list) continue;
+      for (const i of list) {
+        const o = i * TS, x = T[o], z = T[o + 1];
+        if ((x - px) ** 2 + (z - pz) ** 2 >= DET * DET) continue;
+        const p = pools[T[o + 6] * NV + i % NV];
+        if (p.n >= CAP) continue;
+        const s = T[o + 3], br = T[o + 5], w = s * (0.85 + (br - 0.85) * 0.5);
+        m.compose(v.set(x, T[o + 2] - 0.3 - 0.06 * s, z), q.setFromAxisAngle(up, T[o + 4]), sc.set(w, s, w));
+        p.a.setMatrixAt(p.n, m);
+        p.a.setColorAt(p.n, col.setScalar(br));
+        p.n++;
+      }
+    }
+    for (const p of pools) {
+      p.a.count = p.l.count = p.n;
+      p.a.instanceMatrix.needsUpdate = true;
+      p.a.instanceColor.needsUpdate = true;
+    }
+    detU.set(px, pz, DET, 0);
+  }
+
   function update(camera) {
     const px = camera.position.x, pz = camera.position.z;
+    if (Math.hypot(px - lx, pz - lz) > 10) refresh(px, pz);
     for (const c of chunks) {
       const d = Math.hypot(c.center.x - px, c.center.y - pz) - CHUNK * 0.7;
       c.near.visible = d < NEAR;
@@ -267,7 +351,7 @@ export function createScenery(terrain, pistes, lift) {
       const list = grid.get((gx + a) * 65536 + gz + b);
       if (!list) continue;
       for (const i of list) {
-        const tx = T[i * 4], tz = T[i * 4 + 1], ty = T[i * 4 + 2], s = T[i * 4 + 3];
+        const tx = T[i * TS], tz = T[i * TS + 1], ty = T[i * TS + 2], s = T[i * TS + 3];
         const ex = x - tx, ez = z - tz, d = Math.hypot(ex, ez), r = 0.7 + s * 0.02;
         if (d >= r || d === 0 || state.pos.y > ty + s * 0.9) continue;
         const nx = ex / d, nz = ez / d;

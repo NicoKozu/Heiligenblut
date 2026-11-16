@@ -42,6 +42,7 @@
 - Echte Satellitenbilder: Copernicus Sentinel-2 L2A vom 24.03.2021 (wolkenfrei, Schnee bis ins Tal; AWS `sentinel-cogs`, Kacheln 33TUN/TUM, 32TQT/TQS), in Weltkoordinaten umprojiziert, eingebrannte Schatten per DEM (Sonne 160,7°/42,6°) herausgerechnet. `public/terrain/sat_near.jpg` (Nahgelände, ~6 m), `sat_mid.jpg` (±16 km), `sat_far.jpg` (±56 km, fehlende Ränder → prozedural), `forest.png` (Waldmaske aus NDVI). Nahgelände: Bildfarbe abseits der Pisten (Pisten bleiben präpariert-weiß), unter Wald bis ~3 km Schnee (3D-Bäume), nah an der Kamera weich in Schnee-Shader. Bäume (`scenery.js`) stehen nach echter Waldmaske (`terrain.forestAt`). Skript `gen.py` im Scratchpad. Attribution: „Contains modified Copernicus Sentinel data 2021“.
 - Minikarte: Pistenplan `public/pistenplan.jpg` unten rechts im HUD, roter Punkt = Position. Abbildung Welt→Bild per Thin-Plate-Spline (`mapAt` in `hud.js`) über 8 Passpunkte (Liftstationen aus OSM ↔ Pixel im Plan).
 - Echte Gebietsdaten aus OpenStreetMap (Abruf 16.11.2026, ODbL; Skript `osmparse.py`/`mkpistes.py`/`tps.py` im Scratchpad). Vorher waren Pisten/Lifte nur geschätzt (Fallbichl fälschlich nach Osten). Jetzt: 9 Pisten aus OSM-Wegen verkettet (4, 5, 5a, 1 Fallbichl → West zur Panoramabahn, 2 Seppenalm, 10 Tal, 11, 12 im Fleißtal, 8 Viehbühel), Tasten 1–9. Lifte: Gondel Rossbach, Gondel Schareck, neu Panoramabahn (Fallbichl → Schareck); `SECTIONS[].st` = Stationsindizes. Hütten: Rossbach Alm, Panoramarestaurant Schareck, Spatzl Alm, Skihütte Fleißalm. POIs in `heiligenblut.json` ersetzt. Gegenprobe DEM-Höhe: Talstation 1.309 (offiz. 1.301), Rossbach 1.750 (~1.740), Fleißalm 1.808 (Plan 1.800). Fleißtal-Lifte (Tunnelbahn, Fleißbahn, Hochfleiß, Ederfeld, Tauernberg) noch nicht im Spiel.
+- 3D-Modelle: `src/assets.js` lädt `public/models/spruce.glb` (4 Fichten aus Quaternius „Ultimate Stylized Nature“, CC0, via GitHub-Kopie walterpalladino/godot-quaternius-ultimate-stylized-nature; FBX→GLB im Scratchpad `conv/trees.mjs`, Höhe 1, Nadelkarten `spruce_leaves.png`) und `figure.glb` (three.js-Beispiel Xbot, Mixamo-Rig, Animationen entfernt). Bäume: Detailstufe im Umkreis `DET` 170 m als dynamische InstancedMesh-Pools (Fichte grün + Schnee nach Normalen, Lärche braun/licht), Kegelbäume dort per Shader (`hider`, auch Schattenpass) ausgeblendet. Fahrer: Skelett per Richtungs-Aim je Knochen (`rig().aim`) aus tuck/brake/ctrl gepost, Kleidung per Shader nach Bind-Pose-Höhe, Ski/Stöcke bzw. Board separat. Gutschrift im Menü.
 - Etappen 1–10 fertig. Ideen danach: Touch-Steuerung, Zeitrennen/Bestzeiten, weitere Pisten/Lifte (Fleißbahn, Tunnelbahn), Tageszeit.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -51,14 +52,16 @@
 - `src/world.js` – Szene, Licht, Himmel (Sky, liegt in Panorama-Szene), Nebel, `SUN`, `HAZE`
 - `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh` (Group aus Chunks), `heightAt, normalAt, inside, groom(fn), forestAt, pois, meta` (meta = grobes 30-m-Raster)
 - `src/player.js` – Fahrer: Physik je Modus + Pose, `spawnAt(x,z,heading)`, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
-- `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
+- `src/models.js` – `createSkier(figure)`, `createBoarder(figure)` → `{ object, pose(p) }` (geriggte Figur)
+- `src/assets.js` – `loadAssets()` → `{ spruce: [{bark, leaves}], leaves, figure }`
+- `public/models/` – `spruce.glb`, `spruce_leaves.png`, `figure.glb`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
 - `src/hud.js` – `createHud(pistes).update(state, dt)`, zeigt Modus, Piste, Meldungen
 - `src/lift.js` – `createLift(terrain, pistes)` → `{ group, sections, update(dt, state, player, goTo), collide(state), leave(state), clear(pts), riding(), valleySpawn }`
 - `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max) }`, `LEVELS`
 - `public/pistes.json` – Pisten (id, name, level, width, pts [x,z] alle 20 m)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
-- `src/scenery.js` – `createScenery(terrain, pistes, lift)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
+- `src/scenery.js` – `createScenery(terrain, pistes, lift, assets)`, `detailMaterials(assets)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
 - `src/effects.js` – `createEffects(terrain)` → `{ group, update(dt, state, riding, canvasH), burst(state, n, v) }`
 - `src/panorama.js` – `loadPanorama(terrain, world)` → `{ scene, camera, bake(renderer), shade(root), update(cam, dt), render(renderer, nearScene, cam), heightAny, peaks, visibleFrom }`
 - `src/peaks.js` – `createPeakLabels(pano)` → `{ update(cam), toggle() }`
