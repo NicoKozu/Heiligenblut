@@ -15,6 +15,7 @@ import { createMenu } from './menu.js';
 import { createAudio } from './audio.js';
 import { loadAssets } from './assets.js';
 import { createProps } from './props.js';
+import { createCrowd } from './crowd.js';
 import { get } from './config.js';
 
 const menu = createMenu();
@@ -75,6 +76,8 @@ async function start() {
   menu.setPistes(pistes.list);
   const hud = createHud(pistes);
 
+  const crowd = createCrowd(terrain, pistes, lift, assets);
+  scene.add(crowd.group);
   const player = createPlayer(terrain, assets);
   scene.add(player.object);
   const goTo = k => {
@@ -156,10 +159,12 @@ async function start() {
       lift.collide(player.state);
       scenery.collide(player.state, (st, v) => fx.burst(st, 50, v));
       props.collide(player.state, (st, v) => fx.burst(st, 50, v));
+      crowd.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
     } else flush();
     lift.update(dt, player.state, player, goTo);
+    crowd.update(dt, cam.camera);
     player.object.visible = !lift.riding() && cam.mode !== 'ego';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
     hud.update(player.state, dt);

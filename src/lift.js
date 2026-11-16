@@ -324,5 +324,7 @@ export function createLift(terrain, pistes) {
     state.lift = null;
   }
 
-  return { group, sections, update, collide, leave, clear, riding: () => !!ride, valleySpawn };
+  const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
+
+  return { group, sections, update, collide, leave, clear, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
 }
