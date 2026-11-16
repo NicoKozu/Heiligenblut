@@ -51,9 +51,10 @@ function segDist(x, z, a, b) {
 }
 
 const HUTS = [
-  { name: 'Rossbach Klause', at: [392, -910], w: 10, l: 14, h: 3.4, color: 0x6e4a2e },
-  { name: 'Schareck', at: [1305, -3034], w: 13, l: 20, h: 4.2, color: 0x5d3f28 },
-  { name: 'Fleißalm', at: [2350, -2700], w: 8, l: 10, h: 3, color: 0x77502f }
+  { name: 'Rossbach Alm', at: [630, -903], w: 10, l: 14, h: 3.4, color: 0x6e4a2e },
+  { name: 'Panoramarestaurant Schareck', at: [1098, -2878], w: 13, l: 20, h: 4.2, color: 0x5d3f28 },
+  { name: 'Spatzl Alm', at: [535, -2230], w: 9, l: 12, h: 3.2, color: 0x6e4a2e },
+  { name: 'Skihütte Fleißalm', at: [2143, -1190], w: 8, l: 10, h: 3, color: 0x77502f }
 ];
 
 function signTex(text) {
