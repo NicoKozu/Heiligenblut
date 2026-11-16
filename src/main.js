@@ -24,7 +24,8 @@ async function start() {
   info.textContent = 'Lade Gelände …';
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 2<br>Echtes Gelände · R = Neustart';
+  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 3<br>W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br><span id="spd"></span>';
+  const spd = document.getElementById('spd');
 
   const player = createPlayer(terrain);
   scene.add(player.object);
@@ -42,7 +43,8 @@ async function start() {
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
     player.update(dt);
-    cam.update(player.state.pos, player.state.dir, dt);
+    cam.update(player.state.pos, player.state.dir, dt, player.state.reset);
+    spd.textContent = Math.round(player.state.speed * 3.6) + ' km/h' + (player.state.crashed > 0 ? ' · Sturz!' : '');
     followSun(player.state.pos);
     renderer.render(scene, cam.camera);
   });
