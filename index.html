@@ -8,6 +8,15 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#9cc4e8;font-family:system-ui,sans-serif}
 canvas{display:block}
 #info{position:fixed;left:12px;top:12px;padding:8px 12px;background:rgba(10,30,50,.55);color:#fff;border-radius:6px;font-size:14px;line-height:1.4;pointer-events:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#hud-speed{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:baseline;gap:6px;padding:6px 18px;background:rgba(10,30,50,.55);border-radius:10px}
+#hud-speed b{font-size:clamp(32px,7vw,56px);font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:right}
+#hud-speed span{font-size:16px;opacity:.85}
+#hud-panel{position:absolute;right:12px;top:12px;padding:8px 12px;background:rgba(10,30,50,.55);border-radius:6px;font-size:14px;display:grid;gap:3px;min-width:170px}
+#hud-panel div{display:flex;justify-content:space-between;gap:14px}
+#hud-panel span{opacity:.75}
+#hud-panel b{font-variant-numeric:tabular-nums}
+#hud-msg{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-size:clamp(28px,6vw,48px);font-weight:700;color:#ffd84a}
 #error{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#0b1c2c;color:#fff;padding:24px;text-align:center}
 </style>
 <script type="importmap">
@@ -20,7 +29,7 @@ canvas{display:block}
 </script>
 </head>
 <body>
-<div id="info">Heiligenblut am Großglockner · Etappe 3</div>
+<div id="info">Heiligenblut am Großglockner · Etappe 4</div>
 <div id="error"></div>
 <script type="module" src="src/main.js"></script>
 </body>
