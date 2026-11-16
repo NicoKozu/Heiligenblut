@@ -13,12 +13,12 @@ export function createFollowCamera(terrain) {
   let yaw = 0, pitch = 0, zoom = 1, drag = false, idle = 9, mx = 0, my = 0;
 
   addEventListener('contextmenu', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); });
-  addEventListener('mousedown', e => { if (e.button === 2 && e.target.tagName === 'CANVAS') { drag = true; mx = e.clientX; my = e.clientY; e.preventDefault(); } });
-  addEventListener('mouseup', e => { if (e.button === 2) drag = false; });
+  addEventListener('mousedown', e => { if (e.button === 0 && e.target.tagName === 'CANVAS') { drag = true; mx = e.clientX; my = e.clientY; e.preventDefault(); } });
+  addEventListener('mouseup', e => { if (e.button === 0) drag = false; });
   addEventListener('blur', () => { drag = false; });
   addEventListener('mousemove', e => {
     if (!drag) return;
-    if (!(e.buttons & 2)) { drag = false; return; }
+    if (!(e.buttons & 1)) { drag = false; return; }
     const dx = e.clientX - mx, dy = e.clientY - my;
     mx = e.clientX; my = e.clientY;
     yaw -= dx * 0.005;
