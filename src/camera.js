@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export function createFollowCamera(terrain) {
-  const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.3, 60000);
+  const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.3, 25000);
   const desired = new THREE.Vector3();
   const look = new THREE.Vector3();
   const back = new THREE.Vector3();

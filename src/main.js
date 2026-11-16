@@ -8,6 +8,8 @@ import { loadPistes } from './pistes.js';
 import { createLift } from './lift.js';
 import { createScenery } from './scenery.js';
 import { createEffects } from './effects.js';
+import { loadPanorama } from './panorama.js';
+import { createPeakLabels } from './peaks.js';
 import { consume, flush } from './input.js';
 
 const info = document.getElementById('info');
@@ -26,7 +28,8 @@ async function start() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  const { scene, followSun } = createWorld(renderer);
+  const world = createWorld(renderer);
+  const { scene, followSun } = world;
   info.textContent = 'Lade Gelände …';
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
@@ -40,7 +43,7 @@ async function start() {
   scene.add(scenery.group);
   const fx = createEffects(terrain);
   scene.add(fx.group);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 8<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation<br>Pistenstart: ' +
+  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 9<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation · P Gipfelnamen<br>Pistenstart: ' +
     pistes.list.map((p, i) => (i + 1) + ' ' + p.id + ' ' + p.name).join(' · ');
   const hud = createHud(pistes);
 
@@ -54,6 +57,15 @@ async function start() {
   const cam = createFollowCamera(terrain);
   player.update(0);
   cam.update(player.state.pos, player.state.look, 0, true);
+
+  const status = info.innerHTML;
+  info.textContent = 'Berechne Panorama …';
+  await new Promise(r => setTimeout(r, 0));
+  const pano = await loadPanorama(terrain, world);
+  pano.bake(renderer);
+  pano.shade(scene);
+  const peaks = createPeakLabels(pano);
+  info.innerHTML = status;
 
   addEventListener('resize', () => {
     cam.camera.aspect = innerWidth / innerHeight;
@@ -78,7 +90,10 @@ async function start() {
     hud.update(player.state, dt);
     cam.update(player.state.pos, player.state.look, dt, player.state.reset);
     followSun(player.state.pos);
-    renderer.render(scene, cam.camera);
+    if (consume('KeyP')) peaks.toggle();
+    pano.update(cam.camera, dt);
+    pano.render(renderer, scene, cam.camera);
+    peaks.update(cam.camera);
   });
 }
 

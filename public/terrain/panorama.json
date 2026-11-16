@@ -1,0 +1,90 @@
+{
+ "scale": 0.1,
+ "source": "AWS Terrain Tiles (Terrarium z12/z11), Mapzen/EU-DEM/SRTM",
+ "levels": [
+  {
+   "n": 641,
+   "cell": 50,
+   "half": 16000
+  },
+  {
+   "n": 561,
+   "cell": 200,
+   "half": 56000
+  }
+ ],
+ "peaks": [
+  {
+   "name": "Großglockner",
+   "h": 3798,
+   "x": -11300,
+   "z": -3900
+  },
+  {
+   "name": "Großvenediger",
+   "h": 3657,
+   "x": -37600,
+   "z": -7600
+  },
+  {
+   "name": "Großes Wiesbachhorn",
+   "h": 3564,
+   "x": -6650,
+   "z": -13050
+  },
+  {
+   "name": "Johannisberg",
+   "h": 3453,
+   "x": -12900,
+   "z": -7750
+  },
+  {
+   "name": "Hochalmspitze",
+   "h": 3360,
+   "x": 36400,
+   "z": 2600
+  },
+  {
+   "name": "Petzeck",
+   "h": 3283,
+   "x": -2950,
+   "z": 10150
+  },
+  {
+   "name": "Hocharn",
+   "h": 3254,
+   "x": 7200,
+   "z": -4050
+  },
+  {
+   "name": "Großer Ankogel",
+   "h": 3252,
+   "x": 30800,
+   "z": -1400
+  },
+  {
+   "name": "Kitzsteinhorn",
+   "h": 3203,
+   "x": -11800,
+   "z": -16400
+  },
+  {
+   "name": "Hoher Sonnblick",
+   "h": 3106,
+   "x": 8700,
+   "z": -1600
+  },
+  {
+   "name": "Schareck",
+   "h": 2606,
+   "x": 1305,
+   "z": -3034
+  },
+  {
+   "name": "Gjaidtroghöhe",
+   "h": 2988,
+   "x": 5159,
+   "z": -2623
+  }
+ ]
+}

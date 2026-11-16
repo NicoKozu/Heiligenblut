@@ -1,22 +1,36 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 
+export const SUN = { azimuth: 158, elevation: 31 };
+export const HAZE = 1.25e-5;
+
+THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
+  #ifdef FOG_EXP2
+    float fogFactor = 1.0 - exp( - fogDensity * vFogDepth );
+  #else
+    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+  #endif
+  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
+#endif`;
+
 export function createWorld(renderer) {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0xd6e4f0, 0.00009);
+  scene.fog = new THREE.FogExp2(0xcfdeec, HAZE);
+
+  const a = THREE.MathUtils.degToRad(SUN.azimuth), e = THREE.MathUtils.degToRad(SUN.elevation);
+  const sunDir = new THREE.Vector3(Math.cos(e) * Math.sin(a), Math.sin(e), -Math.cos(e) * Math.cos(a));
 
   const sky = new Sky();
-  sky.scale.setScalar(40000);
+  sky.scale.setScalar(60000);
+  sky.renderOrder = -10;
   const u = sky.material.uniforms;
-  u.turbidity.value = 3;
-  u.rayleigh.value = 1.2;
+  u.turbidity.value = 2.6;
+  u.rayleigh.value = 1.1;
   u.mieCoefficient.value = 0.004;
-  u.mieDirectionalG.value = 0.8;
-  const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(55), THREE.MathUtils.degToRad(160));
+  u.mieDirectionalG.value = 0.82;
   u.sunPosition.value.copy(sunDir);
-  scene.add(sky);
 
-  const hemi = new THREE.HemisphereLight(0xdfefff, 0x7d8ea5, 0.85);
+  const hemi = new THREE.HemisphereLight(0xd8e8ff, 0x8a9ab0, 1.15);
   scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xfff2dc, 2.3);
@@ -36,5 +50,5 @@ export function createWorld(renderer) {
     sun.target.position.copy(target);
   }
 
-  return { scene, sky, followSun };
+  return { scene, sky, sun, hemi, sunDir, followSun };
 }
