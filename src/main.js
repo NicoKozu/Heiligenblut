@@ -6,6 +6,8 @@ import { createFollowCamera } from './camera.js';
 import { createHud } from './hud.js';
 import { loadPistes } from './pistes.js';
 import { createLift } from './lift.js';
+import { createScenery } from './scenery.js';
+import { createEffects } from './effects.js';
 import { consume, flush } from './input.js';
 
 const info = document.getElementById('info');
@@ -33,7 +35,12 @@ async function start() {
   scene.add(pistes.group);
   const lift = createLift(terrain, pistes);
   scene.add(lift.group);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 7<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation<br>Pistenstart: ' +
+  info.textContent = 'Pflanze Wald …';
+  const scenery = createScenery(terrain, pistes, lift);
+  scene.add(scenery.group);
+  const fx = createEffects(terrain);
+  scene.add(fx.group);
+  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 8<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation<br>Pistenstart: ' +
     pistes.list.map((p, i) => (i + 1) + ' ' + p.id + ' ' + p.name).join(' · ');
   const hud = createHud(pistes);
 
@@ -61,10 +68,13 @@ async function start() {
       player.update(dt);
       pistes.collide(player.state);
       lift.collide(player.state);
+      scenery.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
     } else flush();
     lift.update(dt, player.state, player, goTo);
+    fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
+    scenery.update(cam.camera);
     hud.update(player.state, dt);
     cam.update(player.state.pos, player.state.look, dt, player.state.reset);
     followSun(player.state.pos);
