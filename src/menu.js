@@ -23,7 +23,7 @@ export function createMenu() {
     '<button data-mode="ski">⛷ Ski</button><button data-mode="board">🏂 Snowboard</button></div></div>' +
     '<div class="sec"><h2>Start</h2><div class="starts"></div></div>' +
     '<div class="row go"><button class="primary" data-act="start" disabled>Losfahren ⏎</button><button data-act="resume" hidden>Weiter (Esc)</button></div>' +
-    '<div style="font-size:11px;opacity:.55;margin-top:10px">Gelände: Mapzen/EU-DEM · Bilder: Contains modified Copernicus Sentinel data 2021</div>' +
+    '<div style="font-size:11px;opacity:.55;margin-top:10px">Gelände: Mapzen/EU-DEM · Pisten/Lifte: © OpenStreetMap-Mitwirkende · Bilder: Contains modified Copernicus Sentinel data 2021</div>' +
     '<details><summary>Steuerung</summary><dl>' + KEYS.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('') + '</dl></details>' +
     '<p class="foot">Gelände: echte Höhendaten (EU-DEM/SRTM) · Pistenverläufe nachgebaut</p>' +
     '</div>';
