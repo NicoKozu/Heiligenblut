@@ -7,15 +7,17 @@ const G = 9.81;
 const SNAP = 0.3;
 const CRASH = 14;
 const STEP = 0.012;
+const MASS = 80;
+const rho = y => 1.225 * Math.exp(-y / 8500);
 
 const MODES = {
   ski: {
-    name: 'Ski', mu: 0.05, brakeMu: 0.7, dragUp: 0.0036, dragTuck: 0.0015, jump: 4.2,
+    name: 'Ski', mu: 0.06, brakeMu: 0.7, cdaUp: 0.7, cdaTuck: 0.35, jump: 4.2,
     grip: 7, brakeGrip: 4, keep: 0.9, brakeKeep: 0.2, rateBase: 0.9, rateMax: 2.2, rateDiv: 12,
     brakeRate: 0.7, airRate: 1.6, push: 1.5, land: 1.2, fakie: false, lean: 0.45
   },
   board: {
-    name: 'Snowboard', mu: 0.06, brakeMu: 1.0, dragUp: 0.0042, dragTuck: 0.0021, jump: 5.2,
+    name: 'Snowboard', mu: 0.07, brakeMu: 1.0, cdaUp: 0.8, cdaTuck: 0.45, jump: 5.2,
     grip: 5, brakeGrip: 2.5, keep: 0.82, brakeKeep: 0.1, rateBase: 1.3, rateMax: 2.6, rateDiv: 10,
     brakeRate: 1.2, airRate: 4.5, push: 0.7, land: 0.8, fakie: true, lean: 0.6
   }
@@ -49,6 +51,7 @@ export function createPlayer(terrain) {
   const n = new THREE.Vector3();
   const upS = new THREE.Vector3(0, 1, 0);
   const fwd = new THREE.Vector3();
+  const gt = new THREE.Vector3();
   const right = new THREE.Vector3();
   const qTilt = new THREE.Quaternion();
   const qYaw = new THREE.Quaternion();
@@ -117,47 +120,44 @@ export function createPlayer(terrain) {
     if (!state.grounded) airSpin += steer * rate * dt;
     state.dir.set(Math.sin(state.heading), 0, Math.cos(state.heading));
 
+    const tuck = ctrl && input.tuck;
+    const k = rho(state.pos.y) * (tuck ? P.cdaTuck : P.cdaUp) / (2 * MASS);
+    const y0 = state.pos.y;
+    let e = 0;
+
     if (state.grounded) {
       terrain.normalAt(state.pos.x, state.pos.z, n);
       fwd.copy(state.dir).addScaledVector(n, -state.dir.dot(n)).normalize();
       right.crossVectors(fwd, n);
       v.addScaledVector(n, -v.dot(n));
-      v.addScaledVector(fwd, -G * fwd.y * dt);
-      if (ctrl && input.tuck && sp < 5 && fwd.y < 0.02) v.addScaledVector(fwd, P.push * dt);
+      const s0 = v.length();
+      e = 0.5 * s0 * s0;
+      gt.set(0, -G, 0).addScaledVector(n, G * n.y);
+      v.addScaledVector(gt, dt);
 
       let lon = v.dot(fwd);
       let lat = v.dot(right);
-      const s0 = Math.hypot(lon, lat);
+      const sv = Math.hypot(lon, lat);
       const grip = !ctrl ? 1.5 : input.brake ? P.brakeGrip : P.grip;
-      const e = Math.exp(-grip * dt);
-      const removed = Math.abs(lat) * (1 - e);
-      lat *= e;
+      const f = Math.exp(-grip * dt);
+      const removed = Math.abs(lat) * (1 - f);
+      lat *= f;
       if (lon > 0) {
         const keep = input.brake || !ctrl ? P.brakeKeep : P.keep;
-        const s1 = Math.max(0, s0 - removed * (1 - keep));
-        lon = Math.sqrt(Math.max(0, s1 * s1 - lat * lat));
-      }
+        lon = Math.sqrt(Math.max(0, sv * sv - lat * lat));
+        e -= sv * removed * (1 - keep);
+      } else e -= 0.5 * (sv * sv - lon * lon - lat * lat);
       v.copy(fwd).multiplyScalar(lon).addScaledVector(right, lat);
 
-      const s = v.length();
-      if (s > 0) {
-        const mu = !ctrl ? 0.6 : input.brake ? P.brakeMu : P.mu;
-        const drag = ctrl && input.tuck ? P.dragTuck : P.dragUp;
-        const dec = (mu * G * n.y + drag * s * s) * dt;
-        v.multiplyScalar(Math.max(0, s - dec) / s);
-      }
-
-      if (ctrl && input.jump) {
-        v.addScaledVector(n, P.jump);
-        state.grounded = false;
-        airSpin = 0;
-      }
+      const mu = !ctrl ? 0.6 : input.brake ? P.brakeMu : P.mu;
+      e -= (mu * G * n.y + k * s0 * s0) * s0 * dt;
+      if (s0 < 0.3 && !tuck && gt.length() <= mu * G * n.y) { v.set(0, 0, 0); e = 0; }
     } else {
       v.y -= G * dt;
-      v.multiplyScalar(1 - P.dragUp * sp * dt);
+      v.multiplyScalar(Math.max(0, 1 - k * sp * dt));
     }
-    input.jump = false;
 
+    const wasGrounded = state.grounded;
     state.pos.addScaledVector(v, dt);
     if (!terrain.inside(state.pos.x, state.pos.z)) { reset(); return; }
     const y = terrain.heightAt(state.pos.x, state.pos.z);
@@ -169,6 +169,19 @@ export function createPlayer(terrain) {
       state.grounded = true;
       land();
     }
+
+    if (wasGrounded) {
+      e -= G * (state.pos.y - y0);
+      const s1 = Math.sqrt(Math.max(0, 2 * e)), sl = v.length();
+      if (sl > 0) v.multiplyScalar(s1 / sl);
+      if (ctrl && input.tuck && s1 < 5 && fwd.y < 0.02) v.addScaledVector(fwd, P.push * dt);
+      if (ctrl && input.jump) {
+        v.addScaledVector(n, P.jump);
+        state.grounded = false;
+        airSpin = 0;
+      }
+    }
+    input.jump = false;
   }
 
   function animate(dt) {
