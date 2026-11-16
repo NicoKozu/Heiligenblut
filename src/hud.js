@@ -16,12 +16,15 @@ export function createHud(pistes) {
     '<div><span>Max</span><b data-k="max">0 km/h</b></div>' +
     '</div>' +
     '<div id="hud-msg"></div>' +
-    '<div id="hud-hint"></div>';
+    '<div id="hud-hint"></div>' +
+    '<div id="hud-map"><img src="public/pistenplan.jpg" alt=""><i></i></div>';
   document.body.appendChild(root);
   const el = k => root.querySelector('[data-k="' + k + '"]');
   const speedEl = root.querySelector('#hud-speed b');
   const msg = root.querySelector('#hud-msg');
   const f = { piste: el('piste'), alt: el('alt'), time: el('time'), max: el('max'), mode: el('mode'), speed: speedEl, msg, hint: root.querySelector('#hud-hint') };
+  const dot = root.querySelector('#hud-map i');
+  const mapAt = (x, z) => [(0.069928 * x - 0.0057 * z + 80.283) / 3.2, (0.044612 * x + 0.066122 * z + 270.693) / 3.2];
   let time = 0, max = 0, running = false, acc = 0;
   const last = {};
   const set = (k, v) => { if (last[k] !== v) { last[k] = v; f[k].textContent = v; } };
@@ -45,6 +48,9 @@ export function createHud(pistes) {
       const p = state.lift ? null : pistes.at(state.pos);
       set('piste', state.lift || (p ? p.id + ' ' + p.name : 'abseits'));
       f.piste.style.color = p ? p.lv.css : '';
+      const [mx, my] = mapAt(state.pos.x, state.pos.z);
+      dot.style.left = Math.min(98, Math.max(2, mx)) + '%';
+      dot.style.top = Math.min(98, Math.max(2, my)) + '%';
     }
   }
 
