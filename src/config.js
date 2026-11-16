@@ -11,3 +11,8 @@ export const AREA = {
 export const TERRAIN_URL = 'public/terrain/heiligenblut';
 
 export const START = { x: 1250, z: -2900 };
+
+export const get = (url, type) => fetch(url).then(r => {
+  if (!r.ok) throw new Error(url + ' (' + r.status + ')');
+  return r[type]();
+});

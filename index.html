@@ -7,8 +7,39 @@
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#9cc4e8;font-family:system-ui,sans-serif}
 canvas{display:block}
-#info{position:fixed;left:12px;top:12px;padding:8px 12px;background:rgba(10,30,50,.55);color:#fff;border-radius:6px;font-size:14px;line-height:1.4;pointer-events:none}
-#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#fps{position:fixed;left:12px;top:12px;padding:4px 8px;background:rgba(10,30,50,.55);color:#fff;border-radius:6px;font:12px ui-monospace,monospace;pointer-events:none}
+#menu{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(rgba(8,22,40,.35),rgba(8,22,40,.7));color:#fff;transition:opacity .35s;overflow:auto}
+body.menu #hud,body.menu #fps{display:none}
+#menu.off{opacity:0;pointer-events:none}
+#menu .card{width:min(520px,100%);max-height:100%;overflow:auto;box-sizing:border-box;padding:22px 24px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+#menu h1{margin:0;font-size:30px;letter-spacing:.01em}
+#menu h2{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.65;font-weight:600}
+#menu p{margin:4px 0}
+#menu .sub{opacity:.75}
+#menu .warn{margin:10px 0;padding:8px 10px;background:rgba(255,190,60,.18);border-left:3px solid #ffbe3c;border-radius:4px;font-size:14px}
+#menu .status{min-height:1.3em;font-size:14px;color:#ffd84a}
+#menu .sec{margin-top:14px}
+#menu .row{display:flex;gap:8px}
+#menu button{font:inherit;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:9px 12px;cursor:pointer;text-align:left}
+#menu button:hover{background:rgba(255,255,255,.16)}
+#menu button.on{background:rgba(90,162,255,.28);border-color:#5aa2ff}
+#menu .modes button{flex:1;text-align:center;font-size:16px}
+#menu .starts{display:grid;gap:6px}
+#menu .starts button{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:10px}
+#menu .starts i{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+#menu .starts span{font-size:13px;opacity:.7}
+#menu .go{margin-top:16px}
+#menu .go button{flex:1;text-align:center;font-weight:600;padding:11px}
+#menu .primary{background:#2f7de1;border-color:#5aa2ff}
+#menu .primary:hover{background:#3b8cf2}
+#menu .primary:disabled{opacity:.45;cursor:wait}
+#menu details{margin-top:14px;font-size:14px}
+#menu summary{cursor:pointer;opacity:.8}
+#menu dl{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:8px 0 0}
+#menu dt{font-weight:600;font-family:ui-monospace,monospace;font-size:13px}
+#menu dd{margin:0;opacity:.85}
+#menu .foot{margin-top:12px;font-size:11px;opacity:.5}
+#hud{position:fixed;inset:0;z-index:2;pointer-events:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 #hud-speed{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:baseline;gap:6px;padding:6px 18px;background:rgba(10,30,50,.55);border-radius:10px}
 #hud-speed b{font-size:clamp(32px,7vw,56px);font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:right}
 #hud-speed span{font-size:16px;opacity:.85}
@@ -26,7 +57,8 @@ canvas{display:block}
 .peak b{font-weight:600;letter-spacing:.02em;bottom:calc(var(--stem,42px) + 16px)}
 .peak span{font-size:11px;opacity:.85}
 .peak i{position:absolute;left:0;bottom:0;width:1px;height:var(--stem,42px);background:linear-gradient(rgba(255,255,255,.85),rgba(255,255,255,.1))}
-#error{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#0b1c2c;color:#fff;padding:24px;text-align:center}
+#error{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:#0b1c2c;color:#fff;padding:24px;text-align:center;line-height:1.5}
+#error button{font:inherit;padding:8px 16px;border-radius:8px;border:0;background:#2f7de1;color:#fff;cursor:pointer}
 </style>
 <script type="importmap">
 {
@@ -38,7 +70,8 @@ canvas{display:block}
 </script>
 </head>
 <body>
-<div id="info">Heiligenblut am Großglockner · Etappe 9</div>
+<div id="fps" hidden></div>
+<noscript>Bitte JavaScript aktivieren.</noscript>
 <div id="error"></div>
 <script type="module" src="src/main.js"></script>
 </body>

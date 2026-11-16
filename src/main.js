@@ -10,62 +10,106 @@ import { createScenery } from './scenery.js';
 import { createEffects } from './effects.js';
 import { loadPanorama } from './panorama.js';
 import { createPeakLabels } from './peaks.js';
-import { consume, flush } from './input.js';
+import { consume, flush, down } from './input.js';
+import { createMenu } from './menu.js';
+import { createAudio } from './audio.js';
 
-const info = document.getElementById('info');
+const menu = createMenu();
+let failed = false;
 
 function fail(msg) {
+  if (failed) return;
+  failed = true;
   const el = document.getElementById('error');
-  el.textContent = msg;
+  el.innerHTML = '<div><b>Fehler</b><br>' + String(msg).replace(/</g, '&lt;') + '<br><br><button onclick="location.reload()">Neu laden</button></div>';
   el.style.display = 'flex';
 }
 
+addEventListener('error', e => fail(e.message || 'Unbekannter Fehler'));
+addEventListener('unhandledrejection', e => fail(e.reason?.message || e.reason || 'Unbekannter Fehler'));
+
+function webgl2() {
+  try { return !!document.createElement('canvas').getContext('webgl2'); } catch (e) { return false; }
+}
+
 async function start() {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  if (!webgl2()) throw new Error('Dein Browser unterstützt kein WebGL 2. Bitte aktuellen Chrome, Firefox, Edge oder Safari verwenden und Hardwarebeschleunigung aktivieren.');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  const maxRatio = Math.min(devicePixelRatio, 2);
+  let ratio = Math.min(maxRatio, 1.5);
+  renderer.setPixelRatio(ratio);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
+  renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); fail('Grafikkontext verloren (Grafiktreiber/Speicher). Bitte Seite neu laden.'); });
 
   const world = createWorld(renderer);
   const { scene, followSun } = world;
-  info.textContent = 'Lade Gelände …';
+  menu.setStatus('Lade Gelände …');
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
-  info.textContent = 'Lade Pisten …';
+  menu.setStatus('Lade Pisten …');
   const pistes = await loadPistes(terrain);
   scene.add(pistes.group);
   const lift = createLift(terrain, pistes);
   scene.add(lift.group);
-  info.textContent = 'Pflanze Wald …';
+  menu.setStatus('Pflanze Wald …');
+  await new Promise(r => setTimeout(r, 0));
   const scenery = createScenery(terrain, pistes, lift);
   scene.add(scenery.group);
   const fx = createEffects(terrain);
   scene.add(fx.group);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 9<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation · P Gipfelnamen<br>Pistenstart: ' +
-    pistes.list.map((p, i) => (i + 1) + ' ' + p.id + ' ' + p.name).join(' · ');
+  menu.setPistes(pistes.list);
   const hud = createHud(pistes);
 
   const player = createPlayer(terrain);
   scene.add(player.object);
   const goTo = k => {
     const s = pistes.startOf(k);
-    if (s) player.spawnAt(s.x, s.z, s.heading);
+    if (!s) return;
+    const pts = s.piste.pts, i = lift.clear(pts);
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 2];
+    player.spawnAt(ax, az, Math.atan2(bx - ax, bz - az));
   };
   goTo(0);
   const cam = createFollowCamera(terrain);
   player.update(0);
   cam.update(player.state.pos, player.state.look, 0, true);
 
-  const status = info.innerHTML;
-  info.textContent = 'Berechne Panorama …';
+  menu.setStatus('Berechne Panorama …');
   await new Promise(r => setTimeout(r, 0));
   const pano = await loadPanorama(terrain, world);
   pano.bake(renderer);
   pano.shade(scene);
   const peaks = createPeakLabels(pano);
-  info.innerHTML = status;
+  const audio = createAudio();
+  const fps = document.getElementById('fps');
+  let pending = null, snap = false, fT = 0, fN = 0, slow = 0, good = 0, cap = maxRatio;
+
+  menu.onStart(c => { pending = c; audio.init(); audio.pause(false); });
+  menu.onResume(() => { audio.init(); audio.pause(false); flush(); });
+  menu.ready();
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !menu.open) { menu.show(); audio.pause(true); } });
+
+  function applyStart(c) {
+    player.setMode(c.mode);
+    if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
+    else goTo(c.start);
+  }
+
+  function adapt(dt) {
+    fT += dt; fN++;
+    if (fT < 1) return;
+    const f = fN / fT;
+    fT = 0; fN = 0;
+    fps.textContent = Math.round(f) + ' FPS · ' + ratio.toFixed(2) + '×';
+    if (f < 50) { slow++; good = 0; } else { slow = 0; if (f > 57) good++; }
+    let r = ratio;
+    if (slow >= 2 && ratio > 0.6) { cap = ratio; r = Math.max(0.6, ratio - 0.2); slow = 0; }
+    else if (good >= 10 && ratio < cap - 0.01) { r = Math.min(cap, ratio + 0.1); good = 0; }
+    if (r !== ratio) { ratio = r; renderer.setPixelRatio(ratio); }
+  }
 
   addEventListener('resize', () => {
     cam.camera.aspect = innerWidth / innerHeight;
@@ -75,7 +119,24 @@ async function start() {
 
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const raw = clock.getDelta();
+    const dt = Math.min(raw, 0.05);
+    if (failed) return renderer.setAnimationLoop(null);
+    if (menu.open) {
+      flush();
+      audio.update(player.state, {}, true);
+      scenery.update(cam.camera);
+      pano.render(renderer, scene, cam.camera);
+      peaks.update(cam.camera);
+      return;
+    }
+    adapt(raw);
+    if (consume('KeyC')) { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
+    if (consume('KeyM')) { audio.init(); player.state.note = audio.toggle() ? 'Ton an' : 'Ton aus'; player.state.noteT = 1.2; }
+    if (consume('KeyF')) fps.hidden = !fps.hidden;
+    if (consume('Escape')) { menu.show(); audio.pause(true); }
+    if (consume('KeyP')) peaks.toggle();
+    if (pending) { lift.leave(player.state); applyStart(pending); pending = null; }
     if (!lift.riding()) {
       player.update(dt);
       pistes.collide(player.state);
@@ -85,12 +146,15 @@ async function start() {
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
     } else flush();
     lift.update(dt, player.state, player, goTo);
+    player.object.visible = !lift.riding() && cam.mode !== 'ego';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
     scenery.update(cam.camera);
     hud.update(player.state, dt);
-    cam.update(player.state.pos, player.state.look, dt, player.state.reset);
+    const st = player.state;
+    cam.update(st.pos, st.lift && cam.mode === 'ego' ? st.dir : st.look, dt, st.reset || snap, { speed: st.lift ? 0 : st.speed, lift: !!st.lift, crashed: st.crashed > 0, tuck: !st.lift && down('KeyW', 'ArrowUp') && !down('KeyS', 'ArrowDown') });
+    snap = false;
+    audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
     followSun(player.state.pos);
-    if (consume('KeyP')) peaks.toggle();
     pano.update(cam.camera, dt);
     pano.render(renderer, scene, cam.camera);
     peaks.update(cam.camera);

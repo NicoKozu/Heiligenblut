@@ -216,5 +216,5 @@ export function createPlayer(terrain) {
 
   setMode('ski');
   reset();
-  return { object: group, state, update, spawnAt };
+  return { object: group, state, update, spawnAt, setMode };
 }
