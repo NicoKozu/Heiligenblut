@@ -16,18 +16,6 @@ function rng(s) {
   };
 }
 
-function hash(i, j) {
-  let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0;
-  h = Math.imul(h ^ h >>> 13, 1274126177);
-  return ((h ^ h >>> 16) >>> 0) / 4294967296;
-}
-
-function noise(x, z, s) {
-  const fx = x / s, fz = z / s, i = Math.floor(fx), j = Math.floor(fz);
-  const u = fx - i, v = fz - j, a = u * u * (3 - 2 * u), b = v * v * (3 - 2 * v);
-  return (hash(i, j) * (1 - a) + hash(i + 1, j) * a) * (1 - b) + (hash(i, j + 1) * (1 - a) + hash(i + 1, j + 1) * a) * b;
-}
-
 function paint(geo, top, bottom, y0, y1) {
   const p = geo.attributes.position, c = new Float32Array(p.count * 3), col = new THREE.Color();
   for (let k = 0; k < p.count; k++) {
@@ -213,7 +201,7 @@ export function createScenery(terrain, pistes, lift) {
       const y = terrain.heightAt(px, pz);
       if (y > 2180) continue;
       const tl = 1 - THREE.MathUtils.smoothstep(y, 1850, 2180);
-      const f = THREE.MathUtils.smoothstep(noise(px, pz, 260) * 0.65 + noise(px, pz, 70) * 0.35, 0.36, 0.62);
+      const f = THREE.MathUtils.smoothstep(terrain.forestAt(px, pz), 0.15, 0.6);
       if (r > f * tl * 0.85) continue;
       terrain.normalAt(px, pz, n);
       if (n.y < 0.7 || r > f * tl * 0.85 * THREE.MathUtils.smoothstep(n.y, 0.7, 0.82)) continue;

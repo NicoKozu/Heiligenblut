@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HAZE } from './world.js';
-import { get } from './config.js';
+import { get, texture } from './config.js';
 
 const URL = 'public/terrain/panorama';
 const EARTH = 0.87 / (2 * 6371000);
@@ -83,7 +83,7 @@ void main() {
 }`;
 
 const TERRAIN_FRAG = `
-uniform sampler2D visM, visF;
+uniform sampler2D visM, visF, satM, satF;
 uniform float midHalf, farHalf, haze, time;
 uniform vec3 sunDir, sunCol, skyCol, gndCol, hazeCol, sunHaze;
 varying vec3 vW;
@@ -112,6 +112,13 @@ void main() {
   vec3 alb = mix(snow, snow * vec3(0.93, 0.97, 1.02), glacier);
   alb = mix(alb, forC, forest);
   alb = mix(alb, rockC, rock);
+  vec3 sat = inMid
+    ? texture2D(satM, (vW.xz + midHalf) / (2.0 * midHalf)).rgb
+    : texture2D(satF, (vW.xz + farHalf) / (2.0 * farHalf)).rgb;
+  float sk = smoothstep(0.02, 0.06, dot(sat, vec3(0.333)));
+  alb = mix(alb, sat, sk);
+  rock *= 1.0 - sk;
+  forest = mix(forest, smoothstep(0.35, 0.15, dot(sat, vec3(0.333))), sk);
   float vis = inMid
     ? texture2D(visM, (vW.xz + midHalf) / (2.0 * midHalf)).r
     : texture2D(visF, (vW.xz + farHalf) / (2.0 * farHalf)).r;
@@ -174,9 +181,11 @@ function floatTex(data, w, h) {
 }
 
 export async function loadPanorama(terrain, world) {
-  const [meta, buf] = await Promise.all([
+  const [meta, buf, satM, satF] = await Promise.all([
     get(URL + '.json', 'json'),
-    get(URL + '.bin', 'arrayBuffer')
+    get(URL + '.bin', 'arrayBuffer'),
+    texture('public/terrain/sat_mid.jpg'),
+    texture('public/terrain/sat_far.jpg')
   ]);
   const raw = new Uint16Array(buf);
   let off = 0;
@@ -208,7 +217,7 @@ export async function loadPanorama(terrain, world) {
   const lin = (c, k) => c.clone().multiplyScalar(k);
   const time = { value: 0 };
   const uniforms = {
-    visM: { value: null }, visF: { value: null },
+    visM: { value: null }, visF: { value: null }, satM: { value: satM }, satF: { value: satF },
     midHalf: { value: mid.half }, farHalf: { value: far.half },
     haze: { value: HAZE }, time,
     earth: { value: EARTH },
