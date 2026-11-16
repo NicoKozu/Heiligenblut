@@ -298,5 +298,28 @@ export function createLift(terrain, pistes) {
   const valley = sections[0];
   const valleySpawn = { x: valley.a[0] - valley.dx * 28, z: valley.a[1] - valley.dz * 28, heading: valley.heading };
 
-  return { group, sections, update, collide, riding: () => !!ride, valleySpawn };
+  function inHall(x, z, m) {
+    if (towers.some(t => Math.hypot(t.x - x, t.z - z) < 14)) return true;
+    return halls.some(h => {
+      const ex = x - h.x, ez = z - h.z;
+      return Math.abs(ex * h.dx + ez * h.dz) < h.hl + m && Math.abs(-ex * h.dz + ez * h.dx) < h.hw + m;
+    });
+  }
+
+  function clear(pts) {
+    for (let i = 0; i < pts.length - 4; i++) {
+      let hit = false;
+      for (let j = i; j < i + 3 && !hit; j++) for (let f = 0; f < 1 && !hit; f += 0.1) hit = inHall(pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f, pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f, 3);
+      if (!hit) return i;
+    }
+    return 0;
+  }
+
+  function leave(state) {
+    if (!ride) return;
+    ride = null;
+    state.lift = null;
+  }
+
+  return { group, sections, update, collide, leave, clear, riding: () => !!ride, valleySpawn };
 }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { get } from './config.js';
 
 export const LEVELS = {
   leicht: { color: 0x1d63d6, css: '#5aa2ff' },
@@ -137,7 +138,7 @@ function ribbon(p, terrain, mat) {
 }
 
 export async function loadPistes(terrain) {
-  const data = await fetch('public/pistes.json').then(r => r.json());
+  const data = await get('public/pistes.json', 'json');
   const list = data.pistes.map(p => prepare(p, terrain));
   for (const p of list) {
     const [x, z] = p.pts[p.pts.length - 1];

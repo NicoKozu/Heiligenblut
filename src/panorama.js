@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HAZE } from './world.js';
+import { get } from './config.js';
 
 const URL = 'public/terrain/panorama';
 const EARTH = 0.87 / (2 * 6371000);
@@ -174,8 +175,8 @@ function floatTex(data, w, h) {
 
 export async function loadPanorama(terrain, world) {
   const [meta, buf] = await Promise.all([
-    fetch(URL + '.json').then(r => r.json()),
-    fetch(URL + '.bin').then(r => r.arrayBuffer())
+    get(URL + '.json', 'json'),
+    get(URL + '.bin', 'arrayBuffer')
   ]);
   const raw = new Uint16Array(buf);
   let off = 0;

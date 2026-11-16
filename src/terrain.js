@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TERRAIN_URL } from './config.js';
+import { TERRAIN_URL, get } from './config.js';
 
 function snowBumpTexture() {
   const size = 256;
@@ -21,8 +21,8 @@ function snowBumpTexture() {
 
 export async function loadTerrain() {
   const [meta, buf] = await Promise.all([
-    fetch(TERRAIN_URL + '.json').then(r => r.json()),
-    fetch(TERRAIN_URL + '.bin').then(r => r.arrayBuffer())
+    get(TERRAIN_URL + '.json', 'json'),
+    get(TERRAIN_URL + '.bin', 'arrayBuffer')
   ]);
   const { nx, nz, cell, originX, originZ, scale } = meta;
   const raw = new Uint16Array(buf);

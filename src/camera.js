@@ -5,8 +5,12 @@ export function createFollowCamera(terrain) {
   const desired = new THREE.Vector3();
   const look = new THREE.Vector3();
   const back = new THREE.Vector3();
+  const head = new THREE.Vector3();
+  const gaze = new THREE.Vector3(0, 0, 1);
+  const tmp = new THREE.Vector3();
+  let mode = 'follow', fov = 65, eye = 1.6;
 
-  function update(target, dir, dt, snap = false) {
+  function follow(target, dir, dt, snap) {
     back.copy(dir).setY(0).normalize();
     desired.copy(target).addScaledVector(back, -9);
     let y = Math.max(target.y + 4.5, terrain.heightAt(desired.x, desired.z) + 2);
@@ -24,5 +28,32 @@ export function createFollowCamera(terrain) {
     camera.lookAt(look);
   }
 
-  return { camera, update };
+  function ego(target, dir, dt, snap, opt) {
+    back.copy(dir).setY(0).normalize();
+    const k = snap ? 1 : 1 - Math.exp(-dt * 6);
+    eye += ((opt.tuck ? 1.15 : opt.crashed ? 0.6 : 1.6) - eye) * (snap ? 1 : 1 - Math.exp(-dt * 5));
+    head.copy(target).addScaledVector(back, opt.lift ? 0 : 0.15);
+    head.y += opt.lift ? 1.3 : eye;
+    camera.position.copy(head);
+    const ax = target.x + back.x * 14, az = target.z + back.z * 14;
+    const gy = opt.lift ? head.y - 2 : terrain.heightAt(ax, az) + 0.8;
+    tmp.set(ax, Math.min(gy, head.y - 0.6), az).sub(head).normalize();
+    gaze.lerp(tmp, k).normalize();
+    camera.lookAt(look.copy(head).add(gaze));
+  }
+
+  function update(target, dir, dt, snap = false, opt = {}) {
+    if (mode === 'ego') ego(target, dir, dt, snap, opt);
+    else follow(target, dir, dt, snap);
+    const f = (mode === 'ego' ? 72 : 65) + Math.min(opt.speed || 0, 30) * 0.25;
+    fov += (f - fov) * (1 - Math.exp(-dt * 3));
+    if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  }
+
+  function toggle() {
+    mode = mode === 'ego' ? 'follow' : 'ego';
+    return mode;
+  }
+
+  return { camera, update, toggle, get mode() { return mode; } };
 }
