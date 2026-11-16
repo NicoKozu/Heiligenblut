@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const CHUNK = 500;
 const NEAR = 1300;
 const FAR = 3800;
-const GRID = 12;
+const GRID = 10;
 const CELL = 16;
 const DET = 170;
 const CAP = 700;
@@ -166,7 +166,7 @@ export function detailMaterials(assets) {
   };
 }
 
-export function createScenery(terrain, pistes, lift, assets) {
+export function createScenery(terrain, pistes, lift, assets, blocked) {
   const group = new THREE.Group();
   const stations = lift.sections.flatMap(s => [s.a, s.b]);
   const towers = lift.sections.flatMap(s => s.towers.map(t => [t.x, t.z]));
@@ -240,16 +240,18 @@ export function createScenery(terrain, pistes, lift, assets) {
       const px = x + (rand() - 0.5) * GRID, pz = z + (rand() - 0.5) * GRID;
       const r = rand();
       const y = terrain.heightAt(px, pz);
-      if (y > 2180) continue;
-      const tl = 1 - THREE.MathUtils.smoothstep(y, 1850, 2180);
-      const f = THREE.MathUtils.smoothstep(terrain.forestAt(px, pz), 0.15, 0.6);
-      if (r > f * tl * 0.85) continue;
+      if (y > 2320) continue;
+      const tl = 1 - THREE.MathUtils.smoothstep(y, 1900, 2320);
+      const f = THREE.MathUtils.smoothstep(terrain.forestAt(px, pz), 0.12, 0.55);
+      const pr = Math.max(f * 0.9, 0.03) * tl;
+      if (r > pr) continue;
       terrain.normalAt(px, pz, n);
-      if (n.y < 0.7 || r > f * tl * 0.85 * THREE.MathUtils.smoothstep(n.y, 0.7, 0.82)) continue;
+      if (n.y < 0.66 || r > pr * THREE.MathUtils.smoothstep(n.y, 0.66, 0.8)) continue;
       if (Math.hypot(px, pz) < 70) continue;
       if (!pisteClear(px, pz, 7) || !liftClear(px, pz, 14)) continue;
       if (stations.some(s => Math.hypot(s[0] - px, s[1] - pz) < 40)) continue;
       if (huts.some(h => Math.hypot(h.x - px, h.z - pz) < h.reach + 14)) continue;
+      if (blocked?.(px, pz, 3)) continue;
       const larch = rand() < 0.15 + THREE.MathUtils.smoothstep(y, 1450, 2000) * 0.65;
       const s = (larch ? 13 : 16) * (0.55 + rand() * 0.6) * (0.45 + 0.55 * tl);
       const k = Math.floor((px - originX) / CHUNK) + Math.floor((pz - originZ) / CHUNK) * cx;
