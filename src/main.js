@@ -13,6 +13,7 @@ import { createPeakLabels } from './peaks.js';
 import { consume, flush, down } from './input.js';
 import { createMenu } from './menu.js';
 import { createAudio } from './audio.js';
+import { loadAssets } from './assets.js';
 
 const menu = createMenu();
 let failed = false;
@@ -46,6 +47,7 @@ async function start() {
 
   const world = createWorld(renderer);
   const { scene, followSun } = world;
+  const assetsP = loadAssets();
   menu.setStatus('Lade Gelände …');
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
@@ -54,16 +56,18 @@ async function start() {
   scene.add(pistes.group);
   const lift = createLift(terrain, pistes);
   scene.add(lift.group);
+  menu.setStatus('Lade Modelle …');
+  const assets = await assetsP;
   menu.setStatus('Pflanze Wald …');
   await new Promise(r => setTimeout(r, 0));
-  const scenery = createScenery(terrain, pistes, lift);
+  const scenery = createScenery(terrain, pistes, lift, assets);
   scene.add(scenery.group);
   const fx = createEffects(terrain);
   scene.add(fx.group);
   menu.setPistes(pistes.list);
   const hud = createHud(pistes);
 
-  const player = createPlayer(terrain);
+  const player = createPlayer(terrain, assets);
   scene.add(player.object);
   const goTo = k => {
     const s = pistes.startOf(k);
@@ -148,11 +152,11 @@ async function start() {
     lift.update(dt, player.state, player, goTo);
     player.object.visible = !lift.riding() && cam.mode !== 'ego';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
-    scenery.update(cam.camera);
     hud.update(player.state, dt);
     const st = player.state;
     cam.update(st.pos, st.lift && cam.mode === 'ego' ? st.dir : st.look, dt, st.reset || snap, { speed: st.lift ? 0 : st.speed, lift: !!st.lift, crashed: st.crashed > 0, tuck: !st.lift && down('KeyW', 'ArrowUp') && !down('KeyS', 'ArrowDown') });
     snap = false;
+    scenery.update(cam.camera);
     audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
     followSun(player.state.pos);
     pano.update(cam.camera, dt);
