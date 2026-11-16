@@ -30,7 +30,8 @@
 - Etappe 2: fertig, gemergt (PR #2). Echtes DEM, Platzhalter-Fahrer gleitet entlang Falllinie ab Schareck.
 - Etappe 3: fertig. Fahrphysik in `player.js` (Kanten-Grip/Carving, Reibung, Luftwiderstand, Sprung, Absprung an Kanten, Sturz bei harter Landung), Eingabe `input.js`.
 - Etappe 4: fertig. HUD in `src/hud.js` (km/h, Höhe, Pistenname, Fahrzeit, Max). Pistenname vorläufig per nächstem POI (`pisteName()`), in Etappe 6 durch echte Pistenerkennung ersetzen.
-- Nächste: Etappe 5.
+- Etappe 5: fertig. Q schaltet Ski/Snowboard (nur am Boden). Physik-Parameter je Modus in `MODES` (`player.js`), Modelle in `src/models.js`. Board: Seitrutschen (S), mehr Drift, höherer Ollie, schnelle Air-Spins, Fakie-Landung; Landung quer zur Fahrtrichtung = Sturz (beide Modi). Kamera folgt `state.look` (in der Luft eingefroren).
+- Nächste: Etappe 6.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -38,9 +39,10 @@
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel, Nebel
 - `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, pois`
-- `src/player.js` – Skifahrer: Physik + Pose, `state` (pos, vel, dir, heading, speed, grounded, crashed, reset)
+- `src/player.js` – Fahrer: Physik je Modus + Pose, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
+- `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
-- `src/hud.js` – `createHud(terrain).update(state, dt)`, `pisteName(pos, pois)`
+- `src/hud.js` – `createHud(terrain).update(state, dt)`, `pisteName(pos, pois)`, zeigt Modus + Meldungen
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
