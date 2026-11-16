@@ -34,13 +34,14 @@
 - Etappe 6: fertig. Pisten in `public/pistes.json` (Verlauf per Kostenpfad auf DEM berechnet, Skript im Scratchpad), Laden/Präparieren/Markierung/Netze/Schilder/Erkennung in `src/pistes.js`. Gelände entlang Pisten geglättet (`terrain.groom`), Cord-Band, Stangen (Kappe in Pistenfarbe), Fangnetze an Abbruchkanten mit Kollision, Startschild + Nummernschilder alle 500 m. HUD zeigt Piste (farbig) oder „abseits“. Tasten 1–4 = Pistenstart, R = letzter Start. Kamera hält Sichtlinie über Kuppen.
 - Etappe 7: fertig. Lift in `src/lift.js`: 2 Sektionen (Gondel Rossbach Talstation→Rossbach, Gondel Schareck Rossbach→Schareck), Seilprofil mit Durchhang, Masten automatisch nach Bodenfreiheit gesetzt (nicht an Pistenstarts, auf Pisten mit Prallschutz), umlaufende Kabinen (InstancedMesh, 5 m/s), Stationen mit Kollision. E an Talstation/Rossbach = einsteigen, W in Gondel = Zeitraffer ×8, Ausstieg automatisch am nächstgelegenen Pistenstart. Taste 0 = Talstation. HUD zeigt Liftname + Hinweiszeile (`state.hint`).
 - Etappe 8: fertig. `src/scenery.js`: ~114k Bäume (Fichten unten, Lärchen winterkahl oben, Waldgrenze ~2.150 m, Rauschen für Lichtungen, frei von Pisten/Lift/Stationen), Chunks à 500 m mit LOD (nah 1,3 km / fern 3,8 km), Baum-Kollision (Sturz ab 7 m/s). Hütten Rossbach Klause, Schareck, Fleißalm (Lage automatisch: flach, abseits Piste/Lift, Gelände eingeebnet, Terrasse, Namensschild, Kollision). `src/effects.js`: Spurrillen (Ringpuffer, Breite nach Seitrutschen), Schneestaub (Points-Shader; Carven/Bremsen/Landung/Sturz). Liftmasten aus Etappe 7.
-- Nächste: Etappe 9.
+- Etappe 9: fertig. `src/panorama.js`: echtes DEM-Panorama bis ~56 km (Großglockner, Glocknergruppe, Venediger, Sonnblick, Ankogel …) in eigenem Render-Pass (eigene Kamera near 150/far 200 km, danach Tiefe löschen, dann Nahszene). Zwei Ebenen: Mitte ±16 km/50 m, Fern ±56 km/200 m, Loch unter Nahgelände, Ränder nahtlos verblendet, Erdkrümmung im Shader. Shader: Schnee/Fels (Rinnen entlang Falllinie)/Wald/Gletscher, Ableitungs-AA. Sonnensichtbarkeit (Bergschatten) per GPU-Raymarch gebacken (3 Texturen) und per `onBeforeCompile` auf alle Standard-/Lambert-Materialien der Nahszene angewendet, plus wandernde Wolkenschatten. Wolkenschicht (Cumulus + Cirren) auf 5.400 m. Sonne jetzt real im SSO (Azimut 158°, 31°), Dunst `HAZE` als exp. Distanz-Nebel (ShaderChunk `fog_fragment` gepatcht), Hemi 1,15. `src/peaks.js`: Gipfelnamen mit Höhe/Entfernung, Sichtprüfung über Gelände, Entzerrung; P schaltet.
+- Nächste: Etappe 10.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
 - `index.html` – Einstieg, importmap, Overlay
 - `src/main.js` – Renderer, Loop, Resize
-- `src/world.js` – Szene, Licht, Himmel, Nebel
+- `src/world.js` – Szene, Licht, Himmel (Sky, liegt in Panorama-Szene), Nebel, `SUN`, `HAZE`
 - `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, groom(fn), pois`
 - `src/player.js` – Fahrer: Physik je Modus + Pose, `spawnAt(x,z,heading)`, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
 - `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
@@ -52,6 +53,9 @@
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/scenery.js` – `createScenery(terrain, pistes, lift)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
 - `src/effects.js` – `createEffects(terrain)` → `{ group, update(dt, state, riding, canvasH), burst(state, n, v) }`
+- `src/panorama.js` – `loadPanorama(terrain, world)` → `{ scene, camera, bake(renderer), shade(root), update(cam, dt), render(renderer, nearScene, cam), heightAny, peaks, visibleFrom }`
+- `src/peaks.js` – `createPeakLabels(pano)` → `{ update(cam), toggle() }`
+- `public/terrain/panorama.bin|json` – Uint16 (Höhe×10): Ebene Mitte 641² (50 m, ±16 km) + Fern 561² (200 m, ±56 km), Gipfelliste (Lage per DEM-Maximum geprüft)
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
 - `public/` – eigene Assets (Fotos etc.)
@@ -81,5 +85,6 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 - Quelle: AWS Terrain Tiles (Terrarium, Zoom 14; Mapzen aus EU-DEM/SRTM). Ausschnitt 46.993–47.098 N, 12.785–12.955 E (~12,9 × 11,7 km).
 - Welt: 1 Einheit = 1 m, y = Höhe über NN, +x = Ost, −z = Nord. Ursprung (0,0) = Talstation Heiligenblut (47.0395 N, 12.8430 E).
 - POIs (aus DEM): Fallbichl 1.881 m (2330/−2450, geschätzt), Talstation 1.282 m (0/0), Rossbach ~1.734 m (392/−910, Lage geschätzt), Schareck 2.590 m (1305/−3034, Gipfel lt. DEM 2.606 m), Gjaidtroghöhe 2.965 m (5159/−2623, DEM-Gipfel 2.988 m), Fleißalm ~1.901 m (2350/−2700, Lage geschätzt, Talboden Großes Fleißtal).
-- Großglockner (47.074 N, 12.694 E) liegt außerhalb des Ausschnitts → Etappe 9.
+- Großglockner (47.074 N, 12.694 E) liegt im Panorama-DEM bei (−11300/−3900), DEM 3.777 m (offiziell 3.798 m).
+- Panorama: Kacheln z12 (Mitte) und z11 (Fern), gleiche Projektion (x = Δlon·111320·cos 47,0395°, z = −Δlat·111132), Abgleich mit Nah-DEM: Versatz 0, RMS 4,8 m. Skript im Scratchpad, nicht im Repo.
 - Neu generieren: Python-Skript nicht im Repo (Scratchpad); Kacheln `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/{x}/{y}.png`, Höhe = R·256 + G + B/256 − 32768.
