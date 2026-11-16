@@ -12,3 +12,4 @@ addEventListener('blur', () => keys.clear());
 
 export const down = (...codes) => codes.some(c => keys.has(c));
 export const consume = code => pressed.delete(code);
+export const flush = () => pressed.clear();

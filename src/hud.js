@@ -15,33 +15,35 @@ export function createHud(pistes) {
     '<div><span>Zeit</span><b data-k="time">0:00.0</b></div>' +
     '<div><span>Max</span><b data-k="max">0 km/h</b></div>' +
     '</div>' +
-    '<div id="hud-msg"></div>';
+    '<div id="hud-msg"></div>' +
+    '<div id="hud-hint"></div>';
   document.body.appendChild(root);
   const el = k => root.querySelector('[data-k="' + k + '"]');
   const speedEl = root.querySelector('#hud-speed b');
   const msg = root.querySelector('#hud-msg');
-  const f = { piste: el('piste'), alt: el('alt'), time: el('time'), max: el('max'), mode: el('mode') };
+  const f = { piste: el('piste'), alt: el('alt'), time: el('time'), max: el('max'), mode: el('mode'), speed: speedEl, msg, hint: root.querySelector('#hud-hint') };
   let time = 0, max = 0, running = false, acc = 0;
   const last = {};
-  const set = (k, v) => { if (last[k] !== v) { last[k] = v; (k === 'speed' ? speedEl : k === 'msg' ? msg : f[k]).textContent = v; } };
+  const set = (k, v) => { if (last[k] !== v) { last[k] = v; f[k].textContent = v; } };
 
   function update(state, dt) {
     if (state.reset) { time = 0; max = 0; running = false; }
     const kmh = state.speed * 3.6;
     if (!running && kmh > 2) running = true;
-    if (running) time += dt;
-    if (kmh > max) max = kmh;
+    if (running && !state.lift) time += dt;
+    if (!state.lift && kmh > max) max = kmh;
     acc += dt;
     set('speed', String(Math.round(kmh)));
     set('time', fmtTime(time));
     set('max', Math.round(max) + ' km/h');
     set('msg', state.crashed > 0 ? 'Sturz!' : state.noteT > 0 ? state.note : '');
     set('mode', state.modeName);
+    set('hint', state.hint || '');
     if (acc > 0.2 || state.reset) {
       acc = 0;
       set('alt', Math.round(state.pos.y).toLocaleString('de-DE') + ' m');
-      const p = pistes.at(state.pos);
-      set('piste', p ? p.id + ' ' + p.name : 'abseits');
+      const p = state.lift ? null : pistes.at(state.pos);
+      set('piste', state.lift || (p ? p.id + ' ' + p.name : 'abseits'));
       f.piste.style.color = p ? p.lv.css : '';
     }
   }
