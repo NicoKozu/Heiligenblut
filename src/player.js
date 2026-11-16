@@ -5,6 +5,8 @@ import { createSkier, createBoarder } from './models.js';
 
 const G = 9.81;
 const SNAP = 0.3;
+const FOOT = 0.8;
+const SIDE = 0.25;
 const CRASH = 14;
 const STEP = 0.012;
 const MASS = 80;
@@ -49,6 +51,7 @@ export function createPlayer(terrain) {
   let P = MODES.ski;
   const up = new THREE.Vector3(0, 1, 0);
   const n = new THREE.Vector3();
+  const ta = new THREE.Vector3(), tb = new THREE.Vector3();
   const upS = new THREE.Vector3(0, 1, 0);
   const fwd = new THREE.Vector3();
   const gt = new THREE.Vector3();
@@ -195,9 +198,18 @@ export function createPlayer(terrain) {
     pose.lean += (leanT - pose.lean) * k;
     models[state.mode].pose(pose);
 
-    if (state.grounded) terrain.normalAt(state.pos.x, state.pos.z, n);
-    upS.lerp(state.grounded ? n : up, 1 - Math.exp(-dt * 10)).normalize();
     group.position.copy(state.pos);
+    if (state.grounded) {
+      const fx = Math.sin(state.heading), fz = Math.cos(state.heading), x = state.pos.x, z = state.pos.z;
+      const hf = terrain.heightAt(x + fx * FOOT, z + fz * FOOT), hb = terrain.heightAt(x - fx * FOOT, z - fz * FOOT);
+      const hr = terrain.heightAt(x + fz * SIDE, z - fx * SIDE), hl = terrain.heightAt(x - fz * SIDE, z + fx * SIDE);
+      ta.set(2 * FOOT * fx, hf - hb, 2 * FOOT * fz);
+      tb.set(2 * SIDE * fz, hr - hl, -2 * SIDE * fx);
+      n.crossVectors(ta, tb).normalize();
+      if (n.y < 0) n.negate();
+      group.position.y = Math.max(state.pos.y, (hf + hb) / 2, (hr + hl) / 2);
+    }
+    upS.lerp(state.grounded ? n : up, 1 - Math.exp(-dt * (state.grounded ? 30 : 8))).normalize();
     qTilt.setFromUnitVectors(up, upS);
     qYaw.setFromAxisAngle(up, state.heading);
     qRoll.setFromAxisAngle(zAxis, -pose.lean);

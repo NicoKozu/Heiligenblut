@@ -337,8 +337,10 @@ export async function loadPanorama(terrain, world) {
       for (const m of [].concat(o.material)) {
         if (patched.has(m) || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial)) continue;
         patched.add(m);
-        m.customProgramCacheKey = () => 'pvis';
-        m.onBeforeCompile = s => {
+        const prevKey = m.customProgramCacheKey.bind(m), prev = m.onBeforeCompile.bind(m);
+        m.customProgramCacheKey = () => 'pvis' + prevKey();
+        m.onBeforeCompile = (s, r) => {
+          prev(s, r);
           s.uniforms.pvisTex = nearVis;
           s.uniforms.pvisR = nearRect;
           s.uniforms.pvisTime = time;

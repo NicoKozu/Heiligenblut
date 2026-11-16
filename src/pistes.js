@@ -75,68 +75,6 @@ function signTexture(p, small) {
   return t;
 }
 
-function cordTexture() {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
-  const g = c.getContext('2d');
-  const img = g.createImageData(256, 64);
-  for (let x = 0; x < 256; x++) {
-    const u = x / 255;
-    const a = Math.min(1, u / 0.06, (1 - u) / 0.06);
-    const v = 240 + (x % 8 < 4 ? 8 : 0);
-    for (let y = 0; y < 64; y++) {
-      const n = v + Math.random() * 5;
-      img.data.set([n, n + 2, n + 5, 255 * a * 0.9], (y * 256 + x) * 4);
-    }
-  }
-  g.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
-}
-
-function ribbon(p, terrain, mat) {
-  const n = p.pts.length, hw = p.width / 2 + 2, cols = 7;
-  const pos = [], uv = [], idx = [];
-  const norm = p.pts.map((_, i) => {
-    const a = p.pts[Math.max(0, i - 1)], b = p.pts[Math.min(n - 1, i + 1)];
-    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    return [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
-  });
-  let rows = 0;
-  for (let i = 0; i < n - 1; i++) {
-    const sub = i === n - 2 ? 3 : 2;
-    for (let k = 0; k < sub; k++) {
-      const t = k / 2;
-      const x = p.pts[i][0] + (p.pts[i + 1][0] - p.pts[i][0]) * t, z = p.pts[i][1] + (p.pts[i + 1][1] - p.pts[i][1]) * t;
-      let nx = norm[i][0] * (1 - t) + norm[i + 1][0] * t, nz = norm[i][1] * (1 - t) + norm[i + 1][1] * t;
-      const l = Math.hypot(nx, nz); nx /= l; nz /= l;
-      const sv = (p.s[i] + (p.s[i + 1] - p.s[i]) * t) / 12;
-      for (let c = 0; c < cols; c++) {
-        const o = (c / (cols - 1) * 2 - 1) * hw, px = x + nx * o, pz = z + nz * o;
-        pos.push(px, terrain.heightAt(px, pz) + 0.12, pz);
-        uv.push(c / (cols - 1), sv);
-      }
-      rows++;
-    }
-  }
-  for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
-    const a = r * cols + c, b = a + cols;
-    idx.push(a, a + 1, b, a + 1, b + 1, b);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  const m = new THREE.Mesh(g, mat);
-  m.receiveShadow = true;
-  m.renderOrder = 1;
-  return m;
-}
-
 export async function loadPistes(terrain) {
   const data = await get('public/pistes.json', 'json');
   const list = data.pistes.map(p => prepare(p, terrain));
@@ -170,15 +108,10 @@ export async function loadPistes(terrain) {
     const w = 1 - THREE.MathUtils.smoothstep(q.d, hw, hw + FALL);
     if (w <= 0) return null;
     const c = (1 - THREE.MathUtils.smoothstep(q.d, hw - 6, hw + 12)) * 0.9;
-    return [y + (q.y - y) * w, c];
+    return [y + (q.y - y) * w, c, q.lat];
   });
 
   const group = new THREE.Group();
-  const cordMat = new THREE.MeshStandardMaterial({
-    map: cordTexture(), transparent: true, depthWrite: false, roughness: 0.75,
-    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
-  });
-  for (const p of list) group.add(ribbon(p, terrain, cordMat));
   const poleGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.8, 6).translate(0, 0.9, 0);
   const capGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8).translate(0, 1.6, 0);
   const poles = [];

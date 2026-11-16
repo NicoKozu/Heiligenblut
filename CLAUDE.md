@@ -38,6 +38,7 @@
 - Etappe 10: fertig. `src/menu.js`: Start-/Pausenmenü (Ski/Snowboard, Startpunkt Piste/Talstation, Steuerung, Mobile-Hinweis bei Touch ohne Maus, Auswahl in localStorage), dient auch als Ladeanzeige; Esc/Tabwechsel = Pause. `camera.js`: Ego-Kamera (C, Augenhöhe je Hocke/Sturz, Blick in Gondel), FOV wächst mit Tempo. `src/audio.js`: WebAudio-Rauschen (Wind nach Tempo, Kantengeräusch beim Carven/Bremsen, Gondelbrummen), M = Ton. Adaptive Auflösung (Pixelratio 0,6–2 nach FPS), F = FPS-Anzeige. Fehlerprüfung: WebGL2-Check, globale Fehler-/Promise-Anzeige mit Neu-laden, Context-Lost, `get()` in `config.js` prüft HTTP-Status. Bugfix: Pisten 4/5 starteten auf der Achse der Bergstation Schareck (Kollision) → Start auf ersten Pistenpunkt ohne Station/Mast (`lift.clear(pts)`); globale Tasten (Esc, C, M, P, F) wirken jetzt auch in der Gondel.
 - Etappe 11: fertig. Freie Kamera in `camera.js`: Linke Maustaste halten + Maus = Orbit um Fahrer (Verfolger) bzw. Umschauen (Ego), Mausrad = Abstand (0,45–3×). Nach Loslassen kehrt Blick nach ~1,2 s weich hinter den Fahrer zurück. Kontextmenü auf Canvas unterdrückt.
 - Fix Fahrphysik: Energiebilanz pro Schritt (½v² + g·h, Höhe aus Gelände) minus Reibung (μ Ski 0,06 / Board 0,07), Luftwiderstand (m 80 kg, cW·A aufrecht 0,7/0,8 m², Hocke 0,35/0,45 m², Luftdichte nach Höhe) und Rutschverlust. Volle Hangabtriebskraft (nicht nur in Skirichtung), Kurven lenken nur um, Haftreibung im Stand. Ergebnis: rote Piste Hocke ~120–130 km/h, aufrecht ~95–105, Steilgelände max ~190. Stockschub (W < 5 m/s) nur flach/bergab.
+- Fix Bodenkontakt/Grafik: Gelände auf 15 m verfeinert (Catmull-Rom aus 30-m-DEM), in Chunks à 64 Zellen (Frustum-Culling, auch Schattenpass). `heightAt` interpoliert exakt die gerenderten Dreiecke (vorher bilinear → Schweben/Einsinken), `normalAt` bilinear aus Vertex-Normalen (weich). Ski/Board liegen per 4-Punkt-Abtastung (±0,8 m längs, ±0,25 m quer) bündig auf. Schnee-Shader in `terrain.js` (onBeforeCompile, von `pano.shade` verkettet): Albedo-Rauschen, 2-Skalen-Bump, Pisten-Cord (Rillen 0,3 m, Spurbahnen 4,4 m) über Attribut `pist` (Maske, Querabstand), Glitzer in der Sonne. Cord-Band-Mesh aus `pistes.js` entfernt; `groom`-Callback darf `[h, blend, lat]` liefern.
 - Etappen 1–10 fertig. Ideen danach: Touch-Steuerung, Zeitrennen/Bestzeiten, weitere Pisten/Lifte (Fleißbahn, Tunnelbahn), Tageszeit.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -45,7 +46,7 @@
 - `index.html` – Einstieg, importmap, Overlay
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel (Sky, liegt in Panorama-Szene), Nebel, `SUN`, `HAZE`
-- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, groom(fn), pois`
+- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh` (Group aus Chunks), `heightAt, normalAt, inside, groom(fn), pois, meta` (meta = grobes 30-m-Raster)
 - `src/player.js` – Fahrer: Physik je Modus + Pose, `spawnAt(x,z,heading)`, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
 - `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
