@@ -14,6 +14,8 @@ import { consume, flush, down } from './input.js';
 import { createMenu } from './menu.js';
 import { createAudio } from './audio.js';
 import { loadAssets } from './assets.js';
+import { createProps } from './props.js';
+import { get } from './config.js';
 
 const menu = createMenu();
 let failed = false;
@@ -48,6 +50,7 @@ async function start() {
   const world = createWorld(renderer);
   const { scene, followSun } = world;
   const assetsP = loadAssets();
+  const osmP = get('public/osm.json', 'json');
   menu.setStatus('Lade Gelände …');
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
@@ -60,8 +63,13 @@ async function start() {
   const assets = await assetsP;
   menu.setStatus('Pflanze Wald …');
   await new Promise(r => setTimeout(r, 0));
-  const scenery = createScenery(terrain, pistes, lift, assets);
+  const props = createProps(terrain, pistes, lift, await osmP);
+  const scenery = createScenery(terrain, pistes, lift, assets, props.blocked);
   scene.add(scenery.group);
+  menu.setStatus('Baue Ort und Felsen …');
+  await new Promise(r => setTimeout(r, 0));
+  props.build(scenery.huts);
+  scene.add(props.group);
   const fx = createEffects(terrain);
   scene.add(fx.group);
   menu.setPistes(pistes.list);
@@ -130,6 +138,7 @@ async function start() {
       flush();
       audio.update(player.state, {}, true);
       scenery.update(cam.camera);
+      props.update(cam.camera);
       pano.render(renderer, scene, cam.camera);
       peaks.update(cam.camera);
       return;
@@ -146,6 +155,7 @@ async function start() {
       pistes.collide(player.state);
       lift.collide(player.state);
       scenery.collide(player.state, (st, v) => fx.burst(st, 50, v));
+      props.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
     } else flush();
@@ -157,6 +167,7 @@ async function start() {
     cam.update(st.pos, st.lift && cam.mode === 'ego' ? st.dir : st.look, dt, st.reset || snap, { speed: st.lift ? 0 : st.speed, lift: !!st.lift, crashed: st.crashed > 0, tuck: !st.lift && down('KeyW', 'ArrowUp') && !down('KeyS', 'ArrowDown') });
     snap = false;
     scenery.update(cam.camera);
+    props.update(cam.camera);
     audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
     followSun(player.state.pos);
     pano.update(cam.camera, dt);
