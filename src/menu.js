@@ -1,7 +1,7 @@
 const KEYS = [
   ['W', 'Hocke'], ['S', 'Bremsen / Seitrutschen'], ['A / D', 'Kurven / Carven'], ['Leertaste', 'Sprung'],
   ['Q', 'Ski ↔ Snowboard'], ['R', 'Neustart'], ['1–9 / 0', 'Pistenstart / Talstation'], ['E', 'Gondel einsteigen'],
-  ['C', 'Ego-/Verfolgerkamera'], ['Rechtsklick + Maus', 'Kamera drehen'], ['Mausrad', 'Kamera-Abstand'], ['M', 'Ton an/aus'], ['P', 'Gipfelnamen'], ['F', 'FPS-Anzeige'], ['Esc', 'Menü']
+  ['C', 'Ego-/Verfolgerkamera'], ['Linksklick + Maus', 'Kamera drehen'], ['Mausrad', 'Kamera-Abstand'], ['M', 'Ton an/aus'], ['P', 'Gipfelnamen'], ['F', 'FPS-Anzeige'], ['Esc', 'Menü']
 ];
 
 function load() {
