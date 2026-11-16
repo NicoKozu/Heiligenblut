@@ -5,7 +5,8 @@ import { createPlayer } from './player.js';
 import { createFollowCamera } from './camera.js';
 import { createHud } from './hud.js';
 import { loadPistes } from './pistes.js';
-import { consume } from './input.js';
+import { createLift } from './lift.js';
+import { consume, flush } from './input.js';
 
 const info = document.getElementById('info');
 
@@ -30,7 +31,9 @@ async function start() {
   info.textContent = 'Lade Pisten …';
   const pistes = await loadPistes(terrain);
   scene.add(pistes.group);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 6<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>Pistenstart: ' +
+  const lift = createLift(terrain, pistes);
+  scene.add(lift.group);
+  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 7<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart<br>E Gondel (an Talstation/Rossbach) · W in der Gondel = Zeitraffer · 0 Talstation<br>Pistenstart: ' +
     pistes.list.map((p, i) => (i + 1) + ' ' + p.id + ' ' + p.name).join(' · ');
   const hud = createHud(pistes);
 
@@ -54,9 +57,14 @@ async function start() {
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
-    player.update(dt);
-    pistes.collide(player.state);
-    for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
+    if (!lift.riding()) {
+      player.update(dt);
+      pistes.collide(player.state);
+      lift.collide(player.state);
+      for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
+      if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
+    } else flush();
+    lift.update(dt, player.state, player, goTo);
     hud.update(player.state, dt);
     cam.update(player.state.pos, player.state.look, dt, player.state.reset);
     followSun(player.state.pos);

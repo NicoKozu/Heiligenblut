@@ -32,7 +32,8 @@
 - Etappe 4: fertig. HUD in `src/hud.js` (km/h, Höhe, Pistenname, Fahrzeit, Max). Pistenname vorläufig per nächstem POI (`pisteName()`), in Etappe 6 durch echte Pistenerkennung ersetzen.
 - Etappe 5: fertig. Q schaltet Ski/Snowboard (nur am Boden). Physik-Parameter je Modus in `MODES` (`player.js`), Modelle in `src/models.js`. Board: Seitrutschen (S), mehr Drift, höherer Ollie, schnelle Air-Spins, Fakie-Landung; Landung quer zur Fahrtrichtung = Sturz (beide Modi). Kamera folgt `state.look` (in der Luft eingefroren).
 - Etappe 6: fertig. Pisten in `public/pistes.json` (Verlauf per Kostenpfad auf DEM berechnet, Skript im Scratchpad), Laden/Präparieren/Markierung/Netze/Schilder/Erkennung in `src/pistes.js`. Gelände entlang Pisten geglättet (`terrain.groom`), Cord-Band, Stangen (Kappe in Pistenfarbe), Fangnetze an Abbruchkanten mit Kollision, Startschild + Nummernschilder alle 500 m. HUD zeigt Piste (farbig) oder „abseits“. Tasten 1–4 = Pistenstart, R = letzter Start. Kamera hält Sichtlinie über Kuppen.
-- Nächste: Etappe 7.
+- Etappe 7: fertig. Lift in `src/lift.js`: 2 Sektionen (Gondel Rossbach Talstation→Rossbach, Gondel Schareck Rossbach→Schareck), Seilprofil mit Durchhang, Masten automatisch nach Bodenfreiheit gesetzt (nicht an Pistenstarts, auf Pisten mit Prallschutz), umlaufende Kabinen (InstancedMesh, 5 m/s), Stationen mit Kollision. E an Talstation/Rossbach = einsteigen, W in Gondel = Zeitraffer ×8, Ausstieg automatisch am nächstgelegenen Pistenstart. Taste 0 = Talstation. HUD zeigt Liftname + Hinweiszeile (`state.hint`).
+- Nächste: Etappe 8.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -44,6 +45,7 @@
 - `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
 - `src/hud.js` – `createHud(pistes).update(state, dt)`, zeigt Modus, Piste, Meldungen
+- `src/lift.js` – `createLift(terrain, pistes)` → `{ group, sections, update(dt, state, player, goTo), collide(state), riding(), valleySpawn }`
 - `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max) }`, `LEVELS`
 - `public/pistes.json` – Pisten (id, name, level, width, pts [x,z] alle 20 m)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
