@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { TERRAIN_URL, get } from './config.js';
+import { TERRAIN_URL, get, image, texture } from './config.js';
 
 const SUB = 2;
 const CHUNK = 64;
 const UVS = 8;
+const SAT_URL = 'public/terrain/';
 
 function snowBumpTexture() {
   const size = 256;
@@ -43,10 +44,13 @@ float tnN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(tnH(i), tnH(i + vec2(1, 0)), f.x), mix(tnH(i + vec2(0, 1)), tnH(i + vec2(1, 1)), f.x), f.y); }
 vec3 tnH3(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }`;
 
-function snowMaterial(bump) {
+function snowMaterial(bump, sat, forest, rect) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0, bumpMap: bump, bumpScale: 0.05 });
   mat.customProgramCacheKey = () => 'snow';
   mat.onBeforeCompile = s => {
+    s.uniforms.satMap = { value: sat };
+    s.uniforms.forMap = { value: forest };
+    s.uniforms.satR = { value: rect };
     s.vertexShader = 'attribute vec2 pist;\nvarying vec2 vPist;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vTw = (modelMatrix * vec4(transformed, 1.0)).xyz;
   vPist = pist;`);
@@ -70,10 +74,19 @@ function snowMaterial(bump) {
       .replace('#include <common>', `#include <common>
 varying vec2 vPist;
 varying vec3 vTw;
+uniform sampler2D satMap, forMap;
+uniform vec4 satR;
 ${NOISE}`)
       .replace('#include <bumpmap_pars_fragment>', bumpPars)
       .replace('#include <color_fragment>', `#include <color_fragment>
   float tPm = clamp(vPist.x, 0.0, 1.0);
+  vec2 tUv = (vTw.xz - satR.xy) / satR.zw;
+  vec3 tSat = texture2D(satMap, tUv).rgb;
+  float tCd = distance(vTw, cameraPosition);
+  float tFo = texture2D(forMap, tUv).r * (1.0 - smoothstep(2600.0, 3700.0, tCd));
+  tSat = mix(tSat, vec3(0.8, 0.84, 0.9), tFo);
+  tSat = mix(tSat, max(tSat, diffuseColor.rgb * 0.9), 0.6 * (1.0 - smoothstep(60.0, 450.0, tCd)));
+  diffuseColor.rgb = mix(tSat, diffuseColor.rgb, smoothstep(0.0, 0.8, tPm));
   float tSnow = smoothstep(0.3, 0.7, dot(diffuseColor.rgb, vec3(0.333)));
   float tN = tnN(vTw.xz * 0.021) * 0.55 + tnN(vTw.xz * 0.13) * 0.3 + tnN(vTw.xz * 0.9) * 0.15;
   diffuseColor.rgb *= mix(0.9 + 0.1 * tN, 0.97 + 0.03 * tN, tPm);
@@ -125,9 +138,11 @@ function upsample(h, nx, nz) {
 }
 
 export async function loadTerrain() {
-  const [meta, buf] = await Promise.all([
+  const [meta, buf, sat, fimg] = await Promise.all([
     get(TERRAIN_URL + '.json', 'json'),
-    get(TERRAIN_URL + '.bin', 'arrayBuffer')
+    get(TERRAIN_URL + '.bin', 'arrayBuffer'),
+    texture(SAT_URL + 'sat_near.jpg'),
+    image(SAT_URL + 'forest.png')
   ]);
   const { nx, nz, cell, originX, originZ, scale } = meta;
   const raw = new Uint16Array(buf);
@@ -191,8 +206,27 @@ export async function loadTerrain() {
     return x > originX + cell && x < originX + width - cell && z > originZ + cell && z < originZ + depth - cell;
   }
 
+  const FW = fimg.width, FH = fimg.height;
+  const fc = document.createElement('canvas');
+  fc.width = FW; fc.height = FH;
+  const fctx = fc.getContext('2d', { willReadFrequently: true });
+  fctx.drawImage(fimg, 0, 0);
+  const rgba = fctx.getImageData(0, 0, FW, FH).data;
+  const FOR = new Uint8Array(FW * FH);
+  for (let i = 0; i < FOR.length; i++) FOR[i] = rgba[i * 4];
+  const forTex = new THREE.DataTexture(FOR, FW, FH, THREE.RedFormat, THREE.UnsignedByteType);
+  forTex.minFilter = forTex.magFilter = THREE.LinearFilter;
+  forTex.needsUpdate = true;
+
+  function forestAt(x, z) {
+    const fx = THREE.MathUtils.clamp((x - originX) / width * FW - 0.5, 0, FW - 1.001);
+    const fz = THREE.MathUtils.clamp((z - originZ) / depth * FH - 0.5, 0, FH - 1.001);
+    const i = fx | 0, j = fz | 0, tx = fx - i, tz = fz - j, k = j * FW + i;
+    return ((FOR[k] * (1 - tx) + FOR[k + 1] * tx) * (1 - tz) + (FOR[k + FW] * (1 - tx) + FOR[k + FW + 1] * tx) * tz) / 255;
+  }
+
   const bump = snowBumpTexture();
-  const mat = snowMaterial(bump);
+  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth));
   const mesh = new THREE.Group();
   const chunks = [];
   for (let j0 = 0; j0 < NZ - 1; j0 += CHUNK) {
@@ -263,5 +297,5 @@ export async function loadTerrain() {
   }
 
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
-  return { mesh, heightAt, normalAt, inside, groom, pois, meta };
+  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta };
 }

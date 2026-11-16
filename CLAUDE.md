@@ -39,6 +39,7 @@
 - Etappe 11: fertig. Freie Kamera in `camera.js`: Linke Maustaste halten + Maus = Orbit um Fahrer (Verfolger) bzw. Umschauen (Ego), Mausrad = Abstand (0,45–3×). Nach Loslassen kehrt Blick nach ~1,2 s weich hinter den Fahrer zurück. Kontextmenü auf Canvas unterdrückt.
 - Fix Fahrphysik: Energiebilanz pro Schritt (½v² + g·h, Höhe aus Gelände) minus Reibung (μ Ski 0,06 / Board 0,07), Luftwiderstand (m 80 kg, cW·A aufrecht 0,7/0,8 m², Hocke 0,35/0,45 m², Luftdichte nach Höhe) und Rutschverlust. Volle Hangabtriebskraft (nicht nur in Skirichtung), Kurven lenken nur um, Haftreibung im Stand. Ergebnis: rote Piste Hocke ~120–130 km/h, aufrecht ~95–105, Steilgelände max ~190. Stockschub (W < 5 m/s) nur flach/bergab.
 - Fix Bodenkontakt/Grafik: Gelände auf 15 m verfeinert (Catmull-Rom aus 30-m-DEM), in Chunks à 64 Zellen (Frustum-Culling, auch Schattenpass). `heightAt` interpoliert exakt die gerenderten Dreiecke (vorher bilinear → Schweben/Einsinken), `normalAt` bilinear aus Vertex-Normalen (weich). Ski/Board liegen per 4-Punkt-Abtastung (±0,8 m längs, ±0,25 m quer) bündig auf. Schnee-Shader in `terrain.js` (onBeforeCompile, von `pano.shade` verkettet): Albedo-Rauschen, 2-Skalen-Bump, Pisten-Cord (Rillen 0,3 m, Spurbahnen 4,4 m) über Attribut `pist` (Maske, Querabstand), Glitzer in der Sonne. Cord-Band-Mesh aus `pistes.js` entfernt; `groom`-Callback darf `[h, blend, lat]` liefern.
+- Echte Satellitenbilder: Copernicus Sentinel-2 L2A vom 24.03.2021 (wolkenfrei, Schnee bis ins Tal; AWS `sentinel-cogs`, Kacheln 33TUN/TUM, 32TQT/TQS), in Weltkoordinaten umprojiziert, eingebrannte Schatten per DEM (Sonne 160,7°/42,6°) herausgerechnet. `public/terrain/sat_near.jpg` (Nahgelände, ~6 m), `sat_mid.jpg` (±16 km), `sat_far.jpg` (±56 km, fehlende Ränder → prozedural), `forest.png` (Waldmaske aus NDVI). Nahgelände: Bildfarbe abseits der Pisten (Pisten bleiben präpariert-weiß), unter Wald bis ~3 km Schnee (3D-Bäume), nah an der Kamera weich in Schnee-Shader. Bäume (`scenery.js`) stehen nach echter Waldmaske (`terrain.forestAt`). Skript `gen.py` im Scratchpad. Attribution: „Contains modified Copernicus Sentinel data 2021“.
 - Etappen 1–10 fertig. Ideen danach: Touch-Steuerung, Zeitrennen/Bestzeiten, weitere Pisten/Lifte (Fleißbahn, Tunnelbahn), Tageszeit.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -46,7 +47,7 @@
 - `index.html` – Einstieg, importmap, Overlay
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel (Sky, liegt in Panorama-Szene), Nebel, `SUN`, `HAZE`
-- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh` (Group aus Chunks), `heightAt, normalAt, inside, groom(fn), pois, meta` (meta = grobes 30-m-Raster)
+- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh` (Group aus Chunks), `heightAt, normalAt, inside, groom(fn), forestAt, pois, meta` (meta = grobes 30-m-Raster)
 - `src/player.js` – Fahrer: Physik je Modus + Pose, `spawnAt(x,z,heading)`, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
 - `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
@@ -63,7 +64,7 @@
 - `src/camera.js` – `createFollowCamera(terrain)` → `{ camera, update(target, dir, dt, snap, opt), toggle(), mode }` (Verfolger/Ego)
 - `src/menu.js` – `createMenu()` → `{ show, hide, setPistes, setStatus, ready, onStart, onResume, open }`
 - `src/audio.js` – `createAudio()` → `{ init, update(state, ctrl, paused), toggle, pause }`
-- `src/config.js` – Gebietsdaten, `get(url, type)` (fetch mit Statusprüfung)
+- `src/config.js` – Gebietsdaten, `get(url, type)` (fetch mit Statusprüfung), `image(url)`, `texture(url)` (sRGB, flipY aus)
 - `public/` – eigene Assets (Fotos etc.)
 
 ## Gebietsdaten
