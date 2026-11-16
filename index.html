@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heiligenblut Ski</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#9cc4e8;font-family:system-ui,sans-serif}
+canvas{display:block}
+#info{position:fixed;left:12px;top:12px;padding:8px 12px;background:rgba(10,30,50,.55);color:#fff;border-radius:6px;font-size:14px;line-height:1.4;pointer-events:none}
+#error{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#0b1c2c;color:#fff;padding:24px;text-align:center}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="info">Heiligenblut am Großglockner · Etappe 1<br>R = Neustart</div>
+<div id="error"></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
