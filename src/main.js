@@ -25,14 +25,14 @@ async function start() {
   info.textContent = 'Lade Gelände …';
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
-  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 4<br>W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart';
+  info.innerHTML = 'Heiligenblut am Großglockner · Etappe 5<br>Q Ski/Snowboard · W Hocke · S Bremsen · A/D Kurven · Leertaste Sprung · R Neustart';
   const hud = createHud(terrain);
 
   const player = createPlayer(terrain);
   scene.add(player.object);
   const cam = createFollowCamera(terrain);
   player.update(0);
-  cam.update(player.state.pos, player.state.dir, 0, true);
+  cam.update(player.state.pos, player.state.look, 0, true);
 
   addEventListener('resize', () => {
     cam.camera.aspect = innerWidth / innerHeight;
@@ -45,7 +45,7 @@ async function start() {
     const dt = Math.min(clock.getDelta(), 0.05);
     player.update(dt);
     hud.update(player.state, dt);
-    cam.update(player.state.pos, player.state.dir, dt, player.state.reset);
+    cam.update(player.state.pos, player.state.look, dt, player.state.reset);
     followSun(player.state.pos);
     renderer.render(scene, cam.camera);
   });
