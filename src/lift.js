@@ -11,13 +11,16 @@ const SPACING = 85;
 const BOARD = 45;
 
 const SECTIONS = [
-  { name: 'Gondel Rossbach', from: 'Talstation', to: 'Rossbach', a: [0, 0], b: [377, -875] },
-  { name: 'Gondel Schareck', from: 'Rossbach', to: 'Schareck', a: [388, -900], b: [1288, -2993] }
+  { name: 'Gondel Rossbach', from: 'Talstation', to: 'Rossbach', a: [-158, -109], b: [617, -921], st: [0, 1] },
+  { name: 'Gondel Schareck', from: 'Rossbach', to: 'Schareck', a: [635, -923], b: [1110, -2861], st: [1, 2] },
+  { name: 'Panoramabahn', from: 'Fallbichl', to: 'Schareck', a: [40, -3263], b: [1099, -2892], st: [3, 4] }
 ];
 const STATIONS = [
-  { c: [0, 0], s: 0, off: -4, hl: 11, hw: 6.5 },
-  { c: [382, -887], s: 0, off: 0, hl: 17, hw: 6.5 },
-  { c: [1288, -2993], s: 1, off: 3, hl: 11, hw: 6.5 }
+  { c: [-158, -109], s: 0, off: -4, hl: 11, hw: 6.5 },
+  { c: [626, -922], s: 0, off: 0, hl: 17, hw: 6.5 },
+  { c: [1110, -2861], s: 1, off: 3, hl: 11, hw: 6.5 },
+  { c: [40, -3263], s: 2, off: -4, hl: 11, hw: 6.5 },
+  { c: [1099, -2892], s: 2, off: 2, hl: 9, hw: 6 }
 ];
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o });
@@ -106,7 +109,7 @@ function buildSection(sec, terrain, base, avoid) {
 export function createLift(terrain, pistes) {
   const group = new THREE.Group();
   const base = STATIONS.map(st => terrain.heightAt(st.c[0], st.c[1]));
-  const secBase = [[base[0], base[1]], [base[1], base[2]]];
+  const secBase = SECTIONS.map(s => s.st.map(i => base[i]));
   const avoid = pistes.list.flatMap(p => [p.pts[0], p.pts[p.pts.length - 1]]);
   const sections = SECTIONS.map((s, k) => buildSection(s, terrain, secBase[k], avoid));
 

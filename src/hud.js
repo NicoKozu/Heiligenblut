@@ -24,7 +24,17 @@ export function createHud(pistes) {
   const msg = root.querySelector('#hud-msg');
   const f = { piste: el('piste'), alt: el('alt'), time: el('time'), max: el('max'), mode: el('mode'), speed: speedEl, msg, hint: root.querySelector('#hud-hint') };
   const dot = root.querySelector('#hud-map i');
-  const mapAt = (x, z) => [(0.069928 * x - 0.0057 * z + 80.283) / 3.2, (0.044612 * x + 0.066122 * z + 270.693) / 3.2];
+  const TC = [[-0.158,-0.109],[0.617,-0.921],[1.11,-2.861],[0.04,-3.263],[-0.051,-3.97],[0.723,-0.549],[1.235,-1.543],[2.15,-1.274]], TW = [[0.688,-1.863],[-48.015,-2.436],[0.773,-9.638],[11.555,13.038],[-8.629,-5.214],[31.844,0.178],[22.28,1.934],[-10.495,4.001],[135.985,294.633],[80.636,-20.089],[14.092,43.807]];
+  const mapAt = (x, z) => {
+    x /= 1000; z /= 1000;
+    const n = TC.length, o = [0, 0];
+    for (let i = 0; i < n; i++) {
+      const r = Math.hypot(x - TC[i][0], z - TC[i][1]), u = r > 0 ? r * r * Math.log(r) : 0;
+      o[0] += u * TW[i][0]; o[1] += u * TW[i][1];
+    }
+    for (let k = 0; k < 2; k++) o[k] = (o[k] + TW[n][k] + x * TW[n + 1][k] + z * TW[n + 2][k]) / 3.2;
+    return o;
+  };
   let time = 0, max = 0, running = false, acc = 0;
   const last = {};
   const set = (k, v) => { if (last[k] !== v) { last[k] = v; f[k].textContent = v; } };
