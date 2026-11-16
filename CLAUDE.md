@@ -28,7 +28,8 @@
 ## Stand
 - Etappe 1: fertig, gemergt (PR #1).
 - Etappe 2: fertig, gemergt (PR #2). Echtes DEM, Platzhalter-Fahrer gleitet entlang Falllinie ab Schareck.
-- Nächste: Etappe 3.
+- Etappe 3: fertig. Fahrphysik in `player.js` (Kanten-Grip/Carving, Reibung, Luftwiderstand, Sprung, Absprung an Kanten, Sturz bei harter Landung), Eingabe `input.js`.
+- Nächste: Etappe 4.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -36,7 +37,8 @@
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel, Nebel
 - `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, pois`
-- `src/player.js` – Platzhalter-Fahrer (gleitet Falllinie, R = Neustart)
+- `src/player.js` – Skifahrer: Physik + Pose, `state` (pos, vel, dir, heading, speed, grounded, crashed, reset)
+- `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
