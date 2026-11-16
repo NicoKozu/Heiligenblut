@@ -69,10 +69,12 @@ export function createPlayer(terrain) {
     models.board.object.visible = m === 'board';
   }
 
+  const spawn = { x: START.x, z: START.z, heading: null };
+
   function reset() {
-    state.pos.set(START.x, terrain.heightAt(START.x, START.z), START.z);
-    terrain.normalAt(START.x, START.z, n);
-    state.heading = Math.atan2(n.x, n.z);
+    state.pos.set(spawn.x, terrain.heightAt(spawn.x, spawn.z), spawn.z);
+    terrain.normalAt(spawn.x, spawn.z, n);
+    state.heading = spawn.heading ?? Math.atan2(n.x, n.z);
     state.vel.set(0, 0, 0);
     state.grounded = true;
     state.crashed = 0;
@@ -207,7 +209,12 @@ export function createPlayer(terrain) {
     animate(dt);
   }
 
+  function spawnAt(x, z, heading = null) {
+    Object.assign(spawn, { x, z, heading });
+    reset();
+  }
+
   setMode('ski');
   reset();
-  return { object: group, state, update };
+  return { object: group, state, update, spawnAt };
 }

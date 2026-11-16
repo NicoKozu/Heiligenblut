@@ -31,18 +31,21 @@
 - Etappe 3: fertig. Fahrphysik in `player.js` (Kanten-Grip/Carving, Reibung, Luftwiderstand, Sprung, Absprung an Kanten, Sturz bei harter Landung), Eingabe `input.js`.
 - Etappe 4: fertig. HUD in `src/hud.js` (km/h, Höhe, Pistenname, Fahrzeit, Max). Pistenname vorläufig per nächstem POI (`pisteName()`), in Etappe 6 durch echte Pistenerkennung ersetzen.
 - Etappe 5: fertig. Q schaltet Ski/Snowboard (nur am Boden). Physik-Parameter je Modus in `MODES` (`player.js`), Modelle in `src/models.js`. Board: Seitrutschen (S), mehr Drift, höherer Ollie, schnelle Air-Spins, Fakie-Landung; Landung quer zur Fahrtrichtung = Sturz (beide Modi). Kamera folgt `state.look` (in der Luft eingefroren).
-- Nächste: Etappe 6.
+- Etappe 6: fertig. Pisten in `public/pistes.json` (Verlauf per Kostenpfad auf DEM berechnet, Skript im Scratchpad), Laden/Präparieren/Markierung/Netze/Schilder/Erkennung in `src/pistes.js`. Gelände entlang Pisten geglättet (`terrain.groom`), Cord-Band, Stangen (Kappe in Pistenfarbe), Fangnetze an Abbruchkanten mit Kollision, Startschild + Nummernschilder alle 500 m. HUD zeigt Piste (farbig) oder „abseits“. Tasten 1–4 = Pistenstart, R = letzter Start. Kamera hält Sichtlinie über Kuppen.
+- Nächste: Etappe 7.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
 - `index.html` – Einstieg, importmap, Overlay
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel, Nebel
-- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, pois`
-- `src/player.js` – Fahrer: Physik je Modus + Pose, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
+- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, groom(fn), pois`
+- `src/player.js` – Fahrer: Physik je Modus + Pose, `spawnAt(x,z,heading)`, `state` (pos, vel, dir, look, heading, speed, grounded, crashed, reset, mode, modeName, fakie, note, noteT)
 - `src/models.js` – `createSkier()`, `createBoarder()` → `{ object, pose(p) }`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
-- `src/hud.js` – `createHud(terrain).update(state, dt)`, `pisteName(pos, pois)`, zeigt Modus + Meldungen
+- `src/hud.js` – `createHud(pistes).update(state, dt)`, zeigt Modus, Piste, Meldungen
+- `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max) }`, `LEVELS`
+- `public/pistes.json` – Pisten (id, name, level, width, pts [x,z] alle 20 m)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
@@ -64,13 +67,14 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 | Piste 5 Kärntnerabfahrt | leicht (blau) | verifiziert |
 | Piste 5a Kärntnerabfahrt Variante | mittel (rot) | verifiziert |
 | Piste 10 Talabfahrt (Rossbach → Ort) | mittel (rot) | verifiziert |
-| Schwere Piste (schwarz) | Name/Lage | geschätzt, in Etappe 6 klären |
+| Piste 1 Fallbichl (schwarz) | Schareck → Fallbichl, steilste Piste Kärntens | Name verifiziert (remontees-mecaniques.net, TUI), Lage geschätzt (Ostflanke → Fleißtal) |
+| Pistenverläufe | 5: 3,3 km Ø26 %, 4: 2,5 km Ø35 %, 1: 1,2 km Ø60 %, 10: 1,5 km Ø30 % | berechnet aus DEM, nicht real vermessen |
 | Skiroute Fleißalm | ~4 km, ~800 Hm, unpräpariert | verifiziert |
 | Pistenlängen/Gefälle einzeln | – | geschätzt (keine Quelle) |
 
 ## Gelände / Koordinaten
 - Quelle: AWS Terrain Tiles (Terrarium, Zoom 14; Mapzen aus EU-DEM/SRTM). Ausschnitt 46.993–47.098 N, 12.785–12.955 E (~12,9 × 11,7 km).
 - Welt: 1 Einheit = 1 m, y = Höhe über NN, +x = Ost, −z = Nord. Ursprung (0,0) = Talstation Heiligenblut (47.0395 N, 12.8430 E).
-- POIs (aus DEM): Talstation 1.282 m (0/0), Rossbach ~1.734 m (392/−910, Lage geschätzt), Schareck 2.590 m (1305/−3034, Gipfel lt. DEM 2.606 m), Gjaidtroghöhe 2.965 m (5159/−2623, DEM-Gipfel 2.988 m), Fleißalm ~1.901 m (2350/−2700, Lage geschätzt, Talboden Großes Fleißtal).
+- POIs (aus DEM): Fallbichl 1.881 m (2330/−2450, geschätzt), Talstation 1.282 m (0/0), Rossbach ~1.734 m (392/−910, Lage geschätzt), Schareck 2.590 m (1305/−3034, Gipfel lt. DEM 2.606 m), Gjaidtroghöhe 2.965 m (5159/−2623, DEM-Gipfel 2.988 m), Fleißalm ~1.901 m (2350/−2700, Lage geschätzt, Talboden Großes Fleißtal).
 - Großglockner (47.074 N, 12.694 E) liegt außerhalb des Ausschnitts → Etappe 9.
 - Neu generieren: Python-Skript nicht im Repo (Scratchpad); Kacheln `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/{x}/{y}.png`, Höhe = R·256 + G + B/256 − 32768.

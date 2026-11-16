@@ -96,6 +96,26 @@ export async function loadTerrain() {
   mesh.receiveShadow = true;
   mesh.castShadow = true;
 
+  const groomed = new THREE.Color(0xfbfdff);
+  function groom(fn) {
+    const col = geo.attributes.color;
+    let any = false;
+    for (let k = 0; k < pos.count; k++) {
+      const r = fn(pos.getX(k), pos.getZ(k), h[k]);
+      if (!r) continue;
+      any = true;
+      h[k] = r[0];
+      pos.setY(k, r[0]);
+      const c = new THREE.Color(col.getX(k), col.getY(k), col.getZ(k)).lerp(groomed, r[1]);
+      col.setXYZ(k, c.r, c.g, c.b);
+    }
+    if (!any) return;
+    geo.computeVertexNormals();
+    pos.needsUpdate = true;
+    col.needsUpdate = true;
+    geo.computeBoundingSphere();
+  }
+
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
-  return { mesh, heightAt, normalAt, inside, pois, meta };
+  return { mesh, heightAt, normalAt, inside, groom, pois, meta };
 }

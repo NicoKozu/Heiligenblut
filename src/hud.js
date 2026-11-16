@@ -1,26 +1,9 @@
-const ZONES = {
-  'Talstation Heiligenblut': 'Talabfahrt',
-  'Mittelstation Rossbach': 'Rossbach',
-  'Schareck': 'Schareckabfahrt',
-  'Gjaidtroghöhe': 'Gjaidtroghöhe',
-  'Fleißalm': 'Fleißtal'
-};
-
-export function pisteName(pos, pois) {
-  let best = null, bd = Infinity;
-  for (const p of Object.values(pois)) {
-    const d = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
-    if (d < bd) { bd = d; best = p; }
-  }
-  return best ? ZONES[best.name] || best.name : '–';
-}
-
 function fmtTime(t) {
   const m = Math.floor(t / 60), s = Math.floor(t % 60), c = Math.floor((t % 1) * 10);
   return m + ':' + String(s).padStart(2, '0') + '.' + c;
 }
 
-export function createHud(terrain) {
+export function createHud(pistes) {
   const root = document.createElement('div');
   root.id = 'hud';
   root.innerHTML =
@@ -57,7 +40,9 @@ export function createHud(terrain) {
     if (acc > 0.2 || state.reset) {
       acc = 0;
       set('alt', Math.round(state.pos.y).toLocaleString('de-DE') + ' m');
-      set('piste', pisteName(state.pos, terrain.pois));
+      const p = pistes.at(state.pos);
+      set('piste', p ? p.id + ' ' + p.name : 'abseits');
+      f.piste.style.color = p ? p.lv.css : '';
     }
   }
 
