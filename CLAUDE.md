@@ -9,7 +9,7 @@
 - Nur Dateien lesen, die für die aktuelle Etappe nötig sind.
 
 ## Arbeitsweise
-- Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
+- Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`, PR selbst direkt mergen. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
 - Nächste Etappe erst nach "weiter". Vorher diese Datei aktualisieren.
 - Nach jeder Etappe muss das Spiel lauffähig bleiben.
 
@@ -26,7 +26,7 @@
 10. Feinschliff: Startmenü (Ski/Snowboard, Piste), Ego-Kamera, Sound optional, ~60 FPS, Mobile-Hinweis, Fehlerprüfung.
 
 ## Stand
-- Etappe 1: fertig (Branch `etappe-1`).
+- Etappe 1: fertig, gemergt (PR #1).
 - Nächste: Etappe 2.
 
 ## Struktur
