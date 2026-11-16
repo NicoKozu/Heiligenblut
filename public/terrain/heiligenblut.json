@@ -1,0 +1,45 @@
+{
+ "nx": 430,
+ "nz": 389,
+ "cell": 30,
+ "originX": -4400.1,
+ "originZ": -6501.2,
+ "scale": 0.1,
+ "ref": {
+  "lat": 47.0395,
+  "lon": 12.843
+ },
+ "source": "AWS Terrain Tiles (Terrarium, z14), Mapzen/EU-DEM/SRTM",
+ "pois": [
+  {
+   "name": "Talstation Heiligenblut",
+   "x": 0.0,
+   "z": -0.0,
+   "h": 1281.9
+  },
+  {
+   "name": "Mittelstation Rossbach",
+   "x": 391.5,
+   "z": -910.2,
+   "h": 1733.5
+  },
+  {
+   "name": "Schareck",
+   "x": 1304.9,
+   "z": -3033.9,
+   "h": 2589.7
+  },
+  {
+   "name": "Gjaidtroghöhe",
+   "x": 5158.7,
+   "z": -2622.7,
+   "h": 2964.9
+  },
+  {
+   "name": "Fleißalm",
+   "x": 2350,
+   "z": -2700,
+   "h": 1901.1
+  }
+ ]
+}

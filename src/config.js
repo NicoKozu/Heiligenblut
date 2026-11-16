@@ -8,12 +8,6 @@ export const AREA = {
   slopeKm: 55
 };
 
-export const SLOPE = {
-  width: 400,
-  length: 1200,
-  segX: 100,
-  segZ: 300,
-  gradient: 0.36
-};
+export const TERRAIN_URL = 'public/terrain/heiligenblut';
 
-export const START = { x: 0, z: -560 };
+export const START = { x: 1250, z: -2900 };

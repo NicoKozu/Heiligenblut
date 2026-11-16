@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { heightAt } from './terrain.js';
-import { START, SLOPE } from './config.js';
+import { START } from './config.js';
 
-export function createPlayer() {
+export function createPlayer(terrain) {
   const group = new THREE.Group();
   const jacket = new THREE.MeshStandardMaterial({ color: 0xc8202a, roughness: 0.6 });
   const pants = new THREE.MeshStandardMaterial({ color: 0x1d2b3a, roughness: 0.7 });
@@ -22,29 +21,34 @@ export function createPlayer() {
   group.add(body, legs, head, skiL, skiR);
   group.traverse(o => { if (o.isMesh) o.castShadow = true; });
 
-  const state = { pos: new THREE.Vector3(), speed: 0 };
+  const state = { pos: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, 1), speed: 0, flat: 0 };
   const up = new THREE.Vector3(0, 1, 0);
   const normal = new THREE.Vector3();
+  const fall = new THREE.Vector3();
+  const qTilt = new THREE.Quaternion();
+  const qYaw = new THREE.Quaternion();
 
   function reset() {
-    state.pos.set(START.x, heightAt(START.x, START.z), START.z);
+    state.pos.set(START.x, terrain.heightAt(START.x, START.z), START.z);
+    state.dir.set(-0.3, 0, 1).normalize();
     state.speed = 0;
+    state.flat = 0;
   }
 
   function update(dt) {
-    state.speed = Math.min(state.speed + dt * 2.5, 12);
-    state.pos.z += state.speed * dt;
-    state.pos.x = Math.sin(state.pos.z * 0.01) * 20;
-    if (state.pos.z > SLOPE.length / 2 - 20) reset();
-    state.pos.y = heightAt(state.pos.x, state.pos.z);
-    const e = 0.5;
-    normal.set(
-      heightAt(state.pos.x - e, state.pos.z) - heightAt(state.pos.x + e, state.pos.z),
-      2 * e,
-      heightAt(state.pos.x, state.pos.z - e) - heightAt(state.pos.x, state.pos.z + e)
-    ).normalize();
+    terrain.normalAt(state.pos.x, state.pos.z, normal);
+    fall.set(normal.x, 0, normal.z);
+    const g = fall.length();
+    if (g > 0.001) state.dir.lerp(fall.normalize(), Math.min(1, dt * 1.5)).normalize();
+    state.speed += (Math.min(18, 6 + g * 30) - state.speed) * Math.min(1, dt * 0.8);
+    state.pos.addScaledVector(state.dir, state.speed * dt);
+    state.flat = g < 0.06 ? state.flat + dt : 0;
+    if (state.flat > 3 || !terrain.inside(state.pos.x, state.pos.z)) reset();
+    state.pos.y = terrain.heightAt(state.pos.x, state.pos.z);
     group.position.copy(state.pos);
-    group.quaternion.setFromUnitVectors(up, normal);
+    qYaw.setFromAxisAngle(up, Math.atan2(state.dir.x, state.dir.z));
+    qTilt.setFromUnitVectors(up, normal);
+    group.quaternion.copy(qTilt).multiply(qYaw);
   }
 
   addEventListener('keydown', e => { if (e.code === 'KeyR') reset(); });

@@ -27,14 +27,17 @@
 
 ## Stand
 - Etappe 1: fertig, gemergt (PR #1).
-- Nächste: Etappe 2.
+- Etappe 2: fertig, gemergt (PR #2). Echtes DEM, Platzhalter-Fahrer gleitet entlang Falllinie ab Schareck.
+- Nächste: Etappe 3.
+- Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
 - `index.html` – Einstieg, importmap, Overlay
 - `src/main.js` – Renderer, Loop, Resize
 - `src/world.js` – Szene, Licht, Himmel, Nebel
-- `src/terrain.js` – Gelände + `heightAt(x, z)`
-- `src/player.js` – Platzhalter-Fahrer (gleitet automatisch, R = Neustart)
+- `src/terrain.js` – `loadTerrain()` lädt Heightmap, liefert `mesh, heightAt, normalAt, inside, pois`
+- `src/player.js` – Platzhalter-Fahrer (gleitet Falllinie, R = Neustart)
+- `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/camera.js` – Verfolgerkamera
 - `src/config.js` – Gebietsdaten
 - `public/` – eigene Assets (Fotos etc.)
@@ -58,3 +61,10 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 | Schwere Piste (schwarz) | Name/Lage | geschätzt, in Etappe 6 klären |
 | Skiroute Fleißalm | ~4 km, ~800 Hm, unpräpariert | verifiziert |
 | Pistenlängen/Gefälle einzeln | – | geschätzt (keine Quelle) |
+
+## Gelände / Koordinaten
+- Quelle: AWS Terrain Tiles (Terrarium, Zoom 14; Mapzen aus EU-DEM/SRTM). Ausschnitt 46.993–47.098 N, 12.785–12.955 E (~12,9 × 11,7 km).
+- Welt: 1 Einheit = 1 m, y = Höhe über NN, +x = Ost, −z = Nord. Ursprung (0,0) = Talstation Heiligenblut (47.0395 N, 12.8430 E).
+- POIs (aus DEM): Talstation 1.282 m (0/0), Rossbach ~1.734 m (392/−910, Lage geschätzt), Schareck 2.590 m (1305/−3034, Gipfel lt. DEM 2.606 m), Gjaidtroghöhe 2.965 m (5159/−2623, DEM-Gipfel 2.988 m), Fleißalm ~1.901 m (2350/−2700, Lage geschätzt, Talboden Großes Fleißtal).
+- Großglockner (47.074 N, 12.694 E) liegt außerhalb des Ausschnitts → Etappe 9.
+- Neu generieren: Python-Skript nicht im Repo (Scratchpad); Kacheln `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/{x}/{y}.png`, Höhe = R·256 + G + B/256 − 32768.
