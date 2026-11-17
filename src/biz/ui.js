@@ -3,6 +3,7 @@ import { fmtDate, fmtClock, phase as calPhase } from './calendar.js';
 import { costToday, report, prev, forecast } from './sim.js';
 import { avgPrice, priceFactor } from './demand.js';
 import { status, repairQuote, fmtDur } from './assets.js';
+import { live, stars } from './satisfaction.js';
 
 const CSS = `
 #biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
@@ -71,6 +72,20 @@ body.menu #biz-toast{display:none}
 body.biz #hud-panel{right:auto;left:12px}
 body.biz #fps{top:auto;bottom:12px}
 body.menu #biz-panel,body.menu #biz-over{display:none}
+#biz-panel .satb{display:flex;align-items:center;gap:10px;width:100%;font:inherit;color:#fff;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 8px;margin:4px 0 6px;cursor:pointer;text-align:left}
+#biz-panel .satb b{font-size:28px;font-variant-numeric:tabular-nums;line-height:1}
+#biz-panel .satb span{flex:1;font-size:12px;opacity:.75;line-height:1.25}
+#biz-panel .satb em{font-style:normal;font-size:11px;opacity:.6}
+.biz-part{display:grid;grid-template-columns:104px 1fr 28px;align-items:center;gap:6px;padding:1px 0;font-size:12px}
+.biz-part span{opacity:.8;white-space:nowrap}
+.biz-part b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+#biz-over .biz-part{grid-template-columns:150px 1fr 36px;font-size:14px;padding:3px 0}
+#biz-over .satbig{display:flex;align-items:center;gap:14px;margin:6px 0}
+#biz-over .satbig b{font-size:34px}
+#biz-over .stars{color:#ffd84a;letter-spacing:2px}
+#biz-over .voice{padding:6px 10px;margin:4px 0;background:rgba(255,255,255,.06);border-left:3px solid #5aa2ff;border-radius:4px}
+#biz-over .voice small{display:block;opacity:.65;font-size:12px}
+#biz-over canvas{width:100%;height:130px;display:block}
 `;
 
 export function eur(n) {
@@ -91,6 +106,19 @@ const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn' 
 const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
 const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
 const pName = id => D.pistes.find(p => p.id === id).name;
+const ztone = z => z >= 70 ? 'biz-good' : z >= 50 ? 'biz-warn' : 'biz-bad';
+const zcol = z => z >= 70 ? '#7be07b' : z >= 50 ? '#ffd84a' : '#ff6b5a';
+const dec = (n, d = 1) => n.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const starStr = n => { const r = Math.round(n); return '★'.repeat(r) + '☆'.repeat(5 - r); };
+function face(z, s = 30) {
+  const k = (z - 50) / 50 * 4;
+  return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 30 30" style="flex:none"><circle cx="15" cy="15" r="14" fill="' + zcol(z) + '"/><circle cx="10.5" cy="12" r="1.8" fill="#13263a"/><circle cx="19.5" cy="12" r="1.8" fill="#13263a"/><path d="M9 19.5 Q15 ' + (19.5 + k).toFixed(1) + ' 21 19.5" stroke="#13263a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+}
+function parts(sat) {
+  return Object.entries(D.sat.labels).map(([k, v]) => '<div class="biz-part"><span>' + v + ' <em style="opacity:.55;font-style:normal">' + Math.round(D.sat.w[k] * 100) + '%</em></span>' + bar(sat.parts[k]) + '<b>' + Math.round(sat.parts[k]) + '</b></div>').join('') +
+    (sat.lost >= 1 ? '<div class="biz-part"><span>Ohne Fahrt abgereist</span><span></span><b class="biz-bad">' + num(sat.lost) + '</b></div>' : '') +
+    (sat.ded ? '<div class="biz-part"><span>Ereignis-Abzug</span><span></span><b class="biz-bad">−' + Math.round(sat.ded) + '</b></div>' : '');
+}
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
 
 export function createUI(h) {
@@ -105,7 +133,7 @@ export function createUI(h) {
   const toastEl = document.createElement('div');
   toastEl.id = 'biz-toast';
   document.body.append(panel, over, toastEl);
-  let view = null, tab = 'over', last = '';
+  let view = null, tab = 'over', last = '', satOpen = false;
   const toasts = new Map();
   toastEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) h.action(b.dataset.act); });
 
@@ -126,22 +154,27 @@ export function createUI(h) {
   panel.addEventListener('pointerdown', e => {
     if (panel.classList.contains('off')) { panel.classList.remove('off'); return; }
     const b = e.target.closest('button');
-    if (b && !b.disabled && b.dataset.act) { e.preventDefault(); h.action(b.dataset.act); }
+    if (b && b.dataset.act === 'sat') { e.preventDefault(); satOpen = !satOpen; h.refresh(); }
+    else if (b && !b.disabled && b.dataset.act) { e.preventDefault(); h.action(b.dataset.act); }
   });
 
   function renderPanel(G) {
-    const p = prev(G), c = costToday(G), open = G.phase === 'open';
+    const p = prev(G), c = costToday(G), open = G.phase === 'open', sat = live(G);
+    const pz = open ? G.sat?.z : G.history[G.history.length - 2]?.sat?.z;
     const html =
       '<span class="tab">Tab</span>' +
       '<h3>Skigebiet Heiligenblut</h3>' +
       '<div class="big"><span>' + fmtDate(G.date) + '</span><b>' + fmtClock(G.min) + '</b></div>' +
+      (sat ? '<button class="satb" data-act="sat">' + face(sat.z) + '<b class="' + ztone(sat.z) + '">' + Math.round(sat.z) + '</b>' + trend(sat.z, pz) + '<span>Zufriedenheit<br><em>' + (open ? 'live' : 'Tageswert') + ' · ' + (satOpen ? 'zuklappen' : 'Details') + '</em></span></button>' + (satOpen ? parts(sat) : '')
+        : '<button class="satb" data-act="sat"><b>–</b><span>Zufriedenheit<br><em>noch kein Betriebstag</em></span></button>') +
+      row('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) +
+      '<div class="sep"></div>' +
       row('Phase', '<span class="biz-phase ' + G.phase + '">' + D.phaseLabels[G.phase] + '</span>') +
       row('Zeitfaktor', '×' + G.factor + (G.phase === 'open' ? '' : ' (steht)')) +
       '<div class="sep"></div>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       row('Kosten heute', eur(c)) +
       row('Umsatz heute (Tickets)', eur(sumv(G.today.revenue))) +
-      row('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) +
       '<div class="sep"></div>' +
       row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
@@ -166,6 +199,7 @@ export function createUI(h) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
     return '<h2>Saison</h2>' +
       '<table>' + tr('Saisonphase', dem.label) + tr('Nachfrage-Basis heute', num(G.today.demand) + ' Gäste') + tr('Spieltag', num(G.day)) + '</table>' +
+      '<h2>Gäste</h2><table>' + tr('Ruf', '<span class="' + tone(G.rep, 60, 40) + '">' + dec(G.rep) + '</span>') + (G.sat ? tr('Zufriedenheit letzter Tag', '<span class="' + ztone(G.sat.z) + '">' + Math.round(G.sat.z) + '</span> · <span class="stars">' + starStr(stars(G.sat.z)) + '</span>') : '') + tr('Saisonkarten-Anteil', dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' %') + '</table>' +
       '<h2>Finanzen</h2>' +
       '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(D.start.credit)) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
       '<h2>Anlagen</h2>' +
@@ -210,7 +244,7 @@ export function createUI(h) {
       tr('Ø-Ticketpreis (nach Gästemix)', eur(avgPrice(G.prices))) +
       tr('Preisfaktor Nachfrage', '×' + priceFactor(G.prices).toFixed(2)) +
       tr('Erwartete Gäste ' + fmtDate(fc.date), '<span class="fc">' + num(fc.n) + '</span>') + '</table>' +
-      (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + Math.round(D.flow.seasonShare * 100) + ' % der Gäste fahren mit Saisonkarte.</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
+      (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' % der Gäste fahren mit Saisonkarte (nächste Saison abhängig vom Ruf).</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
   }
 
   const body = G => tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : null;
@@ -226,7 +260,7 @@ export function createUI(h) {
     const r = report(G);
     const costs = Object.entries(r.costs).filter(([, v]) => v > 0).map(([k, v]) => tr(D.costLabels[k] || k, eur(-v))).join('');
     return '<h1>Tagesbericht</h1><p class="sub">' + fmtDate(r.date) + ' · Feierabend 16:30</p>' + tabs() +
-      (body(G) ||
+      (body(G) || satReport(G, r) +
         '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + '</table>' +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
@@ -234,6 +268,48 @@ export function createUI(h) {
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
         '<h2>Morgen</h2><table>' + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + '</table>') +
       '<div class="go"><button class="primary" data-act="next">Nächster Tag ⏎</button></div>';
+  }
+
+  function satReport(G, r) {
+    const s = r.sat;
+    if (!s) return '';
+    const dr = r.rep - (s.rep0 ?? r.rep);
+    return '<h2>Zufriedenheit</h2><div class="satbig">' + face(s.z, 44) + '<b class="' + ztone(s.z) + '">' + Math.round(s.z) + '</b><div><span class="stars">' + starStr(stars(s.z)) + '</span> ' + dec(stars(s.z)) + ' / 5<br><span style="opacity:.75">Ruf ' + dec(r.rep) + ' (' + (dr >= 0 ? '+' : '−') + dec(Math.abs(dr)) + ')</span></div></div>' +
+      parts(s) +
+      (s.quotes?.length ? '<h2>Gästestimmen</h2>' + s.quotes.map(q => '<div class="voice">„' + q.text + '“<small>' + q.who + ' · <span class="stars">' + starStr(q.stars) + '</span></small></div>').join('') : '') +
+      '<h2>Ruf – letzte ' + D.sat.quotes.chart + ' Tage</h2><canvas data-chart="rep" width="620" height="130"></canvas>';
+  }
+
+  function chart(G) {
+    const cv = over.querySelector('canvas[data-chart]');
+    if (!cv) return;
+    const H = G.history.filter(h => h.sat).slice(-D.sat.quotes.chart);
+    const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth || 620, h = cv.clientHeight || 130;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const c = cv.getContext('2d');
+    c.scale(dpr, dpr);
+    const L = 30, R = 8, T = 8, B = 20, n = Math.max(2, H.length);
+    const X = i => L + (w - L - R) * (H.length < 2 ? 0.5 : i / (n - 1)), Y = v => T + (h - T - B) * (1 - v / 100);
+    c.font = '11px system-ui,sans-serif';
+    c.textAlign = 'right';
+    for (const v of [0, 25, 50, 75, 100]) {
+      c.strokeStyle = 'rgba(255,255,255,' + (v === 50 ? 0.25 : 0.1) + ')';
+      c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(w - R, Y(v)); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.55)'; c.fillText(v, L - 5, Y(v) + 4);
+    }
+    if (!H.length) return;
+    c.textAlign = 'center';
+    H.forEach((e, i) => { if (i === 0 || i === H.length - 1 || H.length <= 7) c.fillText(e.date.slice(8) + '.' + e.date.slice(5, 7) + '.', X(i), h - 5); });
+    for (const [i, e] of H.entries()) { c.fillStyle = zcol(e.sat.z); c.globalAlpha = 0.75; c.beginPath(); c.arc(X(i), Y(e.sat.z), 3, 0, 7); c.fill(); }
+    c.globalAlpha = 1;
+    c.strokeStyle = '#5aa2ff'; c.lineWidth = 2.5; c.lineJoin = 'round';
+    c.beginPath();
+    H.forEach((e, i) => i ? c.lineTo(X(i), Y(e.rep)) : c.moveTo(X(i), Y(e.rep)));
+    c.stroke();
+    c.fillStyle = '#5aa2ff';
+    for (const [i, e] of H.entries()) { c.beginPath(); c.arc(X(i), Y(e.rep), 2.5, 0, 7); c.fill(); }
+    c.textAlign = 'left'; c.fillStyle = '#5aa2ff'; c.fillText('Ruf', L + 4, T + 10);
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText('● Zufriedenheit', L + 34, T + 10);
   }
 
   function office(G) {
@@ -246,7 +322,7 @@ export function createUI(h) {
   return {
     render(G) {
       renderPanel(G);
-      if (view) { const html = '<div class="card">' + views[view](G) + '</div>'; if (over.dataset.v !== html) { over.innerHTML = html; over.dataset.v = html; } }
+      if (view) { const html = '<div class="card">' + views[view](G) + '</div>'; if (over.dataset.v !== html) { over.innerHTML = html; over.dataset.v = html; chart(G); } }
     },
     open(v, t) { if (view !== v) tab = 'over'; if (t) tab = t; view = v; over.hidden = false; over.dataset.v = ''; },
     toast(G, id) {

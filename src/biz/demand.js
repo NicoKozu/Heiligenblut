@@ -18,18 +18,24 @@ const REF = avgPrice(defaultPrices());
 export const priceFactor = p => clamp(Math.pow(REF / Math.max(1, avgPrice(p)), M.priceExp), M.priceClamp[0], M.priceClamp[1]);
 export const repFactor = rep => M.rep[0] + M.rep[1] * rep / 100;
 
-export function offerFactor(G) {
-  let all = 0, open = 0;
+export function openPistes(G) {
   const reach = new Set(['tal']);
   for (let k = 0; k < 4; k++) {
     for (const l of D.lifts) { const s = G.lifts?.find(x => x.id === l.id); if (reach.has(l.from) && (!s || running(s))) reach.add(l.to); }
     for (const p of D.pistes) if (reach.has(p.from) && G.pistes?.[p.id]?.open !== false) reach.add(p.to);
   }
-  for (const p of D.pistes) {
-    all += p.km;
-    if (G.pistes?.[p.id]?.open !== false && reach.has(p.from)) open += p.km;
-  }
-  return M.offer[0] + M.offer[1] * (all ? open / all : 0);
+  return D.pistes.filter(p => G.pistes?.[p.id]?.open !== false && reach.has(p.from));
+}
+
+const KM = D.pistes.reduce((a, p) => a + p.km, 0);
+export const openKm = G => openPistes(G).reduce((a, p) => a + p.km, 0);
+export const offerShare = G => openKm(G) / KM;
+export const offerFactor = G => M.offer[0] + M.offer[1] * offerShare(G);
+export const priceEq = p => D.sat.price.ref * avgPrice(p) / REF;
+
+export function wordFactor(G) {
+  const W = D.sat.word, z = G.sat?.z;
+  return z == null ? 1 : clamp(1 + W.k * (z - W.ref) / 100, W.clamp[0], W.clamp[1]);
 }
 
 export function factors(G, date, extra = {}) {
@@ -40,13 +46,14 @@ export function factors(G, date, extra = {}) {
     O: offerFactor(G),
     weather: extra.weather ?? 1,
     snow: extra.snow ?? 1,
-    marketing: extra.marketing ?? 1
+    marketing: extra.marketing ?? 1,
+    word: wordFactor(G)
   };
 }
 
 export function expected(G, date, extra) {
   const f = factors(G, date, extra);
-  return f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing;
+  return f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing * f.word;
 }
 
 export function demand(G, date, extra) {
