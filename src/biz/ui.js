@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { count } from './people.js';
 import { pl } from './area.js';
 import { fmtDate, fmtClock, phase as calPhase } from './calendar.js';
 import { costToday, report, prev, forecast } from './sim.js';
@@ -219,7 +220,7 @@ export function createUI(h) {
       row('davon Nebengeschäfte', eur(sumv(G.today.revenue) - ticketSum(G.today.revenue))) +
       (open ? row('Hütten · Parkplatz', (X.hutWaitNow(G.flow) >= 0.5 ? '<span class="' + wtone(X.hutWaitNow(G.flow)) + '">' + mins(X.hutWaitNow(G.flow)) + '</span> · ' : num(X.inHuts(G.flow)) + ' Gäste · ') + '<span class="' + (G.flow.cars >= G.side.park.cap - 0.5 ? 'biz-bad' : G.flow.cars > G.side.park.cap * 0.85 ? 'biz-warn' : '') + '">' + num(G.flow.cars) + '/' + num(G.side.park.cap) + '</span>') : '') +
       '<div class="sep"></div>' +
-      row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
+      row('Gäste jetzt / heute', num(count(G.flow)) + ' / ' + num(G.today.guests)) +
       (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) +
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
       (open && G.flow.cashWait >= 0.5 ? row('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +

@@ -186,11 +186,13 @@ export const clear = (store = globalThis.localStorage) => { try { store.removeIt
 
 export function clock() {
   let acc = 0;
-  return (G, realDt) => {
+  const c = (G, realDt) => {
     if (G.phase !== 'open') { acc = 0; return []; }
     acc += realDt * D.time.gameSecPerSec * G.factor / 60;
     const n = Math.min(Math.floor(acc), D.time.maxSteps);
     acc = Math.min(acc - n, D.time.maxSteps);
     return n ? tick(G, n) : [];
   };
+  c.frac = () => Math.min(acc, 1);
+  return c;
 }

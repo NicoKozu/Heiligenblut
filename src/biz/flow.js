@@ -5,6 +5,7 @@ import { wear } from './snow.js';
 import { cashCap } from './staff.js';
 import { ticketPrice, kidsFree } from './marketing.js';
 import * as SD from './side.js';
+import { out } from './people.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(DIRS.map(l => [l.id, l]));
@@ -127,16 +128,18 @@ export function step(G, t) {
   f.cashQ = (f.cashQ || 0) + dq;
   const sv = Math.min(f.cashQ, cap);
   f.cashQ -= sv;
+  out(f, 'cash', sv);
   if (f.cashQ < 1e-6) f.cashQ = 0;
   f.cashWait = f.cashQ / cap;
   f.cashServed = sv;
   T.cashPeak = Math.max(T.cashPeak || 0, f.cashWait);
   at.tal += a - dq + sv;
-  for (const l of DIRS) at[l.to] += shift(f.ride[l.id]);
-  for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
+  for (const l of DIRS) { const n = shift(f.ride[l.id]); out(f, 'r:' + l.id, n); at[l.to] += n; }
+  for (const p of D.pistes) { const n = shift(f.run[p.id]); out(f, 'p:' + p.id, n); wear(G, p.id, n); at[p.to] += n; }
   SD.hutsOut(G, f, at);
-  for (const l of G.lifts) if (!running(l)) for (const k of keys(l)) if (f.queue[k] > 0) { at[LIFT[k].from] += f.queue[k]; f.queue[k] = 0; }
+  for (const l of G.lifts) if (!running(l)) for (const k of keys(l)) if (f.queue[k] > 0) { at[LIFT[k].from] += f.queue[k]; out(f, 'q:' + k, f.queue[k]); f.queue[k] = 0; }
   at.tal += f.hold || 0;
+  out(f, 'hold', f.hold);
   f.hold = 0;
   for (const n in at) dispatch(G, f, n, at[n], t, d);
   SD.hutsIn(G, f);
@@ -147,6 +150,7 @@ export function step(G, t) {
     for (const k of K) {
       const b = on ? Math.min(f.queue[k], c) : 0;
       f.queue[k] -= b;
+      out(f, 'q:' + k, b);
       if (f.queue[k] < 1e-6) f.queue[k] = 0;
       const r = f.ride[k];
       r[r.length - 1] += b;
@@ -176,6 +180,7 @@ export function endFlow(G) {
   for (const k in f.board || {}) f.board[k] = 0;
   for (const l of G.lifts) l.util = 0;
   f.present = 0;
+  f.out = {};
   f.avgWait = 0;
   f.cashQ = 0;
   f.cashWait = 0;

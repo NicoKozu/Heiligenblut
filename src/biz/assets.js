@@ -3,6 +3,7 @@ import { built } from './area.js';
 import { int, next as rand } from './rng.js';
 import { hit } from './satisfaction.js';
 import { techFactor, riskFactor, canOpen } from './staff.js';
+import { out } from './people.js';
 
 const F = D.fault;
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -72,6 +73,7 @@ function breakLift(G, l, ev) {
   const n = r ? sum(r) : 0;
   if (n >= 1) {
     r.fill(0);
+    out(f, 'r:' + l.id, n);
     f.queue[l.id] += n;
     G.today.rescued = (G.today.rescued || 0) + n;
     hit(G, 'rescue');

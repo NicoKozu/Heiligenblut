@@ -108,7 +108,11 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     for (const l of G.lifts) if (l.broken && !l.repairLeft) ui.toast(G, l.id);
     sync();
     ui.render(G);
+    crowd?.setSource?.(view);
   }
+
+  const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
+  const view = () => active && G.flow ? { f: G.flow, frac: G.phase === 'open' ? clk.frac() : 0, pace: lift.pace || 0, huts } : null;
 
   function end() {
     if (!active) return;
@@ -117,8 +121,8 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     hold = false;
     ui.show(false);
     sync();
-    crowd?.setDensity(1);
-    crowd?.setQueue(0);
+    crowd?.setSource?.(null);
+    lift.pace = null;
   }
 
   function update(dt) {
@@ -141,11 +145,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
       if (e.t === 'fixed' || e.t === 'insp') { const l = G.lifts.find(x => x.id === e.id); note(l.name + (e.t === 'fixed' ? ' läuft wieder' : ' – Inspektion fertig'), 2.5); ui.drop(e.id); }
     }
     sync();
-    if (crowd) {
-      const f = G.flow, open = G.phase === 'open';
-      crowd.setDensity(open ? f.present / D.flow.densityRef : 0);
-      crowd.setQueue(open && f.wait.rossbach > D.flow.pulkWait ? f.queue.rossbach * 0.12 : 0);
-    }
+    lift.pace = G.phase === 'open' ? D.time.gameSecPerSec * G.factor / 60 : null;
 
     const rc = lift.rideCabin();
     if (rc && G.phase !== 'open' && lift.stop.has(rc.sec.name)) park();
