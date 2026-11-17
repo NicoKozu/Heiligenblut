@@ -63,6 +63,8 @@
 - Leben auf der Piste: `src/crowd.js` – ~45 Gruppen (~100 Personen): Familien (Kinder klein, Schneepflug), Skischulen (Lehrer rot + Kinder orange im Gänsemarsch), Paare, Carver, Racer (Hocke), Snowboard-Crews/-Solo. Gebietsgraph aus Liftstationen (Knoten) + Pisten mit Start/Ende an Knoten (4, 5, 5a, 1, 2, 10; nicht 8/11/12). Gruppe fährt eine „Etappe“: Ausstieg → Piste(n) (Kurven als Sinus quer zur Linie, Tempo nach Gefälle/Typ, Pausen) → Talstation → wartet auf freie Kabine → fährt sichtbar in der Gondel → Ausstieg oben. Nah (120 m) geriggte Figuren (Pool 10 Ski/5 Board, `dress()` in `models.js`), fern Instanz-Figuren bis 2,6 km. Kollision mit Spieler (Sturz ab 6 m/s rel.). `lift.js` liefert `cabinAt, cabinU, rideCabin`.
 - Etappen 1–11 fertig.
 - Etappe 12: fertig. Menü: Spielmodus Manager (Standard) / Freies Fahren, Manager mit „Weiterspielen · Datum“ / „Neues Spiel“ (Bestätigung). `src/biz/`: `data.js` (alle Werte Abschnitt B), `rng.js` (mulberry32, Zustand `G.rng`), `calendar.js` (ISO-Datumsstrings, Ostern Gauß, Saisonende min(Ostermontag, 6. Apr), Nachfragephase, `fmtDate`), `sim.js` (`newGame/startDay/tick/nextDay/clock/save/load`, Phasen prep→open→closed, bucht Verwaltung, Wartung, Strom nach Laufzeit, Zinsen; Historie), `ui.js` (Panel rechts, Overlays Vorbereitung/Tagesbericht/Büro mit Tabs), `bridge.js` (Tasten +/−, Tab, B, Enter; Lifte via `lift.shut` gesperrt außerhalb Betrieb; Fahrer steht in prep/closed an Talstation, laufende Gondelfahrt endet normal). Biz wird per dynamischem Import nur im Manager geladen. Autosave bei Feierabend, Tageswechsel, Pause, `pagehide`. Fahrer-HUD wandert im Manager nach links. Zahlen `de-DE` (Punkt als Tausender, `de-AT` liefert Leerzeichen).
+- Etappe 13: fertig. `biz/demand.js` (N = B·P·R·O·ε, Platzhalter Wetter/Schnee/Marketing; P relativ zum Ø-Preis der Startpreise, sonst wäre P bei Startpreisen 1,28), `biz/flow.js` (Flussmodell pro Minute: Queue/Lift-Pipeline/Pisten-Pipeline/Hütte, Glockenkurven-Ankunft, Halbtag, Abreise-Rampe, Mittag, Wartezeit-Aversion). Gebietsgraph statisch in `data.js` (`nodes`, `pistes`, Lifte mit `from/to`), da Sim headless sein muss. Tickets bei Ankunft, 8 % Saisonkarte. Tab Preise (±1 €, Eingabe, Prognose), Panel Gäste/Umsatz/Wartezeit/Auslastung, Tagesbericht nach Typ/Ticketart/Spitzenwartezeit. `crowd.setDensity/setQueue` (Pulk an Talstation ab 5 min). Alte Spielstände per `migrate()`.
+- Simtest Saison: ~144k Skitage (über Ziel 90–130k, liegt an Tabelle B; Wetter/Schnee in Etappe 16 senken), Preis Erw. 90 € → −30 % Gäste, Weihnachten Rossbach Spitze ~50 min, Jänner-Werktag ~0.
 - Tests: `simtest.mjs` (Scratchpad, Node) und Playwright-Smoke; jsdelivr ist in der Session gesperrt → Three per `npm pack three@0.170.0` lokal und `page.route` umleiten. SwiftShader rendert ~1 FPS, Sim holt Frames bis 1 s nach.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -83,7 +85,7 @@
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/props.js` – `createProps(terrain, pistes, lift, osm)` → `{ group, blocked(x,z,m), build(huts), update(camera), collide(state, onHit), count }`
 - `public/osm.json` – OSM-Gebäude/Fels/Latschen/Zäune (Weltkoordinaten)
-- `src/crowd.js` – `createCrowd(terrain, pistes, lift, assets)` → `{ group, update(dt, camera), collide(state, onHit), count }`
+- `src/crowd.js` – `createCrowd(terrain, pistes, lift, assets)` → `{ group, update(dt, camera), collide(state, onHit), setDensity(f), setQueue(n), count }`
 - `src/scenery.js` – `createScenery(terrain, pistes, lift, assets, blocked)`, `detailMaterials(assets)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
 - `src/effects.js` – `createEffects(terrain)` → `{ group, update(dt, state, riding, canvasH), burst(state, n, v) }`
 - `src/panorama.js` – `loadPanorama(terrain, world)` → `{ scene, camera, bake(renderer), shade(root), update(cam, dt), render(renderer, nearScene, cam), heightAny, peaks, visibleFrom }`
@@ -95,8 +97,10 @@
 - `src/config.js` – Gebietsdaten, `get(url, type)` (fetch mit Statusprüfung), `image(url)`, `texture(url)` (sRGB, flipY aus)
 - `public/` – eigene Assets (Fotos etc.)
 - `MANAGER.md` – Spezifikation Manager-Modus (Etappen 12–23), `src/biz/` – Simulation (ab Etappe 12)
-- `src/biz/bridge.js` – `createBiz({ lift, player })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
-- `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, lifts[{id,name,open,cond,run,util}], today{costs,revenue,guests,demand}, history[])
+- `src/biz/demand.js` – `defaultPrices, avgPrice, priceFactor, factors, expected, demand`
+- `src/biz/flow.js` – `newFlow, step(G, t), endFlow`, `G.flow` (queue, ride, run, hut, wait, present, avgWait)
+- `src/biz/bridge.js` – `createBiz({ lift, player, crowd })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
+- `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, prices, pistes{id:open}, flow, lifts[{id,name,open,cond,run,util}], today{costs,revenue,guests,demand,expected,types,rides,peak}, history[])
 
 ## Gebietsdaten
 Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoehen.de, Skiclub-Pistenplan (PDF), Skimagazin Heiligenblut 2025/26. skiresort.info und bergfex waren aus der Session nicht direkt abrufbar.

@@ -1,6 +1,7 @@
 import { D } from './data.js';
 import { fmtDate, fmtClock, phase as calPhase } from './calendar.js';
-import { costToday, report, prev } from './sim.js';
+import { costToday, report, prev, forecast } from './sim.js';
+import { avgPrice, priceFactor } from './demand.js';
 
 const CSS = `
 #biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
@@ -36,6 +37,13 @@ const CSS = `
 #biz-over .go button{flex:1;font:inherit;font-weight:600;color:#fff;padding:11px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
 #biz-over .go button.primary{background:#2f7de1;border-color:#5aa2ff}
 #biz-over .go button.primary:hover{background:#3b8cf2}
+#biz-over .price{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+#biz-over .price button{font:inherit;width:30px;height:28px;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer}
+#biz-over .price input{font:inherit;width:64px;height:26px;text-align:right;color:#fff;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:0 6px}
+#biz-over .fc{font-size:22px;font-weight:700}
+#biz-panel .lift{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:2px 0}
+#biz-panel .lift span{opacity:.75}
+#biz-panel .lift b{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
 body.biz #hud-panel{right:auto;left:12px}
 body.biz #fps{top:auto;bottom:12px}
 body.menu #biz-panel,body.menu #biz-over{display:none}
@@ -51,6 +59,10 @@ const num = n => Math.round(n).toLocaleString('de-DE');
 const trend = (a, b) => b == null || Math.round(a) === Math.round(b) ? '' : a > b ? ' <span class="biz-good">▲</span>' : ' <span class="biz-bad">▼</span>';
 const tone = (v, good, warn) => v >= good ? 'biz-good' : v >= warn ? 'biz-warn' : 'biz-bad';
 const row = (k, v, c = '') => '<div class="row"><span>' + k + '</span><b class="' + c + '">' + v + '</b></div>';
+const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
+const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
+const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
+const revLabel = k => D.tickets[k]?.label || k;
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
 
 export function createUI(h) {
@@ -71,10 +83,17 @@ export function createUI(h) {
     if (b.dataset.tab) { tab = b.dataset.tab; h.refresh(); }
     else if (b.dataset.act) h.action(b.dataset.act);
   });
+  over.addEventListener('change', e => { const k = e.target.dataset.price; if (k) h.price(k, e.target.value); });
+  over.addEventListener('keydown', e => {
+    if (e.target.tagName !== 'INPUT') return;
+    e.stopPropagation();
+    if (e.key === 'Enter') e.target.blur();
+  });
+  over.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') e.stopPropagation(); });
   panel.addEventListener('click', () => { if (panel.classList.contains('off')) panel.classList.remove('off'); });
 
   function renderPanel(G) {
-    const p = prev(G), c = costToday(G);
+    const p = prev(G), c = costToday(G), open = G.phase === 'open';
     const html =
       '<span class="tab">Tab</span>' +
       '<h3>Skigebiet Heiligenblut</h3>' +
@@ -84,30 +103,51 @@ export function createUI(h) {
       '<div class="sep"></div>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       row('Kosten heute', eur(c)) +
-      row('Umsatz heute', eur(0)) +
+      row('Umsatz heute (Tickets)', eur(sumv(G.today.revenue))) +
       row('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) +
       '<div class="sep"></div>' +
-      G.lifts.map(l => row(l.name, (G.phase === 'open' && l.open ? '● offen' : '○ zu'), G.phase === 'open' && l.open ? 'biz-good' : '')).join('') +
+      row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
+      row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
+      '<div class="sep"></div>' +
+      G.lifts.map(l => {
+        const on = open && l.open, w = on ? G.flow.wait[l.id] : 0;
+        return '<div class="lift"><span>' + l.name + '</span><b class="' + (on ? wtone(w) : '') + '">' + (on ? mins(w) : '○ zu') + '</b><b>' + (on ? Math.round(l.util * 100) + ' %' : '') + '</b></div>';
+      }).join('') +
       '<div class="keys">+/− Zeit · B Büro · Tab Panel</div>';
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['prices', 'Preise']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
     return '<h2>Saison</h2>' +
       '<table>' + tr('Saisonphase', dem.label) + tr('Nachfrage-Basis heute', num(G.today.demand) + ' Gäste') + tr('Spieltag', num(G.day)) + '</table>' +
       '<h2>Finanzen</h2>' +
-      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(D.start.credit)) + (r ? tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
+      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(D.start.credit)) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
       '<h2>Anlagen</h2>' +
       '<table>' + G.lifts.map(l => tr(l.name, 'Zustand <span class="' + tone(l.cond, 75, 50) + '">' + l.cond + ' %</span>')).join('') + '</table>';
   }
 
+  function prices(G) {
+    const edit = G.phase !== 'open', fc = forecast(G);
+    const line = k => tr(D.tickets[k].label, edit && k !== 'season'
+      ? '<span class="price"><button data-act="price:' + k + ':-' + D.priceStep + '">−</button><input data-price="' + k + '" type="number" min="' + D.priceRange[0] + '" max="' + D.priceRange[1] + '" value="' + G.prices[k] + '"> €<button data-act="price:' + k + ':' + D.priceStep + '">+</button></span>'
+      : eur(G.prices[k]));
+    return '<h2>Ticketpreise</h2><table>' + Object.keys(D.tickets).map(line).join('') + '</table>' +
+      '<h2>Wirkung</h2><table>' +
+      tr('Ø-Ticketpreis (nach Gästemix)', eur(avgPrice(G.prices))) +
+      tr('Preisfaktor Nachfrage', '×' + priceFactor(G.prices).toFixed(2)) +
+      tr('Erwartete Gäste ' + fmtDate(fc.date), '<span class="fc">' + num(fc.n) + '</span>') + '</table>' +
+      (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + Math.round(D.flow.seasonShare * 100) + ' % der Gäste fahren mit Saisonkarte.</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
+  }
+
+  const body = G => tab === 'prices' ? prices(G) : null;
+
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
-      '<h2>Wettervorschau</h2><p class="note">Noch kein Wetterdienst – Schnee und Wetter folgen.</p>' +
-      overview(G) +
+      (body(G) || '<h2>Wettervorschau</h2><p class="note">Noch kein Wetterdienst – Schnee und Wetter folgen.</p>' +
+      '<h2>Prognose</h2><table>' + tr('Erwartete Gäste heute', num(forecast(G).n)) + '</table>' + overview(G)) +
       '<div class="go"><button class="primary" data-act="start">Lifte öffnen / Tag starten ⏎</button></div>';
   }
 
@@ -115,17 +155,19 @@ export function createUI(h) {
     const r = report(G);
     const costs = Object.entries(r.costs).filter(([, v]) => v > 0).map(([k, v]) => tr(D.costLabels[k] || k, eur(-v))).join('');
     return '<h1>Tagesbericht</h1><p class="sub">' + fmtDate(r.date) + ' · Feierabend 16:30</p>' + tabs() +
-      (tab === 'over' ?
+      (body(G) ||
+        '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + '</table>' +
+        '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
+        '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + '</table>' +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
-        '<h2>Einnahmen</h2><table>' + tr('Tickets', eur(r.revenue)) + tr('Gäste', num(r.guests)) + '</table>' +
-        '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>'
-        : '') +
+        '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
+        '<h2>Morgen</h2><table>' + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + '</table>') +
       '<div class="go"><button class="primary" data-act="next">Nächster Tag ⏎</button></div>';
   }
 
   function office(G) {
     return '<h1>Büro</h1><p class="sub">' + fmtDate(G.date) + ' · ' + fmtClock(G.min) + ' · ' + D.phaseLabels[G.phase] + (G.phase === 'open' ? ' – Zeit läuft weiter' : '') + '</p>' + tabs() +
-      overview(G) + '<div class="go"><button data-act="close">Schließen (B)</button></div>';
+      (body(G) || overview(G)) + '<div class="go"><button data-act="close">Schließen (B)</button></div>';
   }
 
   const views = { prep, daily, office };

@@ -20,6 +20,7 @@ const POOL = { ski: 10, board: 5 };
 const FAR = 2600;
 const WALK = 2.2;
 const CAP = 4;
+const QMAX = 140;
 const SEATS = [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
 
 const R = Math.random;
@@ -236,11 +237,31 @@ export function createCrowd(terrain, pistes, lift, assets) {
     }
   }
 
+  groups.forEach(g => { g.rank = R(); });
+  let density = 1;
+  function setDensity(f) {
+    density = Math.max(0, Math.min(1, f));
+    for (const g of groups) g.off = g.rank >= density;
+  }
+
+  const sec0 = secs[0];
+  const pulk = [];
+  for (let i = 0; i < QMAX; i++) {
+    const row = Math.floor(i / 10), col = i % 10;
+    const back = 16.5 + row * 0.8 + R() * 0.3, side = (col - 4.5) * 0.7 + (R() - 0.5) * 0.35;
+    const x = sec0.a[0] - sec0.dx * back + sec0.px * side, z = sec0.a[1] - sec0.dz * back + sec0.pz * side;
+    const p = person(R() < 0.2 ? 'board' : 'ski', R() < 0.2);
+    p.pos.set(x, terrain.heightAt(x, z), z);
+    p.heading = sec0.heading + (R() - 0.5) * 0.8;
+    pulk.push(p);
+  }
+  let queued = 0;
+  const setQueue = n => { queued = Math.max(0, Math.min(QMAX, Math.round(n))); };
   const geo = simpleGeometries();
   const simpleMat = new THREE.MeshStandardMaterial({ roughness: 0.75 });
   const ims = {};
   for (const k of Object.keys(geo)) {
-    const im = new THREE.InstancedMesh(geo[k], simpleMat, members.length);
+    const im = new THREE.InstancedMesh(geo[k], simpleMat, members.length + QMAX);
     im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     im.setColorAt(0, new THREE.Color());
     im.instanceColor.setUsage(THREE.DynamicDrawUsage);
@@ -301,6 +322,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
 
   function placeMember(g, m, dt) {
     m.show = false;
+    if (g.off) return;
     if (g.state === 'ride') {
       const c = g.cabs[Math.floor(g.members.indexOf(m) / CAP)];
       if (!c.started || c.done) return;
@@ -423,6 +445,16 @@ export function createCrowd(terrain, pistes, lift, assets) {
       put('head', m.look.Helmet);
       if (m.type === 'ski' && !m.cab) put('skis', m.look.Gear);
     }
+    for (let i = 0; i < queued; i++) {
+      const p = pulk[i];
+      if (Math.hypot(p.pos.x - cx, p.pos.z - cz) > FAR) break;
+      qY.setFromAxisAngle(UP, p.heading);
+      sc.setScalar(p.scale);
+      m4.compose(p.pos, qY, sc);
+      put('jacket', p.look.Jacket);
+      put('pants', p.look.Pants);
+      put('head', p.look.Helmet);
+    }
     for (const k in ims) {
       const im = ims[k];
       im.count = cnt[k];
@@ -431,5 +463,5 @@ export function createCrowd(terrain, pistes, lift, assets) {
     }
   }
 
-  return { group, update, collide, count: members.length };
+  return { group, update, collide, setDensity, setQueue, count: members.length };
 }
