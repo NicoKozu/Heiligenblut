@@ -11,9 +11,9 @@ const SPACING = 85;
 const BOARD = 45;
 
 const SECTIONS = [
-  { name: 'Gondel Rossbach', from: 'Talstation', to: 'Rossbach', a: [-158, -109], b: [617, -921], st: [0, 1] },
-  { name: 'Gondel Schareck', from: 'Rossbach', to: 'Schareck', a: [635, -923], b: [1110, -2861], st: [1, 2] },
-  { name: 'Panoramabahn', from: 'Fallbichl', to: 'Schareck', a: [40, -3263], b: [1099, -2892], st: [3, 4] }
+  { id: 'rossbach', name: 'Gondel Rossbach', from: 'Talstation', to: 'Rossbach', a: [-158, -109], b: [617, -921], st: [0, 1] },
+  { id: 'schareck', name: 'Gondel Schareck', from: 'Rossbach', to: 'Schareck', a: [635, -923], b: [1110, -2861], st: [1, 2] },
+  { id: 'panorama', name: 'Panoramabahn', from: 'Fallbichl', to: 'Schareck', a: [40, -3263], b: [1099, -2892], st: [3, 4] }
 ];
 const STATIONS = [
   { c: [-158, -109], s: 0, off: -4, hl: 11, hw: 6.5 },
@@ -220,17 +220,36 @@ export function createLift(terrain, pistes) {
   }
 
   const shut = new Set();
+  const stop = new Map();
+
+  function setOpen(id, open, why = 'geschlossen') {
+    const sec = sections.find(s => s.id === id || s.name === id);
+    if (!sec) return;
+    if (open) stop.delete(sec.name);
+    else stop.set(sec.name, why);
+  }
 
   function update(dt, state, player, goTo) {
     state.hint = '';
     for (const sec of sections) {
-      sec.speed = ride && ride.sec === sec && down('KeyW', 'ArrowUp') ? SPEED * FAST : SPEED;
+      const want = stop.has(sec.name) ? 0 : ride && ride.sec === sec && down('KeyW', 'ArrowUp') ? SPEED * FAST : SPEED;
+      sec.speed = want >= sec.speed || want > 0 ? want : Math.max(0, sec.speed - 1.2 * dt);
       sec.phase += sec.speed * dt;
     }
     if (ride) {
       ride.u += ride.sec.speed * dt;
-      state.hint = ride.sec.name + ' → ' + ride.sec.to + ' · W Zeitraffer';
-      if (ride.u >= ride.sec.upLen) {
+      const why = stop.get(ride.sec.name);
+      state.hint = why ? ride.sec.name + ' steht (' + why + ') · E: Bergung' : ride.sec.name + ' → ' + ride.sec.to + ' · W Zeitraffer';
+      if (why && consume('KeyE')) {
+        cabinAt(ride.sec, ride.i, tmp);
+        const sec = ride.sec;
+        ride = null;
+        state.lift = null;
+        player.object.visible = true;
+        player.spawnAt(tmp.x - sec.px * 6, tmp.z - sec.pz * 6, sec.heading + Math.PI);
+        state.note = 'Bergung – abgeseilt';
+        state.noteT = 2.5;
+      } else if (ride.u >= ride.sec.upLen) {
         const sec = ride.sec;
         ride = null;
         state.lift = null;
@@ -241,7 +260,8 @@ export function createLift(terrain, pistes) {
       }
     } else if (state.crashed <= 0) {
       const sec = sections.find(s => Math.hypot(state.pos.x - s.a[0], state.pos.z - s.a[1]) < BOARD);
-      if (sec && shut.has(sec.name)) state.hint = sec.name + ' geschlossen';
+      if (sec && stop.has(sec.name)) state.hint = sec.name + ' – ' + (stop.get(sec.name) === 'geschlossen' ? 'Lift geschlossen' : stop.get(sec.name));
+      else if (sec && shut.has(sec.name)) state.hint = sec.name + ' geschlossen';
       else if (sec) {
         state.hint = 'E: ' + sec.name + ' → ' + sec.to;
         if (consume('KeyE')) { board(sec, state); player.object.visible = false; }
@@ -329,5 +349,5 @@ export function createLift(terrain, pistes) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  return { group, sections, update, collide, leave, clear, shut, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
+  return { group, sections, update, collide, leave, clear, shut, stop, setOpen, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
 }

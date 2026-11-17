@@ -56,7 +56,7 @@ export function createHud(pistes) {
       acc = 0;
       set('alt', Math.round(state.pos.y).toLocaleString('de-DE') + ' m');
       const p = state.lift ? null : pistes.at(state.pos);
-      set('piste', state.lift || (p ? p.id + ' ' + p.name : 'abseits'));
+      set('piste', state.lift || (p ? p.id + ' ' + p.name + (p.closed ? ' (gesperrt)' : '') : 'abseits'));
       f.piste.style.color = p ? p.lv.css : '';
       const [mx, my] = mapAt(state.pos.x, state.pos.z);
       dot.style.left = Math.min(98, Math.max(2, mx)) + '%';

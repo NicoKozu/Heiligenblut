@@ -2,6 +2,7 @@ import { D } from './data.js';
 import { fmtDate, fmtClock, phase as calPhase } from './calendar.js';
 import { costToday, report, prev, forecast } from './sim.js';
 import { avgPrice, priceFactor } from './demand.js';
+import { status, repairQuote, fmtDur } from './assets.js';
 
 const CSS = `
 #biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
@@ -42,8 +43,31 @@ const CSS = `
 #biz-over .price input{font:inherit;width:64px;height:26px;text-align:right;color:#fff;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:0 6px}
 #biz-over .fc{font-size:22px;font-weight:700}
 #biz-panel .lift{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:2px 0}
-#biz-panel .lift span{opacity:.75}
+#biz-panel .lift span{opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#biz-panel .lift b.st{font-size:12px}
 #biz-panel .lift b{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
+#biz-panel .as{display:grid;grid-template-columns:10px 1fr 46px 40px;align-items:center;gap:6px;padding:2px 0;font-size:13px}
+#biz-panel .as span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+#biz-panel .as b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;font-size:12px}
+.biz-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#7be07b}
+.biz-dot.warn{background:#ffd84a}.biz-dot.bad{background:#ff6b5a}
+.biz-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.biz-bar i{display:block;height:100%}
+.biz-sw{font:inherit;font-size:11px;font-weight:600;padding:1px 0;width:40px;border-radius:9px;cursor:pointer;color:#fff;border:1px solid rgba(255,255,255,.25);background:#2fae5e88}
+.biz-sw.off{background:#c0392b88}
+.biz-sw[disabled]{opacity:.4;cursor:default}
+#biz-toast{position:fixed;left:260px;right:304px;top:12px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+#biz-toast .t{width:100%;max-width:460px;box-sizing:border-box}
+@media (max-width:820px){#biz-toast{left:12px;right:12px;top:auto;bottom:12px}}
+#biz-toast .t{pointer-events:auto;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(120,24,20,.92);border:1px solid #ff6b5a;border-radius:9px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#biz-toast .t span{flex:1}
+#biz-toast button,#biz-over .btn{font:inherit;font-size:12px;font-weight:600;color:#fff;padding:4px 9px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);white-space:nowrap}
+#biz-toast button.primary,#biz-over .btn.primary{background:#2f7de1;border-color:#5aa2ff}
+#biz-over .btn[disabled]{opacity:.4;cursor:default}
+#biz-over .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+#biz-over .log{font-size:13px;opacity:.85;max-height:160px;overflow:auto}
+#biz-over .log div{padding:1px 0}
+body.menu #biz-toast{display:none}
 body.biz #hud-panel{right:auto;left:12px}
 body.biz #fps{top:auto;bottom:12px}
 body.menu #biz-panel,body.menu #biz-over{display:none}
@@ -63,6 +87,10 @@ const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
 const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
 const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const revLabel = k => D.tickets[k]?.label || k;
+const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn' };
+const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
+const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
+const pName = id => D.pistes.find(p => p.id === id).name;
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
 
 export function createUI(h) {
@@ -74,12 +102,17 @@ export function createUI(h) {
   const over = document.createElement('div');
   over.id = 'biz-over';
   over.hidden = true;
-  document.body.append(panel, over);
+  const toastEl = document.createElement('div');
+  toastEl.id = 'biz-toast';
+  document.body.append(panel, over, toastEl);
   let view = null, tab = 'over', last = '';
+  const toasts = new Map();
+  toastEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) h.action(b.dataset.act); });
 
-  over.addEventListener('click', e => {
+  over.addEventListener('pointerdown', e => {
     const b = e.target.closest('button');
-    if (!b) return;
+    if (!b || b.disabled || e.button) return;
+    e.preventDefault();
     if (b.dataset.tab) { tab = b.dataset.tab; h.refresh(); }
     else if (b.dataset.act) h.action(b.dataset.act);
   });
@@ -90,7 +123,11 @@ export function createUI(h) {
     if (e.key === 'Enter') e.target.blur();
   });
   over.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') e.stopPropagation(); });
-  panel.addEventListener('click', () => { if (panel.classList.contains('off')) panel.classList.remove('off'); });
+  panel.addEventListener('pointerdown', e => {
+    if (panel.classList.contains('off')) { panel.classList.remove('off'); return; }
+    const b = e.target.closest('button');
+    if (b && !b.disabled && b.dataset.act) { e.preventDefault(); h.action(b.dataset.act); }
+  });
 
   function renderPanel(G) {
     const p = prev(G), c = costToday(G), open = G.phase === 'open';
@@ -110,14 +147,20 @@ export function createUI(h) {
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
       '<div class="sep"></div>' +
       G.lifts.map(l => {
-        const on = open && l.open, w = on ? G.flow.wait[l.id] : 0;
-        return '<div class="lift"><span>' + l.name + '</span><b class="' + (on ? wtone(w) : '') + '">' + (on ? mins(w) : '○ zu') + '</b><b>' + (on ? Math.round(l.util * 100) + ' %' : '') + '</b></div>';
+        const st = status(l), on = open && st === 'run', w = on ? G.flow.wait[l.id] : 0;
+        return '<div class="lift"><span><i class="biz-dot ' + DOT[st] + '"></i> ' + l.name + '</span><b class="st ' + (on ? wtone(w) : st === 'run' ? '' : 'biz-' + (DOT[st] || 'warn')) + '">' + (on ? mins(w) : st === 'run' ? '–' : st === 'repair' ? 'Reparatur' : D.liftStatus[st]) + '</b><b>' + (on ? Math.round(l.util * 100) + ' %' : '') + '</b></div>' +
+          '<div class="as"><span></span>' + bar(l.cond) + '<b>' + Math.round(l.cond) + ' %</b>' + sw('lift', l.id, l.open) + '</div>';
+      }).join('') +
+      '<div class="sep"></div>' +
+      D.pistes.map(p => {
+        const o = G.pistes[p.id];
+        return '<div class="as"><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i><span>' + p.id + ' ' + p.name + '</span><b></b>' + sw('piste', p.id, o.open) + '</div>';
       }).join('') +
       '<div class="keys">+/− Zeit · B Büro · Tab Panel</div>';
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['prices', 'Preise']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -126,7 +169,35 @@ export function createUI(h) {
       '<h2>Finanzen</h2>' +
       '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(D.start.credit)) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
       '<h2>Anlagen</h2>' +
-      '<table>' + G.lifts.map(l => tr(l.name, 'Zustand <span class="' + tone(l.cond, 75, 50) + '">' + l.cond + ' %</span>')).join('') + '</table>';
+      '<table>' + G.lifts.map(l => tr('<i class="biz-dot ' + DOT[status(l)] + '"></i> ' + l.name, D.liftStatus[status(l)] + ' · Zustand <span class="' + tone(l.cond, 75, 50) + '">' + Math.round(l.cond) + ' %</span>')).join('') + '</table>' + logView(G, 6);
+  }
+
+  function logView(G, n) {
+    const L = (G.log || []).slice(-n).reverse();
+    return L.length ? '<h2>Meldungen</h2><div class="log">' + L.map(e => '<div class="' + (e.lvl === 'bad' ? 'biz-bad' : e.lvl === 'good' ? 'biz-good' : '') + '">' + fmtDate(e.date).replace(/^\S+ /, '').slice(0, 6) + ' ' + fmtClock(e.min) + ' · ' + e.text + '</div>').join('') + '</div>' : '';
+  }
+
+  function liftActs(G, l) {
+    const st = status(l);
+    if (st === 'fault') {
+      const a = repairQuote(l, false), b = repairQuote(l, true);
+      return '<button class="btn primary" data-act="repair:' + l.id + '">Reparieren · ' + eur(a.cost) + ' · ' + fmtDur(a.min) + '</button><button class="btn" data-act="repair:' + l.id + ':x">Express · ' + eur(b.cost) + ' · ' + fmtDur(b.min) + '</button>';
+    }
+    if (st === 'repair') return '<span class="biz-warn">Reparatur läuft · noch ' + fmtDur(l.repairLeft) + '</span>';
+    const ins = l.inspPlan ? '<span class="biz-warn">Inspektion geplant (' + (G.phase === 'prep' ? 'heute' : 'morgen') + ' 08:30–10:30)</span>' : st === 'insp' ? '<span class="biz-warn">Inspektion läuft · noch ' + fmtDur(l.insp) + '</span>' : '<button class="btn" data-act="insp:' + l.id + '">Inspektion · ' + eur(D.inspect.cost) + ' · +' + D.inspect.gain + ' %</button>';
+    return ins;
+  }
+
+  function assets(G) {
+    return '<h2>Lifte</h2><table>' + G.lifts.map(l => {
+      const st = status(l);
+      return '<tr><td><i class="biz-dot ' + DOT[st] + '"></i> <b>' + l.name + '</b><br><span style="opacity:.75">' + D.liftStatus[st] + (l.broken ? ' – ' + l.broken.label : '') + ' · Zustand <span class="' + tone(l.cond, 75, 50) + '">' + Math.round(l.cond) + ' %</span></span></td><td><div class="acts">' + liftActs(G, l) + sw('lift', l.id, l.open) + '</div></td></tr>';
+    }).join('') + '</table>' +
+      '<p class="note">Verschleiß im Betrieb; je schlechter der Zustand, desto häufiger Störungen. Inspektion sperrt den Lift morgens 2 h. Geschlossene Lifte verursachen keine Stromkosten.</p>' +
+      '<h2>Pisten</h2><table>' + D.pistes.map(p => {
+        const o = G.pistes[p.id];
+        return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> ' + p.id + ' ' + p.name + ' <span style="opacity:.7">· ' + p.level + ' · ' + p.km.toLocaleString('de-DE') + ' km · Schnee ' + o.snow + ' cm</span></td><td>' + sw('piste', p.id, o.open) + '</td></tr>';
+      }).join('') + '</table>' + logView(G, 12);
   }
 
   function prices(G) {
@@ -142,7 +213,7 @@ export function createUI(h) {
       (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + Math.round(D.flow.seasonShare * 100) + ' % der Gäste fahren mit Saisonkarte.</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
   }
 
-  const body = G => tab === 'prices' ? prices(G) : null;
+  const body = G => tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
@@ -158,7 +229,7 @@ export function createUI(h) {
       (body(G) ||
         '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + '</table>' +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
-        '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + '</table>' +
+        '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
         '<h2>Morgen</h2><table>' + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + '</table>') +
@@ -177,10 +248,23 @@ export function createUI(h) {
       renderPanel(G);
       if (view) { const html = '<div class="card">' + views[view](G) + '</div>'; if (over.dataset.v !== html) { over.innerHTML = html; over.dataset.v = html; } }
     },
-    open(v) { if (view !== v) tab = 'over'; view = v; over.hidden = false; over.dataset.v = ''; },
+    open(v, t) { if (view !== v) tab = 'over'; if (t) tab = t; view = v; over.hidden = false; over.dataset.v = ''; },
+    toast(G, id) {
+      const l = G.lifts.find(x => x.id === id);
+      if (!l || !l.broken) return;
+      const q = repairQuote(l, false);
+      const el = toasts.get(id) || document.createElement('div');
+      el.className = 't';
+      el.innerHTML = '<span>Störung ' + l.name + ' (' + l.broken.label + ') – Reparatur ca. ' + fmtDur(q.min) + ', ' + eur(q.cost) + '</span><button class="primary" data-act="repair:' + id + '">Reparieren</button><button data-act="tab:assets">Details</button><button data-act="drop:' + id + '">✕</button>';
+      toasts.set(id, el);
+      toastEl.appendChild(el);
+    },
+    drop(id) {
+      for (const [k, el] of toasts) if (id == null || k === id) { el.remove(); toasts.delete(k); }
+    },
     close() { view = null; over.hidden = true; over.innerHTML = ''; },
     get view() { return view; },
     togglePanel() { panel.classList.toggle('off'); },
-    show(on) { panel.hidden = !on; if (!on) this.close(); document.body.classList.toggle('biz', on); }
+    show(on) { panel.hidden = !on; toastEl.hidden = !on; if (!on) { this.close(); this.drop(); } document.body.classList.toggle('biz', on); }
   };
 }

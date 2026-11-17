@@ -218,6 +218,85 @@ export async function loadPistes(terrain) {
     for (let d = 500; d < p.len - 200; d += 500) sign(p, d, true);
   }
 
+  function stripes() {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 8;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 8);
+    g.fillStyle = '#e0141e'; g.fillRect(0, 0, 32, 8);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = THREE.RepeatWrapping;
+    return t;
+  }
+  function closedTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#d0101a'; g.fillRect(0, 0, 512, 256);
+    g.strokeStyle = '#fff'; g.lineWidth = 14; g.strokeRect(12, 12, 488, 232);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = 'bold 104px system-ui,sans-serif';
+    g.fillText('GESPERRT', 256, 110, 460);
+    g.font = 'bold 40px system-ui,sans-serif';
+    g.fillText('Piste geschlossen', 256, 196, 460);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  let tapeTex = null, tapeMat = null, closedMat = null;
+  const tapePost = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.6 });
+  function barrier(p) {
+    if (!tapeMat) {
+      tapeTex = stripes();
+      tapeMat = new THREE.MeshStandardMaterial({ map: tapeTex, roughness: 0.7, side: THREE.DoubleSide });
+      closedMat = new THREE.MeshStandardMaterial({ map: closedTexture(), roughness: 0.6 });
+    }
+    let i = 0;
+    while (i < p.s.length - 2 && p.s[i + 1] < 35) i++;
+    const [ax, az] = p.pts[i], [bx, bz] = p.pts[i + 1];
+    const l = Math.hypot(bx - ax, bz - az), tx = (bx - ax) / l, tz = (bz - az) / l;
+    const hw = p.width / 2 + 2, n = Math.max(2, Math.ceil(hw * 2 / 5));
+    const g = new THREE.Group();
+    const post = [];
+    for (let k = 0; k <= n; k++) {
+      const o = -hw + hw * 2 * k / n, x = ax - tz * o, z = az + tx * o, y = terrain.heightAt(x, z);
+      const m = new THREE.Mesh(postGeo, tapePost);
+      m.scale.set(0.7, 1.15, 0.7);
+      m.position.set(x, y - 0.1, z);
+      g.add(m);
+      post.push(new THREE.Vector3(x, y + 0.95, z));
+    }
+    for (let k = 0; k < n; k++) {
+      const a = post[k], b = post[k + 1], d = a.distanceTo(b);
+      const geo = new THREE.PlaneGeometry(d, 0.09);
+      geo.attributes.uv.array.forEach((v, j, arr) => { if (j % 2 === 0) arr[j] = v * d * 2; });
+      const m = new THREE.Mesh(geo, tapeMat);
+      m.position.copy(a).lerp(b, 0.5);
+      m.lookAt(b);
+      m.rotateY(Math.PI / 2);
+      g.add(m);
+    }
+    const w = 2.2, h = 1.1, mid = post[n >> 1];
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), closedMat);
+    face.position.set(mid.x + tx * 0.05, mid.y + 0.7, mid.z + tz * 0.05);
+    face.rotation.y = Math.atan2(-tx, -tz);
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(w, h), backMat);
+    back.position.set(mid.x + tx * 0.07, mid.y + 0.7, mid.z + tz * 0.07);
+    back.rotation.y = Math.atan2(tx, tz);
+    g.add(face, back);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    group.add(g);
+    return g;
+  }
+  function setOpen(id, open) {
+    const p = list.find(q => q.id === id);
+    if (!p || !p.closed === open) return;
+    p.closed = !open;
+    if (!open && !p.barrier) p.barrier = barrier(p);
+    if (p.barrier) p.barrier.visible = !open;
+  }
+
   let wasIn = false;
   function collide(state) {
     const q = nearest(state.pos.x, state.pos.z, 80);
@@ -261,5 +340,5 @@ export async function loadPistes(terrain) {
     return { x: ax, z: az, heading: Math.atan2(bx - ax, bz - az), piste: p };
   }
 
-  return { group, list, at, collide, startOf, nearest };
+  return { group, list, at, collide, startOf, nearest, setOpen };
 }

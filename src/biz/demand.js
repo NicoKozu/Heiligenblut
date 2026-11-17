@@ -1,6 +1,7 @@
 import { D } from './data.js';
 import { baseDemand } from './calendar.js';
 import { range } from './rng.js';
+import { running } from './assets.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const M = D.demandModel;
@@ -19,9 +20,14 @@ export const repFactor = rep => M.rep[0] + M.rep[1] * rep / 100;
 
 export function offerFactor(G) {
   let all = 0, open = 0;
+  const reach = new Set(['tal']);
+  for (let k = 0; k < 4; k++) {
+    for (const l of D.lifts) { const s = G.lifts?.find(x => x.id === l.id); if (reach.has(l.from) && (!s || running(s))) reach.add(l.to); }
+    for (const p of D.pistes) if (reach.has(p.from) && G.pistes?.[p.id]?.open !== false) reach.add(p.to);
+  }
   for (const p of D.pistes) {
     all += p.km;
-    if (G.pistes?.[p.id] !== false) open += p.km;
+    if (G.pistes?.[p.id]?.open !== false && reach.has(p.from)) open += p.km;
   }
   return M.offer[0] + M.offer[1] * (all ? open / all : 0);
 }
