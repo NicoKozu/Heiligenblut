@@ -11,6 +11,7 @@
 ## Arbeitsweise
 - Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`, PR selbst direkt mergen. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
 - Nächste Etappe erst nach "weiter" bzw. "Etappe XX". Vorher diese Datei aktualisieren.
+- Playwright-Smoke-Test entfällt immer (Nutzerwunsch, dauert zu lange); nur `node --check` + `simtest.mjs`.
 - Bei "Etappe XX" (ab 12): `MANAGER.md` lesen – nur Abschnitt A (Grundregeln), B (Referenzwerte) und den Abschnitt der Etappe. Genau das umsetzen, Abnahme-Liste dort prüfen, dann Stand hier eintragen.
 - Nach jeder Etappe muss das Spiel lauffähig bleiben.
 
