@@ -5,6 +5,8 @@ import { defaultPrices, demand, expected } from './demand.js';
 import { newFlow, step, endFlow } from './flow.js';
 import { pay, initAssets, liftMinute, dayStart, overnight, running } from './assets.js';
 import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfaction.js';
+import { initWeather, applyWind } from './weather.js';
+import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
 const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
@@ -17,6 +19,8 @@ export function newGame(seed = newSeed()) {
     lifts: [], today: null, history: [], prices: defaultPrices(), pistes: {}, flow: null, log: []
   };
   G.lifts = D.lifts.map(l => ({ id: l.id, name: l.name, open: true, cond: int(G, D.start.cond[0], D.start.cond[1]), run: 0, util: 0 }));
+  initAssets(G);
+  initSnow(G, true);
   migrate(G);
   resetToday(G);
   return G;
@@ -27,6 +31,8 @@ function migrate(G) {
   initAssets(G);
   if (!G.flow) G.flow = newFlow(0, 0);
   if (!G.flow.board) G.flow.board = Object.fromEntries(D.lifts.map(l => [l.id, 0]));
+  initSnow(G, false);
+  if (!G.weather) { initWeather(G); applyWind(G); }
   if (G.seasonShare == null) G.seasonShare = D.flow.seasonShare;
   if (G.sat === undefined) G.sat = null;
   if (G.today && !G.today.hits) G.today.hits = {};
@@ -46,7 +52,7 @@ export function startDay(G) {
   resetToday(G);
   G.phase = 'open';
   G.min = D.time.open;
-  const dm = demand(G, G.date);
+  const dm = demand(G, G.date, demandExtra(G, G.date));
   G.today.expected = dm.n;
   G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half);
   dayStart(G);
@@ -65,6 +71,7 @@ function minute(G, ev) {
     l.run++;
     pay(G, 'power', spec.kw * (D.power.base + D.power.load * l.util) * D.power.price / 60);
   }
+  snowMinute(G);
   satMinute(G);
   G.min++;
 }
@@ -87,7 +94,8 @@ function close(G) {
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
     date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
-    revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat
+    revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval
   });
   if (G.history.length > 400) G.history.shift();
 }
@@ -100,7 +108,7 @@ export function nextDate(G) {
 
 export function forecast(G) {
   const date = G.phase === 'closed' ? nextDate(G) : G.date;
-  return { date, n: expected(G, date) };
+  return { date, n: expected(G, date, demandExtra(G, date)) };
 }
 
 export function setPrice(G, k, v) {
@@ -113,7 +121,8 @@ export function nextDay(G) {
   if (G.phase !== 'closed') return false;
   const d = nextDate(G);
   overnight(G);
-  if (seasonOf(d) !== G.season) G.seasonShare = seasonShare(G.rep);
+  night(G, d);
+  if (seasonOf(d) !== G.season) { G.seasonShare = seasonShare(G.rep); newSeason(G); }
   G.date = d;
   G.season = seasonOf(d);
   G.day++;

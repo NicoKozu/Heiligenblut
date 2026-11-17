@@ -1,5 +1,6 @@
 import { D } from './data.js';
 import { running, pisteOpen } from './assets.js';
+import { wear } from './snow.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
@@ -94,7 +95,7 @@ export function step(G, t) {
   f.present += a;
   at.tal += a;
   for (const l of D.lifts) at[l.to] += shift(f.ride[l.id]);
-  for (const p of D.pistes) at[p.to] += shift(f.run[p.id]);
+  for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
   for (const n in f.hut) at[n] += shift(f.hut[n]);
   for (const l of G.lifts) if (!running(l) && f.queue[l.id] > 0) { at[LIFT[l.id].from] += f.queue[l.id]; f.queue[l.id] = 0; }
   for (const n in at) dispatch(G, f, n, at[n], t, d);

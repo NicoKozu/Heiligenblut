@@ -4,6 +4,8 @@ import { costToday, report, prev, forecast } from './sim.js';
 import { avgPrice, priceFactor } from './demand.js';
 import { status, repairQuote, fmtDur } from './assets.js';
 import { live, stars } from './satisfaction.js';
+import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
+import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
 
 const CSS = `
 #biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
@@ -102,7 +104,7 @@ const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
 const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
 const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const revLabel = k => D.tickets[k]?.label || k;
-const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn' };
+const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad' };
 const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
 const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
 const pName = id => D.pistes.find(p => p.id === id).name;
@@ -120,6 +122,19 @@ function parts(sat) {
     (sat.ded ? '<div class="biz-part"><span>Ereignis-Abzug</span><span></span><b class="biz-bad">−' + Math.round(sat.ded) + '</b></div>' : '');
 }
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
+const atone = a => a >= 4 ? 'biz-bad' : a >= 3 ? 'biz-warn' : 'biz-good';
+const stone = s => s >= 60 ? 'biz-good' : s >= 30 ? 'biz-warn' : 'biz-bad';
+const wx = d => wLabel(d.type).icon + ' ' + wLabel(d.type).label;
+const wline = d => wx(d) + ' · Tal ' + fmtT(d.tTal) + ' · Berg ' + fmtT(d.tBerg) + ' · Wind ' + d.wind + ' km/h' + (d.cm ? ' · Neuschnee ' + d.cm + ' cm' : '');
+function weatherTable(G) {
+  const w = G.weather;
+  if (!w) return '';
+  const t = w.today;
+  return '<table>' + tr('<b>Heute</b> ' + wx(t), 'Tal ' + fmtT(t.tTal) + ' · Berg ' + fmtT(t.tBerg) + ' · <span class="' + (stormy(t) ? 'biz-bad' : '') + '">' + t.wind + ' km/h</span>' + (t.cm ? ' · ' + t.cm + ' cm' : '')) +
+    w.ahead.map((d, i) => tr(fmtDate(d.date).slice(0, 9) + ' ' + wx(d.fc) + ' <span style="opacity:.55">' + Math.round(D.weather.acc[i] * 100) + ' %</span>', 'Tal ' + fmtT(d.fc.tTal) + ' · Berg ' + fmtT(d.fc.tBerg) + ' · ' + d.fc.wind + ' km/h' + (d.fc.cm ? ' · ~' + d.fc.cm + ' cm' : ''))).join('') +
+    tr('Lawinenwarnstufe', '<span class="' + atone(w.aval) + '">' + w.aval + '</span>' + (w.aval >= 4 ? ' – Piste ' + avalClose().join('/') + ' sperren!' : '')) +
+    tr('Ø Schneehöhe Pisten', '<span class="' + stone(avgSnow(G)) + '">' + Math.round(avgSnow(G)) + ' cm</span>') + '</table>';
+}
 
 export function createUI(h) {
   const style = document.createElement('style');
@@ -169,6 +184,7 @@ export function createUI(h) {
         : '<button class="satb" data-act="sat"><b>–</b><span>Zufriedenheit<br><em>noch kein Betriebstag</em></span></button>') +
       row('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) +
       '<div class="sep"></div>' +
+      (G.weather ? row(wx(G.weather.today), fmtT(G.weather.today.tTal) + ' / ' + fmtT(G.weather.today.tBerg)) + row('Wind Berg · Lawine', '<span class="' + (stormy(G.weather.today) ? 'biz-bad' : '') + '">' + G.weather.today.wind + ' km/h</span> · <span class="' + atone(G.weather.aval) + '">' + G.weather.aval + '</span>') + row('Ø Schneehöhe', Math.round(avgSnow(G)) + ' cm', stone(avgSnow(G))) + '<div class="sep"></div>' : '') +
       row('Phase', '<span class="biz-phase ' + G.phase + '">' + D.phaseLabels[G.phase] + '</span>') +
       row('Zeitfaktor', '×' + G.factor + (G.phase === 'open' ? '' : ' (steht)')) +
       '<div class="sep"></div>' +
@@ -187,13 +203,13 @@ export function createUI(h) {
       '<div class="sep"></div>' +
       D.pistes.map(p => {
         const o = G.pistes[p.id];
-        return '<div class="as"><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i><span>' + p.id + ' ' + p.name + '</span><b></b>' + sw('piste', p.id, o.open) + '</div>';
+        return '<div class="as"><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i><span>' + p.id + ' ' + p.name + '</span><b class="' + stone(o.snow) + '">' + Math.round(o.snow) + ' cm</b>' + sw('piste', p.id, o.open, o.aper) + '</div>';
       }).join('') +
       '<div class="keys">+/− Zeit · B Büro · Tab Panel</div>';
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -230,7 +246,7 @@ export function createUI(h) {
       '<p class="note">Verschleiß im Betrieb; je schlechter der Zustand, desto häufiger Störungen. Inspektion sperrt den Lift morgens 2 h. Geschlossene Lifte verursachen keine Stromkosten.</p>' +
       '<h2>Pisten</h2><table>' + D.pistes.map(p => {
         const o = G.pistes[p.id];
-        return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> ' + p.id + ' ' + p.name + ' <span style="opacity:.7">· ' + p.level + ' · ' + p.km.toLocaleString('de-DE') + ' km · Schnee ' + o.snow + ' cm</span></td><td>' + sw('piste', p.id, o.open) + '</td></tr>';
+        return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> ' + p.id + ' ' + p.name + ' <span style="opacity:.7">· ' + p.level + ' · ' + p.km.toLocaleString('de-DE') + ' km · Schnee ' + Math.round(o.snow) + ' cm' + (o.aper ? ' · <span class="biz-bad">aper</span>' : '') + '</span></td><td>' + sw('piste', p.id, o.open, o.aper) + '</td></tr>';
       }).join('') + '</table>' + logView(G, 12);
   }
 
@@ -243,15 +259,50 @@ export function createUI(h) {
       '<h2>Wirkung</h2><table>' +
       tr('Ø-Ticketpreis (nach Gästemix)', eur(avgPrice(G.prices))) +
       tr('Preisfaktor Nachfrage', '×' + priceFactor(G.prices).toFixed(2)) +
+      (x => tr('Wetter · Schnee ' + fmtDate(fc.date).slice(0, 9), '×' + x.weather.toFixed(2) + ' · ×' + x.snow.toFixed(2)))(demandExtra(G, fc.date)) +
       tr('Erwartete Gäste ' + fmtDate(fc.date), '<span class="fc">' + num(fc.n) + '</span>') + '</table>' +
       (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' % der Gäste fahren mit Saisonkarte (nächste Saison abhängig vom Ruf).</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
   }
 
-  const body = G => tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : null;
+  function snow(G) {
+    const t = nightTotals(G), g = t.groom;
+    return '<h2>Wetter</h2>' + weatherTable(G) +
+      '<h2>Nacht-Aufträge</h2><table>' + D.pistes.map(p => {
+        const o = G.pistes[p.id], q = gunPlan(G, p.id), lb = qLabel(o), sc = score(G, p.id);
+        const gun = q.n ? '<span class="price"><button data-act="gun:' + p.id + ':-' + D.snow.hStep + '">−</button><b style="min-width:44px;text-align:center">' + o.gun + ' h</b><button data-act="gun:' + p.id + ':' + D.snow.hStep + '">+</button></span>' +
+          '<span style="opacity:.7;font-size:12px">' + q.n + ' Kanonen' + (o.gun ? ' · ' + num(q.m3) + ' m³ · +' + dec(q.cm) + ' cm · ' + eur(q.cost) : '') + (q.cold ? '' : ' · <span class="biz-warn">zu warm (' + fmtT(nightTemp(G, p)) + ')</span>') + '</span>' : '<span style="opacity:.5;font-size:12px">keine Kanonen</span>';
+        return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> <b>' + p.id + ' ' + p.name + '</b><br><span style="opacity:.8;font-size:13px"><span class="' + stone(o.snow) + '">' + Math.round(o.snow) + ' cm</span> · ' + D.cover.qLabels[lb] + ' · Zustand <span class="' + tone(o.cond, 75, 50) + '">' + Math.round(o.cond) + ' %</span> · Qualität <span class="' + tone(sc, 70, 50) + '">' + Math.round(sc) + '</span>' + (o.aper ? ' · <span class="biz-bad">apert aus</span>' : '') + '</span></td>' +
+          '<td><div class="acts" style="align-items:center"><button class="btn' + (o.grm ? ' primary' : '') + '" data-act="grm:' + p.id + '">' + (o.grm ? (g.list.includes(p.id) ? 'präparieren ✓' : 'keine Kapazität') : 'nicht präparieren') + '</button>' + gun + '</div></td></tr>';
+      }).join('') + '</table>' +
+      '<h2>Bedarf heute Nacht</h2><table>' +
+      tr('Gerätestunden', dec(g.hours) + ' / ' + dec(g.cap) + ' h' + (g.want > g.cap + 1e-6 ? ' <span class="biz-warn">(Bedarf ' + dec(g.want) + ' h)</span>' : '')) +
+      tr('Pistengeräte · Fahrer', G.groom.machines + ' · ' + g.drivers + ' / ' + G.groom.drivers + ' im Einsatz') +
+      tr('Präparierung', eur(g.cost)) +
+      tr('Beschneiung', num(t.gun.m3) + ' m³ Schnee · ' + num(t.gun.water) + ' m³ Wasser · ' + num(t.gun.kwh) + ' kWh') +
+      tr('Kosten Beschneiung', eur(t.gun.cost)) + tr('Summe Nacht', eur(t.total), 'sum') + '</table>' +
+      '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h + Fahrer. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
+  }
+
+  function nightReport(G) {
+    const n = G.night;
+    if (!n || n.date !== G.date) return '';
+    const gr = D.pistes.filter(p => n.pistes[p.id]?.groomed).map(p => p.id), gun = D.pistes.filter(p => n.pistes[p.id]?.gun > 0);
+    return '<h2>Nachtbericht</h2><table>' +
+      tr('Neuschnee (Berg)', n.newCm ? n.newCm + ' cm' : '–') +
+      tr('Präpariert', gr.length ? 'Piste ' + gr.join(', ') + ' · ' + eur(n.groomCost) : '<span class="biz-warn">nichts</span>') +
+      tr('Beschneit', gun.length ? gun.map(p => p.id + ' +' + dec(n.pistes[p.id].gun) + ' cm').join(', ') + ' · ' + num(n.m3) + ' m³ · ' + eur(n.gunCost) : '–') +
+      (n.skipped.length ? tr('Beschneiung ausgefallen', '<span class="biz-warn">zu warm: ' + n.skipped.join(', ') + '</span>') : '') +
+      (n.closed.length ? tr('Ausgeapert, gesperrt', '<span class="biz-bad">Piste ' + n.closed.join(', ') + '</span>') : '') +
+      (n.opened.length ? tr('Wieder offen', '<span class="biz-good">Piste ' + n.opened.join(', ') + '</span>') : '') +
+      (G.lifts.some(l => l.wind) ? tr('Sturm', '<span class="biz-bad">' + G.lifts.filter(l => l.wind).map(l => l.name).join(', ') + ' geschlossen</span>') : '') +
+      '</table>';
+  }
+
+  const body = G => tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
-      (body(G) || '<h2>Wettervorschau</h2><p class="note">Noch kein Wetterdienst – Schnee und Wetter folgen.</p>' +
+      (body(G) || '<h2>Wetter</h2>' + weatherTable(G) + nightReport(G) +
       '<h2>Prognose</h2><table>' + tr('Erwartete Gäste heute', num(forecast(G).n)) + '</table>' + overview(G)) +
       '<div class="go"><button class="primary" data-act="start">Lifte öffnen / Tag starten ⏎</button></div>';
   }
@@ -266,7 +317,7 @@ export function createUI(h) {
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
-        '<h2>Morgen</h2><table>' + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + '</table>') +
+        '<h2>Morgen</h2><table>' + (G.weather?.ahead[0] ? tr('Wetter (Prognose)', wline(G.weather.ahead[0].fc)) : '') + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + tr('Nacht-Aufträge', eur(nightTotals(G).total) + ' · <button class="btn" data-tab="snow">Schnee planen</button>') + '</table>') +
       '<div class="go"><button class="primary" data-act="next">Nächster Tag ⏎</button></div>';
   }
 

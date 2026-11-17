@@ -2,9 +2,10 @@ import * as S from './sim.js';
 import { createUI } from './ui.js';
 import { D } from './data.js';
 import * as A from './assets.js';
+import * as N from './snow.js';
 import { consume } from '../input.js';
 
-export function createBiz({ lift, player, crowd, pistes }) {
+export function createBiz({ lift, player, crowd, pistes, env }) {
   const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
@@ -30,6 +31,8 @@ export function createBiz({ lift, player, crowd, pistes }) {
     else if (a.startsWith('repair:')) { const [, id, x] = a.split(':'); if (A.repair(G, id, x === 'x')) { ui.drop(id); save(); note('Reparatur beauftragt', 2); } }
     else if (a.startsWith('insp:')) { if (A.inspect(G, a.slice(5))) save(); }
     else if (a.startsWith('drop:')) ui.drop(a.slice(5));
+    else if (a.startsWith('grm:')) { if (N.setGroom(G, a.slice(4))) save(); }
+    else if (a.startsWith('gun:')) { const [, id, d] = a.split(':'); if (N.setGun(G, id, Number(d))) save(); }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
     ui.render(G);
   }
@@ -40,7 +43,7 @@ export function createBiz({ lift, player, crowd, pistes }) {
     player.spawnAt(v.x, v.z, v.heading);
   }
 
-  const why = { closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion' };
+  const why = { closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion', wind: 'Sturm' };
   function sync() {
     lift.shut.clear();
     for (const s of lift.sections) {
@@ -50,7 +53,15 @@ export function createBiz({ lift, player, crowd, pistes }) {
       if (st === 'run') lift.setOpen(s.id, true);
       else lift.setOpen(s.id, false, why[st]);
     }
-    for (const p of pistes?.list || []) pistes.setOpen(p.id, !active || !G.pistes[p.id] || G.pistes[p.id].open);
+    for (const p of pistes?.list || []) {
+      const o = active && G.pistes[p.id];
+      pistes.setOpen(p.id, !o || o.open);
+      if (!pistes.setSurface) continue;
+      if (!o) { pistes.setSurface(p.id, 1, 0, 0); continue; }
+      const lb = N.label(o), C = D.cover;
+      pistes.setSurface(p.id, o.groomed && lb !== 'pulvrig' ? Math.min(1, Math.max(0, (o.cond - 40) / 45)) : 0, lb === 'pulvrig' ? 0 : Math.min(1, Math.max(0, (88 - o.cond) / 50)), Math.min(1, Math.max(0, (C.thin - o.snow) / (C.thin - C.minOpen + 6))));
+    }
+    env?.set(active ? G.weather?.today : null);
   }
 
   function begin(fresh) {

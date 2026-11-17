@@ -16,6 +16,7 @@ import { createAudio } from './audio.js';
 import { loadAssets } from './assets.js';
 import { createProps } from './props.js';
 import { createCrowd } from './crowd.js';
+import { createWeatherFx } from './weatherfx.js';
 import { get } from './config.js';
 
 const menu = createMenu();
@@ -98,6 +99,8 @@ async function start() {
   pano.bake(renderer);
   pano.shade(scene);
   const peaks = createPeakLabels(pano);
+  const wfx = createWeatherFx(world, pano, renderer);
+  scene.add(wfx.object);
   const audio = createAudio();
   const fps = document.getElementById('fps');
   let pending = null, snap = false, fT = 0, fN = 0, slow = 0, good = 0, cap = maxRatio, biz = null;
@@ -113,7 +116,7 @@ async function start() {
     player.setMode(c.mode);
     if (c.game === 'free') biz?.end();
     else {
-      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes });
+      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx });
       biz.begin(c.game === 'new');
     }
     if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
@@ -185,6 +188,7 @@ async function start() {
     props.update(cam.camera);
     audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
     followSun(player.state.pos);
+    wfx.update(dt, cam.camera, renderer.domElement.height);
     pano.update(cam.camera, dt);
     pano.render(renderer, scene, cam.camera);
     peaks.update(cam.camera);
