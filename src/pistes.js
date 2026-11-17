@@ -108,7 +108,7 @@ export async function loadPistes(terrain) {
     const w = 1 - THREE.MathUtils.smoothstep(q.d, hw, hw + FALL);
     if (w <= 0) return null;
     const c = (1 - THREE.MathUtils.smoothstep(q.d, hw - 6, hw + 12)) * 0.9;
-    return [y + (q.y - y) * w, c, q.lat];
+    return [y + (q.y - y) * w, c, q.lat, list.indexOf(q.p) + 1];
   });
 
   const group = new THREE.Group();
@@ -340,5 +340,6 @@ export async function loadPistes(terrain) {
     return { x: ax, z: az, heading: Math.atan2(bx - ax, bz - az), piste: p };
   }
 
-  return { group, list, at, collide, startOf, nearest, setOpen };
+  const setSurface = (id, cord, worn, aper) => terrain.surface(list.findIndex(p => p.id === id) + 1, cord, worn, aper);
+  return { group, list, at, collide, startOf, nearest, setOpen, setSurface };
 }

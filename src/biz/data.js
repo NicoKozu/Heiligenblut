@@ -6,10 +6,11 @@ export const D = {
   time: { open: 510, close: 990, gameSecPerSec: 8, factors: [1, 2, 5, 10, 20], maxSteps: 40, warn: 15 },
   lifts: [
     { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, ride: 9, from: 'tal', to: 'rossbach' },
-    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, ride: 8, from: 'rossbach', to: 'schareck' },
-    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, ride: 6, from: 'fallbichl', to: 'schareck' }
+    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, ride: 8, from: 'rossbach', to: 'schareck', exposed: true },
+    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true }
   ],
   nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl' },
+  nodeH: { tal: 1309, rossbach: 1750, schareck: 2556, fallbichl: 2219 },
   pistes: [
     { id: '4', name: 'Schareckabfahrt', level: 'mittel', km: 2.33, from: 'schareck', to: 'rossbach' },
     { id: '5', name: 'Kärntnerabfahrt', level: 'leicht', km: 2.86, from: 'schareck', to: 'rossbach' },
@@ -84,7 +85,42 @@ export const D = {
   seasonEnd: { month: 4, day: 6 },
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
   groom: { price: 190000, perHour: 145, hoursPerKm: 1.3, start: 4 },
-  snow: { perM3: 4.2, price: 22000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 30, pistes: ['10', '4', '5'] },
+  snow: { perM3: 4.2, price: 22000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 30, pistes: ['10', '4', '5'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
+  groomNight: { shift: 8, drivers: 4 },
+  cover: {
+    natural: [25, 0.04], cannonStart: 30, minOpen: 12, thin: 30, melt: 1.6, meltBy: { sun: 1.3, foehn: 1.6 }, rainAt: 1.5, rainMelt: 0.35,
+    wear: 0.012, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45,
+    groomed: 92, groomedHard: 82, powder: 62, newSnow: 5, refreeze: 0, settle: 0.5, compact: 0.012,
+    q: { pulvrig: 1.0, griffig: 1.0, sulzig: 0.82, eisig: 0.68, abgefahren: 0.85 },
+    qLabels: { pulvrig: 'pulvrig', griffig: 'griffig', eisig: 'eisig', sulzig: 'sulzig', abgefahren: 'abgefahren' },
+    depth: [10, 35, 0.45]
+  },
+  weather: {
+    types: {
+      sun: { label: 'Sonne', icon: '☀️', f: 1.15, dT: 1, wind: [5, 25], snow: [0, 0, 0] },
+      cloud: { label: 'bewölkt', icon: '☁️', f: 1.0, dT: 0, wind: [10, 35], snow: [0.3, 1, 4] },
+      snow: { label: 'Schneefall', icon: '🌨️', f: 0.8, dT: -2, wind: [10, 40], snow: [1, 5, 25] },
+      storm: { label: 'Sturm', icon: '🌪️', f: 0.4, dT: -3, wind: [72, 110], snow: [1, 10, 35] },
+      fog: { label: 'Nebel', icon: '🌫️', f: 0.85, dT: 0, wind: [0, 15], snow: [0, 0, 0] },
+      foehn: { label: 'Föhn/warm', icon: '🌡️', f: 1.05, dT: 6, wind: [30, 76], snow: [0, 0, 0] }
+    },
+    trans: {
+      sun: { sun: 0.47, cloud: 0.27, snow: 0.1, storm: 0.02, fog: 0.09, foehn: 0.05 },
+      cloud: { sun: 0.3, cloud: 0.3, snow: 0.25, storm: 0.04, fog: 0.07, foehn: 0.04 },
+      snow: { sun: 0.2, cloud: 0.3, snow: 0.35, storm: 0.08, fog: 0.07, foehn: 0 },
+      storm: { sun: 0.15, cloud: 0.3, snow: 0.4, storm: 0.1, fog: 0.05, foehn: 0 },
+      fog: { sun: 0.35, cloud: 0.3, snow: 0.15, storm: 0.02, fog: 0.18, foehn: 0 },
+      foehn: { sun: 0.3, cloud: 0.25, snow: 0.2, storm: 0.1, fog: 0, foehn: 0.15 }
+    },
+    start: 'sun',
+    valley: [[12, 1, -3], [12, 15, -4], [1, 15, -5], [2, 15, -3], [3, 15, 3], [4, 15, 6]],
+    lapse: 0.6, ref: 1309, top: 2556, anom: [0.7, 2.4], noise: 3,
+    acc: [0.9, 0.75, 0.6], tErr: [1, 2, 3.5],
+    stormWind: 70,
+    lowSnow: 0.45
+  },
+  snowFactor: { steps: [[20, 0.3], [40, 0.7], [60, 0.9]], top: 1.05, powder: 15, powderAdd: 0.2 },
+  aval: { decay: 0.6, wind: 40, windAdd: 12, levels: [10, 25, 45, 70], close: ['1', '12'], risk: 0.0006 },
   side: {
     gastro: { perGuest: 19, margin: 0.38 },
     rental: { share: 0.18, price: 36 },
@@ -148,7 +184,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen' },
-  liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung' },
+  liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

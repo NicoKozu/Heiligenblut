@@ -7,6 +7,7 @@ const EARTH = 0.87 / (2 * 6371000);
 const CLOUD_Y = 5400;
 
 const NOISE = `
+uniform float pCover;
 float pHash(vec2 p) { p = fract(mod(p, 512.0) * vec2(123.34, 456.21) );  p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float pNoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -19,13 +20,13 @@ float pFbm(vec2 p) {
   return s;
 }
 float cloudD(vec2 xz, float t) {
-  return smoothstep(0.5, 0.76, pFbm(xz / 7000.0 + vec2(t * 0.0016, t * 0.0006)));
+  return smoothstep(0.5 - 0.45 * pCover, 0.76 - 0.3 * pCover, pFbm(xz / 7000.0 + vec2(t * 0.0016, t * 0.0006)));
 }
 float cloudShade(vec3 w, vec3 sd, float t) {
   vec2 q = (w.xz + sd.xz / sd.y * (${CLOUD_Y.toFixed(1)} - w.y)) / 7000.0 + vec2(t * 0.0016, t * 0.0006);
   float s = 0.0, a = 0.5;
   for (int i = 0; i < 3; i++) { s += a * pNoise(q); q = q * 2.03 + vec2(17.1, 9.2); a *= 0.5; }
-  return 1.0 - 0.72 * smoothstep(0.43, 0.68, s);
+  return 1.0 - 0.72 * smoothstep(0.43 - 0.42 * pCover, 0.68 - 0.3 * pCover, s);
 }
 `;
 
@@ -219,7 +220,7 @@ export async function loadPanorama(terrain, world) {
   const uniforms = {
     visM: { value: null }, visF: { value: null }, satM: { value: satM }, satF: { value: satF },
     midHalf: { value: mid.half }, farHalf: { value: far.half },
-    haze: { value: HAZE }, time,
+    haze: { value: HAZE }, time, pCover: { value: 0 },
     earth: { value: EARTH },
     sunDir: { value: sunDir },
     sunCol: { value: lin(world.sun.color, world.sun.intensity) },
@@ -288,7 +289,7 @@ export async function loadPanorama(terrain, world) {
     (x, z, c) => x >= -mid.half && x + c <= mid.half && z >= -mid.half && z + c <= mid.half, 56));
 
   const clouds = new THREE.Mesh(new THREE.PlaneGeometry(130000, 130000).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
-    uniforms: { time, haze: uniforms.haze, sunDir: uniforms.sunDir, hazeCol: uniforms.hazeCol, sunHaze: uniforms.sunHaze },
+    uniforms: { time, haze: uniforms.haze, pCover: uniforms.pCover, sunDir: uniforms.sunDir, hazeCol: uniforms.hazeCol, sunHaze: uniforms.sunHaze },
     vertexShader: CLOUD_VERT, fragmentShader: CLOUD_FRAG,
     transparent: true, depthWrite: false, side: THREE.DoubleSide
   }));
@@ -353,6 +354,7 @@ export async function loadPanorama(terrain, world) {
           s.uniforms.pvisTex = nearVis;
           s.uniforms.pvisR = nearRect;
           s.uniforms.pvisTime = time;
+          s.uniforms.pCover = uniforms.pCover;
           s.uniforms.pvisSun = uniforms.sunDir;
           s.vertexShader = 'varying vec3 vPvW;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vec4 pvw = vec4(transformed, 1.0);
@@ -410,5 +412,5 @@ ${NOISE}`)
     renderer.render(nearScene, cam);
   }
 
-  return { scene, camera, bake, shade, update, render, heightAny, peaks, visibleFrom, earth: EARTH };
+  return { scene, camera, bake, shade, update, render, heightAny, peaks, visibleFrom, earth: EARTH, uniforms };
 }

@@ -4,6 +4,7 @@ import { TERRAIN_URL, get, image, texture } from './config.js';
 const SUB = 2;
 const CHUNK = 64;
 const UVS = 8;
+const SURF = 16;
 const SAT_URL = 'public/terrain/';
 
 function snowBumpTexture() {
@@ -44,16 +45,18 @@ float tnN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(tnH(i), tnH(i + vec2(1, 0)), f.x), mix(tnH(i + vec2(0, 1)), tnH(i + vec2(1, 1)), f.x), f.y); }
 vec3 tnH3(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }`;
 
-function snowMaterial(bump, sat, forest, rect) {
+function snowMaterial(bump, sat, forest, rect, surf) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0, bumpMap: bump, bumpScale: 0.05 });
   mat.customProgramCacheKey = () => 'snow';
   mat.onBeforeCompile = s => {
     s.uniforms.satMap = { value: sat };
     s.uniforms.forMap = { value: forest };
     s.uniforms.satR = { value: rect };
-    s.vertexShader = 'attribute vec2 pist;\nvarying vec2 vPist;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+    s.uniforms.pSurf = { value: surf };
+    s.vertexShader = 'attribute vec3 pist;\nuniform vec3 pSurf[' + SURF + '];\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vTw = (modelMatrix * vec4(transformed, 1.0)).xyz;
-  vPist = pist;`);
+  vPist = pist.xy;
+  vSurf = pSurf[int(pist.z + 0.5)];`);
     const bumpPars = THREE.ShaderChunk.bumpmap_pars_fragment.replace('vec2 dHdxy_fwd()', 'vec2 dHdxy_tex()') + `
   vec2 dHdxy_fwd() {
     float pm = clamp(vPist.x, 0.0, 1.0);
@@ -63,16 +66,18 @@ function snowMaterial(bump, sat, forest, rect) {
     vec2 u2 = uv * 0.093 + 0.37;
     float h2 = texture2D(bumpMap, u2).x;
     vec2 g2 = vec2(texture2D(bumpMap, u2 + dx * 0.093).x - h2, texture2D(bumpMap, u2 + dy * 0.093).x - h2);
-    vec2 d = bumpScale * (g * (1.0 - 0.7 * pm) + g2 * 6.0 * (1.0 - pm));
+    float pw = pm * vSurf.y;
+    vec2 d = bumpScale * (g * (1.0 - 0.7 * pm + 1.6 * pw) + g2 * 6.0 * (1.0 - pm + 0.7 * pw));
     float k = 6.2832 / 0.3;
     float lx = dFdx(vPist.y), ly = dFdy(vPist.y);
     float fw = (abs(lx) + abs(ly)) * k;
-    float c = cos(vPist.y * k) * k * 0.018 * pm * (1.0 - smoothstep(0.6, 2.2, fw));
+    float c = cos(vPist.y * k) * k * 0.018 * pm * vSurf.x * (1.0 - smoothstep(0.6, 2.2, fw));
     return d + c * vec2(lx, ly);
   }`;
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', `#include <common>
 varying vec2 vPist;
+varying vec3 vSurf;
 varying vec3 vTw;
 uniform sampler2D satMap, forMap;
 uniform vec4 satR;
@@ -80,6 +85,7 @@ ${NOISE}`)
       .replace('#include <bumpmap_pars_fragment>', bumpPars)
       .replace('#include <color_fragment>', `#include <color_fragment>
   float tPm = clamp(vPist.x, 0.0, 1.0);
+  float tCo = tPm * vSurf.x;
   vec2 tUv = (vTw.xz - satR.xy) / satR.zw;
   vec3 tSat = texture2D(satMap, tUv).rgb;
   float tCd = distance(vTw, cameraPosition);
@@ -94,12 +100,17 @@ ${NOISE}`)
   float tL = vPist.y / 4.4, tFw = fwidth(tL);
   float tLane = abs(fract(tL) - 0.5) * 2.0;
   float tAA = 1.0 - smoothstep(0.15, 0.5, tFw);
-  diffuseColor.rgb *= 1.0 - tPm * tAA * (smoothstep(0.88 - tFw, 1.0, tLane) * 0.07 + (tnH(vec2(floor(tL), 3.0)) - 0.5) * 0.035);
+  diffuseColor.rgb *= 1.0 - tCo * tAA * (smoothstep(0.88 - tFw, 1.0, tLane) * 0.07 + (tnH(vec2(floor(tL), 3.0)) - 0.5) * 0.035);
   float tR = 1.0 - smoothstep(0.6, 2.2, fwidth(vPist.y) * 20.94);
-  diffuseColor.rgb *= 1.0 - tPm * tR * 0.05 * (0.5 + 0.5 * sin(vPist.y * 20.94));`)
+  diffuseColor.rgb *= 1.0 - tCo * tR * 0.05 * (0.5 + 0.5 * sin(vPist.y * 20.94));
+  float tWo = tPm * vSurf.y;
+  diffuseColor.rgb *= 1.0 - tWo * (0.05 + 0.07 * tnN(vTw.xz * vec2(0.9, 0.35)));
+  float tAp = tPm * vSurf.z * smoothstep(0.35, 0.65, tnN(vTw.xz * 0.06) * 0.6 + tnN(vTw.xz * 0.4) * 0.4 + vSurf.z * 0.5 - 0.25);
+  diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.23, 0.2, 0.13), vec3(0.3, 0.32, 0.18), tnN(vTw.xz * 0.7)), tAp);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   roughnessFactor = mix(roughnessFactor, 0.72, tPm * tSnow);
-  roughnessFactor = mix(0.95, roughnessFactor, tSnow);`)
+  roughnessFactor = mix(0.95, roughnessFactor, tSnow);
+  roughnessFactor = mix(roughnessFactor, 0.97, tAp);`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
 #if NUM_DIR_LIGHTS > 0
   {
@@ -154,7 +165,7 @@ export async function loadTerrain() {
   const C = cell / SUB;
   const N = new Float32Array(NX * NZ * 3);
   const COL = new Float32Array(NX * NZ * 3);
-  const PIST = new Float32Array(NX * NZ * 2);
+  const PIST = new Float32Array(NX * NZ * 3);
 
   function calcNormals() {
     for (let j = 0; j < NZ; j++) {
@@ -226,7 +237,8 @@ export async function loadTerrain() {
   }
 
   const bump = snowBumpTexture();
-  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth));
+  const surf = Array.from({ length: SURF }, () => new THREE.Vector3(1, 0, 0));
+  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth), surf);
   const mesh = new THREE.Group();
   const chunks = [];
   for (let j0 = 0; j0 < NZ - 1; j0 += CHUNK) {
@@ -248,7 +260,7 @@ export async function loadTerrain() {
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(w * d * 3), 3));
       geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(w * d * 3), 3));
-      geo.setAttribute('pist', new THREE.BufferAttribute(new Float32Array(w * d * 2), 2));
+      geo.setAttribute('pist', new THREE.BufferAttribute(new Float32Array(w * d * 3), 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
       const m = new THREE.Mesh(geo, mat);
       m.receiveShadow = true;
@@ -267,7 +279,7 @@ export async function loadTerrain() {
         p[v * 3 + 1] = H[k];
         n.set(N.subarray(k * 3, k * 3 + 3), v * 3);
         c.set(COL.subarray(k * 3, k * 3 + 3), v * 3);
-        s[v * 2] = PIST[k * 2]; s[v * 2 + 1] = PIST[k * 2 + 1];
+        s.set(PIST.subarray(k * 3, k * 3 + 3), v * 3);
       }
       for (const a of ['position', 'normal', 'color', 'pist']) geo.attributes[a].needsUpdate = true;
       geo.computeBoundingSphere();
@@ -289,7 +301,7 @@ export async function loadTerrain() {
       COL[k * 3] += (groomed.r - COL[k * 3]) * t;
       COL[k * 3 + 1] += (groomed.g - COL[k * 3 + 1]) * t;
       COL[k * 3 + 2] += (groomed.b - COL[k * 3 + 2]) * t;
-      if (r.length > 2 && r[1] / 0.9 >= PIST[k * 2]) { PIST[k * 2] = r[1] / 0.9; PIST[k * 2 + 1] = r[2]; }
+      if (r.length > 2 && r[1] / 0.9 >= PIST[k * 3]) { PIST[k * 3] = r[1] / 0.9; PIST[k * 3 + 1] = r[2]; PIST[k * 3 + 2] = r[3] || 0; }
     }
     if (!any) return;
     calcNormals();
@@ -297,5 +309,6 @@ export async function loadTerrain() {
   }
 
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
-  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta };
+  const surface = (i, cord, worn, aper) => { if (i > 0 && i < SURF) surf[i].set(cord, worn, aper); };
+  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta, surface };
 }

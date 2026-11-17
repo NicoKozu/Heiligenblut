@@ -2,6 +2,7 @@ import { D } from './data.js';
 import { int, next as rand } from './rng.js';
 import { running } from './assets.js';
 import { openPistes, offerShare, priceEq } from './demand.js';
+import { score } from './snow.js';
 
 const S = D.sat;
 const K = Object.keys(S.w);
@@ -29,7 +30,7 @@ export function instant(G) {
   return {
     wait: q >= 1 ? qs / q : 100,
     offer: share * 100,
-    quality: (q => q.reduce((a, p) => a + p.km * (G.pistes[p.id].cond ?? 0), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : D.pistes),
+    quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : D.pistes),
     price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), 0, 100),
     crowd: lin(present / Math.max(km, 0.5), S.crowd[0], S.crowd[1]),
     service: S.service

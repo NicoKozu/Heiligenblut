@@ -21,12 +21,13 @@ export function log(G, text, lvl = 'info') {
   if (G.log.length > D.logMax) G.log.shift();
 }
 
-export const running = l => l.open && !l.broken && !(l.insp > 0);
+export const running = l => l.open && !l.broken && !(l.insp > 0) && !l.wind;
 export const pisteOpen = (G, id) => G.pistes?.[id]?.open !== false;
 
 export function status(l) {
   if (l.broken) return l.repairLeft > 0 ? 'repair' : 'fault';
   if (l.insp > 0) return 'insp';
+  if (l.wind) return 'wind';
   return l.open ? 'run' : 'closed';
 }
 
@@ -37,6 +38,7 @@ export function initAssets(G) {
     l.repairLeft = l.repairLeft || 0;
     l.insp = l.insp || 0;
     l.inspPlan = !!l.inspPlan;
+    l.wind = !!l.wind;
   }
   const P = G.pistes || {};
   G.pistes = {};
@@ -143,7 +145,7 @@ export function inspect(G, id) {
 
 export function setOpen(G, kind, id, open) {
   const o = kind === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id];
-  if (!o || o.open === open) return false;
+  if (!o || o.open === open || (open && kind === 'piste' && o.aper)) return false;
   if (!open && !(kind === 'lift' && (o.broken || o.insp > 0))) hit(G, kind === 'lift' ? 'fault' : 'pisteClose');
   o.open = open;
   const name = kind === 'lift' ? o.name : 'Piste ' + id + ' ' + D.pistes.find(p => p.id === id).name;
