@@ -273,7 +273,7 @@ export function createUI(h) {
   function satReport(G, r) {
     const s = r.sat;
     if (!s) return '';
-    const p = G.history[G.history.length - 2], dr = p ? r.rep - p.rep : 0;
+    const dr = r.rep - (s.rep0 ?? r.rep);
     return '<h2>Zufriedenheit</h2><div class="satbig">' + face(s.z, 44) + '<b class="' + ztone(s.z) + '">' + Math.round(s.z) + '</b><div><span class="stars">' + starStr(stars(s.z)) + '</span> ' + dec(stars(s.z)) + ' / 5<br><span style="opacity:.75">Ruf ' + dec(r.rep) + ' (' + (dr >= 0 ? '+' : '−') + dec(Math.abs(dr)) + ')</span></div></div>' +
       parts(s) +
       (s.quotes?.length ? '<h2>Gästestimmen</h2>' + s.quotes.map(q => '<div class="voice">„' + q.text + '“<small>' + q.who + ' · <span class="stars">' + starStr(q.stars) + '</span></small></div>').join('') : '') +
@@ -306,6 +306,8 @@ export function createUI(h) {
     c.beginPath();
     H.forEach((e, i) => i ? c.lineTo(X(i), Y(e.rep)) : c.moveTo(X(i), Y(e.rep)));
     c.stroke();
+    c.fillStyle = '#5aa2ff';
+    for (const [i, e] of H.entries()) { c.beginPath(); c.arc(X(i), Y(e.rep), 2.5, 0, 7); c.fill(); }
     c.textAlign = 'left'; c.fillStyle = '#5aa2ff'; c.fillText('Ruf', L + 4, T + 10);
     c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText('● Zufriedenheit', L + 34, T + 10);
   }

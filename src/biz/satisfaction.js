@@ -116,9 +116,10 @@ export function endDay(G) {
   const parts = dayParts(G), ded = deduction(G);
   const z = total(G, parts), lost = G.today.lost || 0;
   const quotes = voices(G, parts, z);
+  const rep0 = G.rep;
   G.rep = clamp((1 - S.rep) * G.rep + S.rep * z, 0, 100);
   G.sat = { z, parts, ded, lost, date: G.today.date };
-  return { z, parts, ded, lost, hits: { ...(G.today.hits || {}) }, quotes };
+  return { z, parts, ded, lost, rep0, hits: { ...(G.today.hits || {}) }, quotes };
 }
 
 export const seasonShare = rep => clamp(D.flow.seasonShare + S.season.k * (rep - S.season.ref), S.season.clamp[0], S.season.clamp[1]);
