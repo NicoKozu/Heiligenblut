@@ -101,6 +101,53 @@ export const D = {
     garage: { label: 'Parkhaus', price: 900000 }
   },
   balance: { skierDays: [90000, 130000], revenue: [5e6, 7e6], profit: [4e5, 1.2e6], badRep: 35, sat: [60, 80] },
+  sat: {
+    w: { wait: 0.25, offer: 0.2, quality: 0.2, price: 0.15, crowd: 0.1, service: 0.1 },
+    labels: { wait: 'Wartezeit', offer: 'Pistenangebot', quality: 'Pistenqualität', price: 'Preis-Leistung', crowd: 'Gedränge', service: 'Service' },
+    wait: [3, 30],
+    crowd: [60, 160],
+    price: { ref: 62, base: 0.6, offer: 0.4, atFair: 100, perEur: 3 },
+    service: 70,
+    worst: 0.3,
+    lostW: 0.6,
+    ded: { rescue: 8, fault: 3, pisteClose: 2, accident: 5 },
+    dedLabels: { rescue: 'Bergung', fault: 'Liftausfall im Betrieb', pisteClose: 'Pistensperre im Betrieb', accident: 'Unfall' },
+    dedMax: 30,
+    rep: 0.1,
+    liveTau: 20,
+    word: { ref: 65, k: 0.6, clamp: [0.8, 1.1] },
+    season: { ref: 50, k: 0.003, clamp: [0.03, 0.15] },
+    quotes: { n: [3, 5], good: 65, chart: 14 },
+    who: ['Familie aus Wien', 'Carverin aus München', 'Stammgast aus Lienz', 'Skischulkind', 'Pärchen aus Utrecht', 'Snowboarder aus Graz', 'Tourengeher aus Salzburg', 'Oma Hilde, 71', 'Gruppe aus Prag', 'Rennläufer aus Kärnten', 'Familie aus Hamburg', 'Einheimischer'],
+    voices: {
+      wait: {
+        bad: ['{min} Minuten Anstehen am {lift} – nie wieder!', 'Mehr in der Schlange gestanden als gefahren.', 'Am {lift} braucht man Geduld wie ein Mönch.'],
+        good: ['Kaum gewartet, eine Abfahrt nach der anderen!', 'Am {lift} direkt in die Gondel – herrlich.', 'Null Anstehen, so muss das sein.']
+      },
+      offer: {
+        bad: ['Die Hälfte der Pisten zu – wofür zahle ich eigentlich?', 'Kaum etwas offen, nach zwei Stunden war alles gefahren.', 'Gesperrt, gesperrt, gesperrt …'],
+        good: ['Alles offen, von der {piste} bis ins Tal!', 'Riesige Auswahl, jede Abfahrt anders.', 'Das ganze Gebiet offen – Traumtag.']
+      },
+      quality: {
+        bad: ['Buckelpiste und Eisplatten auf der {piste}.', 'Die Pisten waren schon um zehn zerfahren.', 'Steinkontakt auf der {piste} – meine Kanten!'],
+        good: ['Traumhaft präpariert!', 'Die {piste} wie Samt, perfekter Cord.', 'Griffiger Schnee bis zum Nachmittag.']
+      },
+      price: {
+        bad: ['{price} € für die Tageskarte? Frechheit.', 'Viel zu teuer für das, was geboten wird.', 'Nächstes Jahr fahren wir woanders hin – günstiger.'],
+        good: ['Faire Preise, da kommen wir gern wieder.', 'Für {price} € so ein Gebiet – top!', 'Preis-Leistung stimmt hier.']
+      },
+      crowd: {
+        bad: ['Auf der {piste} wie auf der Autobahn.', 'Viel zu voll, ständig Beinahe-Zusammenstöße.', 'Überall Gedränge, kein entspanntes Fahren.'],
+        good: ['Die Pisten fast für uns allein!', 'Herrlich leer, freie Fahrt.', 'Viel Platz zum Carven.']
+      },
+      service: {
+        bad: ['Unfreundlich an der Kassa.', 'Niemand wusste Bescheid, keine Infos.', 'Service ausbaufähig.'],
+        good: ['Super freundliches Personal!', 'Liftler mit Schmäh – sympathisch.', 'Alles bestens organisiert.']
+      },
+      lost: { bad: ['Ticket gekauft, kein Lift fährt – Geld zurück!', 'Zwei Stunden an der Talstation, dann heimgefahren.', 'Lift zu, keine Info, Tag verloren.'] },
+      rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
+    }
+  },
   costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }

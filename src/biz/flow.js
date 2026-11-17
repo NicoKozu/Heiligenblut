@@ -30,6 +30,7 @@ export function newFlow(full, half) {
     run: Object.fromEntries(D.pistes.map(p => [p.id, zeros(runMinutes(p))])),
     hut: Object.fromEntries(F.lunch.nodes.map(n => [n, zeros(F.lunch.dur)])),
     wait: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
+    board: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     present: 0, lunched: 0, avgWait: 0
   };
 }
@@ -41,7 +42,7 @@ function shift(a) {
 }
 
 function arrivals(G, f, t) {
-  const T = G.today, s = F.seasonShare, m = D.mix;
+  const T = G.today, s = G.seasonShare ?? F.seasonShare, m = D.mix;
   const cf = bell(F.arrive, t + 1), ch = bell(F.half, t + 1);
   const A = f.plan.full * (cf - f.done.full), H = f.plan.half * (ch - f.done.half);
   f.done.full = cf;
@@ -76,7 +77,7 @@ function dispatch(G, f, node, X, t, d) {
     if (p.from !== node || !pisteOpen(G, p.id)) continue;
     opts.push({ p, w: levelWeight(p.level) * (1 + 2 * d) });
   }
-  if (!opts.length) { f.present -= X; return; }
+  if (!opts.length) { f.present -= X; G.today.lost = (G.today.lost || 0) + X; return; }
   const W = opts.reduce((a, o) => a + o.w, 0);
   for (const o of opts) {
     const n = X * o.w / W;
@@ -108,6 +109,7 @@ export function step(G, t) {
     l.util = c ? b / c : 0;
     const w = on ? f.queue[l.id] / c : 0;
     f.wait[l.id] = w;
+    f.board[l.id] = b;
     T.rides[l.id] = (T.rides[l.id] || 0) + b;
     T.peak[l.id] = Math.max(T.peak[l.id] || 0, w);
     ws += w * b;
@@ -124,6 +126,7 @@ export function endFlow(G) {
   for (const k in f.queue) f.queue[k] = 0;
   for (const o of [f.ride, f.run, f.hut]) for (const k in o) o[k].fill(0);
   for (const k in f.wait) f.wait[k] = 0;
+  for (const k in f.board || {}) f.board[k] = 0;
   for (const l of G.lifts) l.util = 0;
   f.present = 0;
   f.avgWait = 0;

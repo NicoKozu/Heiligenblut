@@ -1,5 +1,6 @@
 import { D } from './data.js';
 import { int, next as rand } from './rng.js';
+import { hit } from './satisfaction.js';
 
 const F = D.fault;
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -58,6 +59,7 @@ function breakLift(G, l, ev) {
   l.broken = { type: t.id, label: t.label, min: int(G, t.min[0], t.min[1]), cost: Math.round(int(G, t.cost[0], t.cost[1]) / 100) * 100, gain: t.gain };
   l.repairLeft = 0;
   G.today.faults = (G.today.faults || 0) + 1;
+  hit(G, 'fault');
   log(G, 'Störung ' + l.name + ' (' + t.label + ')', 'bad');
   const f = G.flow, r = f && f.ride[l.id];
   const n = r ? sum(r) : 0;
@@ -65,6 +67,7 @@ function breakLift(G, l, ev) {
     r.fill(0);
     f.queue[l.id] += n;
     G.today.rescued = (G.today.rescued || 0) + n;
+    hit(G, 'rescue');
     log(G, 'Bergung ' + l.name + ': ' + Math.round(n) + ' Gäste aus Kabinen', 'bad');
   }
   ev.push({ t: 'fault', id: l.id });
@@ -141,6 +144,7 @@ export function inspect(G, id) {
 export function setOpen(G, kind, id, open) {
   const o = kind === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id];
   if (!o || o.open === open) return false;
+  if (!open && !(kind === 'lift' && (o.broken || o.insp > 0))) hit(G, kind === 'lift' ? 'fault' : 'pisteClose');
   o.open = open;
   const name = kind === 'lift' ? o.name : 'Piste ' + id + ' ' + D.pistes.find(p => p.id === id).name;
   log(G, name + (open ? ' geöffnet' : (kind === 'lift' ? ' geschlossen' : ' gesperrt')));
