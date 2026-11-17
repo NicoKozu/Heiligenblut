@@ -465,5 +465,30 @@ export function createCrowd(terrain, pistes, lift, assets) {
     }
   }
 
-  return { group, update, collide, setDensity, setQueue, count: members.length };
+  function link(sec) {
+    if (sec.tunnel || sec.na != null) return;
+    sec.na = addNode(...sec.a);
+    sec.nb = addNode(...sec.b);
+    nodes[sec.na].lifts.push(sec);
+    for (const p of pistes.list) {
+      if (runs.some(r => r.p === p)) continue;
+      const a = nodeAt(...p.pts[0], 220), b = nodeAt(...p.pts[p.pts.length - 1], 220);
+      if (a < 0 || b < 0 || a === b) continue;
+      const r = { p, a, b, i0: 0 };
+      runs.push(r);
+      nodes[a].starts.push(r);
+    }
+    for (const r of runs) r.i0 = lift.clear(r.p.pts);
+    let n = 0;
+    for (const g of groups) {
+      if (n >= 8 || g.state !== 'path' || R() > 0.3) continue;
+      buildLeg(g, sec.b[0], sec.b[1], sec.nb);
+      g.s = g.maxLag;
+      g.v = g.vmax * 0.6;
+      g.pauseAt = -1;
+      n++;
+    }
+  }
+
+  return { group, update, collide, setDensity, setQueue, link, count: members.length };
 }

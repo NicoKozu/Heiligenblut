@@ -1,0 +1,56 @@
+{
+ "source": "OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL), API 0.6, Abruf 17.11.2026",
+ "lifts": [
+  {
+   "id": "tunnelbahn",
+   "name": "Tunnelbahn Fleißalm",
+   "from": "Rossbach",
+   "to": "Fleißalm",
+   "a": [
+    690.4,
+    -979.3
+   ],
+   "b": [
+    2149.6,
+    -1273.9
+   ],
+   "tunnel": true,
+   "color": 3108789,
+   "len": 1489
+  },
+  {
+   "id": "fleissbahn",
+   "name": "Fleißbahn",
+   "from": "Fleißalm",
+   "to": "Fleißbahn Berg",
+   "a": [
+    2102.6,
+    -1296.7
+   ],
+   "b": [
+    3989.6,
+    -2002.9
+   ],
+   "tunnel": false,
+   "color": 3108789,
+   "len": 2015
+  },
+  {
+   "id": "hochfleiss",
+   "name": "Hochfleiß",
+   "from": "Fleißbahn Berg",
+   "to": "Hochfleiß",
+   "a": [
+    3996.3,
+    -2031.0
+   ],
+   "b": [
+    5031.3,
+    -2539.9
+   ],
+   "tunnel": false,
+   "color": 3836490,
+   "len": 1153
+  }
+ ]
+}

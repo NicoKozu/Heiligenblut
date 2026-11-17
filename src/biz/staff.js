@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { pl } from './area.js';
 import { next as rand } from './rng.js';
 import { addDays } from './calendar.js';
 import { pay, log } from './assets.js';
@@ -23,12 +24,12 @@ export const dayCost = (G, k) => D.staffCost[k] * G.staff.wage / 100;
 export const wages = G => GROUPS.reduce((a, k) => a + G.staff.n[k] * dayCost(G, k), 0);
 export const pendingOf = (G, k) => G.staff.pending.filter(p => p.k === k).reduce((a, p) => a + p.n, 0);
 export const nextArrival = (G, k) => G.staff.pending.filter(p => p.k === k).map(p => p.date).sort()[0] || null;
-const openCount = G => D.pistes.filter(p => G.pistes[p.id].open).length;
+const openCount = G => pl(G).filter(p => G.pistes[p.id].open).length;
 
 export function needs(G, n) {
   const s = G.seasonShare ?? D.flow.seasonShare, a = D.flow.arrive;
   const peak = n * (1 - D.mix.half) * 2 / (a.to - a.from);
-  const want = D.pistes.filter(p => G.pistes[p.id].grm).reduce((x, p) => x + p.km * D.groom.hoursPerKm, 0);
+  const want = pl(G).filter(p => G.pistes[p.id].grm).reduce((x, p) => x + p.km * D.groom.hoursPerKm, 0);
   return {
     lift: Math.ceil(G.lifts.filter(l => l.open || l.staffOff).reduce((x, l) => x + LIFT[l.id].staff, 0) * S.relief),
     tech: G.lifts.length * S.techPerLift + S.techBase,
@@ -175,7 +176,7 @@ export const cashCap = G => (duty(G, 'cashier') + S.cash.auto) * S.cash.rate;
 export function minute(G) {
   const sh = patrolShort(G), f = G.flow;
   if (sh <= 0 || !f || f.present <= 0 || rand(G) >= S.accident * sh * f.present / 1000) return;
-  const open = D.pistes.filter(p => G.pistes[p.id].open);
+  const open = pl(G).filter(p => G.pistes[p.id].open);
   if (!open.length) return;
   const p = open[Math.floor(rand(G) * open.length)];
   hit(G, 'accident');

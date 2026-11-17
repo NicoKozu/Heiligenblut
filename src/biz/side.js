@@ -182,6 +182,7 @@ export function setLevel(G, id, lv) {
 export function toggleHut(G, id) {
   if (!HUT[id]) return false;
   const h = G.side.huts[id];
+  if (h.build) return false;
   h.open = !h.open;
   log(G, HUT[id].name + (h.open ? ' geöffnet' : ' geschlossen'), h.open ? 'good' : '');
   return true;

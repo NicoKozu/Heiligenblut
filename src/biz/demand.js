@@ -1,7 +1,8 @@
 import { D } from './data.js';
+import { baseKm } from './area.js';
 import { baseDemand } from './calendar.js';
 import { range } from './rng.js';
-import { running } from './assets.js';
+import { running, pisteOpen } from './assets.js';
 import { mFactor, kFactor, SEGS } from './marketing.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -29,15 +30,15 @@ export const repFactor = rep => M.rep[0] + M.rep[1] * rep / 100;
 export function openPistes(G) {
   const reach = new Set(['tal']);
   for (let k = 0; k < 4; k++) {
-    for (const l of D.lifts) { const s = G.lifts?.find(x => x.id === l.id); if (reach.has(l.from) && (!s || running(s))) reach.add(l.to); }
-    for (const p of D.pistes) if (reach.has(p.from) && G.pistes?.[p.id]?.open !== false) reach.add(p.to);
+    for (const l of D.lifts) { const s = G.lifts?.find(x => x.id === l.id); if (reach.has(l.from) && (s ? running(s) : !l.proj)) reach.add(l.to); }
+    for (const p of D.pistes) if (reach.has(p.from) && pisteOpen(G, p.id)) reach.add(p.to);
   }
-  return D.pistes.filter(p => G.pistes?.[p.id]?.open !== false && reach.has(p.from));
+  return D.pistes.filter(p => pisteOpen(G, p.id) && reach.has(p.from));
 }
 
-const KM = D.pistes.reduce((a, p) => a + p.km, 0);
+const KM = baseKm;
 const prefKm = (list, sg) => list.reduce((a, p) => a + p.km * D.segs[sg].pref[p.level], 0);
-const SKM = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes, s)]));
+const SKM = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes.filter(p => !p.proj), s)]));
 export const segOffer = (G, sg, open = openPistes(G)) => prefKm(open, sg) / SKM[sg];
 export const openKm = G => openPistes(G).reduce((a, p) => a + p.km, 0);
 export const offerShare = G => openKm(G) / KM;

@@ -9,6 +9,7 @@ const SPEED = 5;
 const FAST = 8;
 const SPACING = 85;
 const BOARD = 45;
+const TUN = 12;
 
 const SECTIONS = [
   { id: 'rossbach', name: 'Gondel Rossbach', from: 'Talstation', to: 'Rossbach', a: [-158, -109], b: [617, -921], st: [0, 1] },
@@ -44,7 +45,7 @@ function buildSection(sec, terrain, base, avoid) {
     const span = tw[k + 1].s - tw[k].s, t = (s - tw[k].s) / span;
     return lin(k, s) - span * 0.012 * 4 * t * (1 - t);
   };
-  for (let it = 0, changed = true; changed && it < 80; it++) {
+  for (let it = 0, changed = !sec.tunnel; changed && it < 80; it++) {
     changed = false;
     for (let k = 0; k < tw.length - 1 && !changed; k++) {
       let worst = 0, wi = -1;
@@ -103,25 +104,22 @@ function buildSection(sec, terrain, base, avoid) {
   }
 
   const towers = tw.slice(1, -1).map(t => ({ x: ax + dx * t.s, z: az + dz * t.s, y: t.y, g: terrain.heightAt(ax + dx * t.s, az + dz * t.s) }));
-  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: Math.floor(L / SPACING), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
+  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: sec.tunnel ? 0 : Math.floor(L / SPACING), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
 }
 
-export function createLift(terrain, pistes) {
+export function createLift(terrain, pistes, exp) {
   const group = new THREE.Group();
   const base = STATIONS.map(st => terrain.heightAt(st.c[0], st.c[1]));
   const secBase = SECTIONS.map(s => s.st.map(i => base[i]));
   const avoid = pistes.list.flatMap(p => [p.pts[0], p.pts[p.pts.length - 1]]);
   const sections = SECTIONS.map((s, k) => buildSection(s, terrain, secBase[k], avoid));
+  const planned = (exp?.lifts || []).map(d => buildSection({ ...d, st: null }, terrain, [terrain.heightAt(...d.a), terrain.heightAt(...d.b)], avoid));
 
   const steel = mat(0x8a929a, { metalness: 0.6, roughness: 0.4 });
   const ropeMat = mat(0x2a2a2a, { roughness: 0.8 });
-  for (const sec of sections) {
-    const curve = new THREE.CatmullRomCurve3(sec.pts, true, 'centripetal');
-    const m = new THREE.Mesh(new THREE.TubeGeometry(curve, sec.pts.length * 2, 0.09, 4, true), ropeMat);
-    group.add(m);
-  }
-
-  const towers = sections.flatMap(sec => sec.towers.map(t => ({ ...t, sec })));
+  const padMat = mat(0xe23b2e, { roughness: 0.9 });
+  const glassMat = mat(0x9fc6dc, { roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.45 });
+  const frameMat = mat(0x50565c, { metalness: 0.5, roughness: 0.4 });
   const shaftGeo = new THREE.CylinderGeometry(0.5, 0.95, 1, 6).translate(0, 0.5, 0);
   const headGeo = mergeGeometries([
     new THREE.BoxGeometry(GAUGE * 2 + 2, 0.5, 0.7).translate(0, -0.7, 0),
@@ -131,33 +129,72 @@ export function createLift(terrain, pistes) {
     new THREE.BoxGeometry(0.3, 0.8, 0.3).translate(-GAUGE, -0.35, 0)
   ]);
   const padGeo = new THREE.CylinderGeometry(1.35, 1.35, 2.2, 10).translate(0, 1.1, 0);
-  const padded = towers.filter(t => { const q = pistes.nearest(t.x, t.z, 80); return q && q.d < q.p.width / 2 + 4; });
-  const shaft = new THREE.InstancedMesh(shaftGeo, steel, towers.length);
-  const head = new THREE.InstancedMesh(headGeo, steel, towers.length);
-  const pad = new THREE.InstancedMesh(padGeo, mat(0xe23b2e, { roughness: 0.9 }), Math.max(1, padded.length));
-  pad.count = padded.length;
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), yAx = new THREE.Vector3(0, 1, 0);
-  towers.forEach((t, i) => {
-    q.setFromAxisAngle(yAx, t.sec.heading);
-    shaft.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 2, t.z), q, sc.set(1, t.y - 0.9 - t.g + 2, 1)));
-    head.setMatrixAt(i, m4.compose(v.set(t.x, t.y - 0.35, t.z), q, sc.set(1, 1, 1)));
-  });
-  padded.forEach((t, i) => pad.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 0.2, t.z), q.identity(), sc.set(1, 1, 1))));
-  shaft.castShadow = head.castShadow = pad.castShadow = true;
-  group.add(shaft, head, pad);
-
+  const wheelGeo = new THREE.CylinderGeometry(GAUGE + 0.2, GAUGE + 0.2, 0.4, 20);
+  const body = new THREE.BoxGeometry(1.9, 1.05, 1.9).translate(0, -0.55, 0);
+  const glass = new THREE.BoxGeometry(1.86, 0.95, 1.86).translate(0, 0.45, 0);
+  const frame = mergeGeometries([
+    new THREE.BoxGeometry(2.0, 0.22, 2.0).translate(0, 1.0, 0),
+    new THREE.BoxGeometry(0.12, 2.5, 0.12).translate(0, 2.35, 0),
+    new THREE.BoxGeometry(0.12, 0.12, 1.0).translate(0, 3.55, -0.45),
+    new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0, 3.65, 0)
+  ]);
   const wood = mat(0x7a5236, { roughness: 0.85 });
   const concrete = mat(0xb9b4ab, { roughness: 0.95 });
   const roofMat = mat(0x3c4650, { roughness: 0.7 });
-  const halls = STATIONS.map((st, k) => {
-    const sec = sections[st.s];
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), yAx = new THREE.Vector3(0, 1, 0);
+  const towers = [], halls = [];
+
+  function dress(sec) {
+    const g = new THREE.Group();
+    if (!sec.tunnel) {
+      const curve = new THREE.CatmullRomCurve3(sec.pts, true, 'centripetal');
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, sec.pts.length * 2, 0.09, 4, true), ropeMat));
+      for (const [x, z, y] of [[...sec.a, sec.pts[0].y], [...sec.b, sec.ropeB]]) {
+        const w = new THREE.Mesh(wheelGeo, steel);
+        w.position.set(x, y + 0.3, z);
+        g.add(w);
+      }
+    }
+    const tw = sec.towers.map(t => ({ ...t, sec }));
+    if (tw.length) {
+      const padded = tw.filter(t => { const n = pistes.nearest(t.x, t.z, 80); return n && n.d < n.p.width / 2 + 4; });
+      const shaft = new THREE.InstancedMesh(shaftGeo, steel, tw.length);
+      const head = new THREE.InstancedMesh(headGeo, steel, tw.length);
+      q.setFromAxisAngle(yAx, sec.heading);
+      tw.forEach((t, i) => {
+        shaft.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 2, t.z), q, sc.set(1, t.y - 0.9 - t.g + 2, 1)));
+        head.setMatrixAt(i, m4.compose(v.set(t.x, t.y - 0.35, t.z), q, sc.set(1, 1, 1)));
+      });
+      shaft.castShadow = head.castShadow = true;
+      g.add(shaft, head);
+      if (padded.length) {
+        const pad = new THREE.InstancedMesh(padGeo, padMat, padded.length);
+        padded.forEach((t, i) => pad.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 0.2, t.z), q.identity(), sc.set(1, 1, 1))));
+        pad.castShadow = true;
+        g.add(pad);
+      }
+    }
+    sec.tw = tw;
+    if (sec.count) {
+      const cBody = new THREE.InstancedMesh(body, mat(sec.color ?? 0xc8202a, { roughness: 0.45 }), sec.count);
+      const cGlass = new THREE.InstancedMesh(glass, glassMat, sec.count);
+      const cFrame = new THREE.InstancedMesh(frame, frameMat, sec.count);
+      for (const m of [cBody, cGlass, cFrame]) { m.castShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
+      g.add(cBody, cFrame, cGlass);
+      sec.cabs = [cBody, cGlass, cFrame];
+    }
+    sec.mesh = g;
+    group.add(g);
+  }
+
+  function hall(st, sec, y) {
     const cx = st.c[0] + sec.dx * st.off, cz = st.c[1] + sec.dz * st.off;
     const g = new THREE.Group();
-    g.position.set(cx, base[k], cz);
+    g.position.set(cx, y, cz);
     g.rotation.y = sec.heading;
-    let lo = base[k];
+    let lo = y;
     for (const a of [-1, 1]) for (const b of [-1, 1]) lo = Math.min(lo, terrain.heightAt(cx + sec.dx * st.hl * a + sec.px * st.hw * b, cz + sec.dz * st.hl * a + sec.pz * st.hw * b));
-    const depth = base[k] - lo + 3;
+    const depth = y - lo + 3;
     const plat = new THREE.Mesh(new THREE.BoxGeometry(st.hw * 2, depth, st.hl * 2), concrete);
     plat.position.y = 0.3 - depth / 2;
     const roof = new THREE.Mesh(new THREE.BoxGeometry(st.hw * 2 + 1.5, 0.6, st.hl * 2 + 1.5), roofMat);
@@ -171,31 +208,79 @@ export function createLift(terrain, pistes) {
       g.add(p);
     }
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    group.add(g);
-    return { x: cx, z: cz, dx: sec.dx, dz: sec.dz, hl: st.hl, hw: st.hw, top: base[k] + 7.6 };
-  });
-
-  const wheelGeo = new THREE.CylinderGeometry(GAUGE + 0.2, GAUGE + 0.2, 0.4, 20);
-  for (const sec of sections) for (const [x, z, y] of [[...sec.a, sec.pts[0].y], [...sec.b, sec.ropeB]]) {
-    const w = new THREE.Mesh(wheelGeo, steel);
-    w.position.set(x, y + 0.3, z);
-    group.add(w);
+    return { g, h: { x: cx, z: cz, dx: sec.dx, dz: sec.dz, hl: st.hl, hw: st.hw, top: y + 7.6 } };
   }
 
-  const body = new THREE.BoxGeometry(1.9, 1.05, 1.9).translate(0, -0.55, 0);
-  const glass = new THREE.BoxGeometry(1.86, 0.95, 1.86).translate(0, 0.45, 0);
-  const frame = mergeGeometries([
-    new THREE.BoxGeometry(2.0, 0.22, 2.0).translate(0, 1.0, 0),
-    new THREE.BoxGeometry(0.12, 2.5, 0.12).translate(0, 2.35, 0),
-    new THREE.BoxGeometry(0.12, 0.12, 1.0).translate(0, 3.55, -0.45),
-    new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0, 3.65, 0)
-  ]);
-  const total = sections.reduce((a, s) => a + s.count, 0);
-  const cBody = new THREE.InstancedMesh(body, mat(0xc8202a, { roughness: 0.45 }), total);
-  const cGlass = new THREE.InstancedMesh(glass, mat(0x9fc6dc, { roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.45 }), total);
-  const cFrame = new THREE.InstancedMesh(frame, mat(0x50565c, { metalness: 0.5, roughness: 0.4 }), total);
-  for (const m of [cBody, cGlass, cFrame]) { m.castShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
-  group.add(cBody, cFrame, cGlass);
+  for (const sec of sections) { dress(sec); towers.push(...sec.tw); }
+  STATIONS.forEach((st, k) => { const r = hall(st, sections[st.s], base[k]); group.add(r.g); halls.push(r.h); });
+
+  const added = new Map();
+  function addSection(id) {
+    const sec = planned.find(s => s.id === id);
+    if (!sec || sections.includes(sec)) return null;
+    if (!added.has(id)) {
+      dress(sec);
+      const hs = [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a)), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b))];
+      for (const r of hs) sec.mesh.add(r.g);
+      added.set(id, hs.map(r => r.h));
+    }
+    sec.mesh.visible = true;
+    sections.push(sec);
+    towers.push(...sec.tw);
+    halls.push(...added.get(id));
+    api.onAdd?.(sec);
+    return sec;
+  }
+
+  function removeSection(id) {
+    const sec = sections.find(s => s.id === id);
+    if (!sec || !planned.includes(sec)) return;
+    if (ride && ride.sec === sec) leave(ride.state);
+    sec.mesh.visible = false;
+    sections.splice(sections.indexOf(sec), 1);
+    for (const t of sec.tw) towers.splice(towers.indexOf(t), 1);
+    for (const h of added.get(id)) halls.splice(halls.indexOf(h), 1);
+  }
+
+  const sites = new Map();
+  const yellow = mat(0xf2b822, { roughness: 0.6 }), orange = mat(0xff6a1a, { roughness: 0.8 });
+  function crane(x, z, heading) {
+    const g = new THREE.Group(), y = terrain.heightAt(x, z);
+    g.position.set(x, y, z);
+    g.rotation.y = heading;
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(1.2, 32, 1.2), yellow);
+    mast.position.set(9, 16, 0);
+    const jib = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 30), yellow);
+    jib.position.set(9, 32, 7);
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2, 3), concrete);
+    cw.position.set(9, 31, -7);
+    const hook = new THREE.Mesh(new THREE.BoxGeometry(0.1, 14, 0.1), ropeMat);
+    hook.position.set(9, 25, 18);
+    g.add(mast, jib, cw, hook);
+    for (let i = 0; i < 16; i++) {
+      const a = i / 16 * Math.PI * 2, px = Math.cos(a) * 14, pz = Math.sin(a) * 16;
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.1, 0.15), orange);
+      post.position.set(px, terrain.heightAt(x + px, z + pz) - y + 0.55, pz);
+      g.add(post);
+    }
+    const tape = new THREE.Mesh(new THREE.TorusGeometry(15, 0.06, 3, 32), orange);
+    tape.rotation.x = Math.PI / 2;
+    tape.scale.set(14 / 15, 16 / 15, 1);
+    tape.position.y = 1;
+    g.add(tape);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    return g;
+  }
+  function site(id, on) {
+    if (!on) { const g = sites.get(id); if (g) { group.remove(g); sites.delete(id); } return; }
+    if (sites.has(id)) return;
+    const sec = planned.find(s => s.id === id) || sections.find(s => s.id === id);
+    if (!sec) return;
+    const g = new THREE.Group();
+    g.add(crane(sec.a[0] - sec.dx * 14, sec.a[1] - sec.dz * 14, sec.heading), crane(sec.b[0] + sec.dx * 14, sec.b[1] + sec.dz * 14, sec.heading + Math.PI));
+    sites.set(id, g);
+    group.add(g);
+  }
 
   let ride = null;
   const tmp = new THREE.Vector3();
@@ -210,13 +295,14 @@ export function createLift(terrain, pistes) {
     return best;
   }
 
-  function board(sec, state) {
+  function board(sec, state, rev) {
+    state.lift = sec.name;
+    state.vel.set(0, 0, 0);
+    if (sec.tunnel) { ride = { sec, u: 0, rev, tunnel: true, state }; return; }
     const step = sec.L / sec.count;
     const i = ((Math.ceil(-sec.phase / step) % sec.count) + sec.count) % sec.count;
     sec.phase = -i * step;
-    ride = { sec, i, u: 0 };
-    state.lift = sec.name;
-    state.vel.set(0, 0, 0);
+    ride = { sec, i, u: 0, state };
   }
 
   const shut = new Set();
@@ -236,7 +322,19 @@ export function createLift(terrain, pistes) {
       sec.speed = want >= sec.speed || want > 0 ? want : Math.max(0, sec.speed - 1.2 * dt);
       sec.phase += sec.speed * dt;
     }
-    if (ride) {
+    if (ride && ride.tunnel) {
+      const sec = ride.sec, why = stop.get(sec.name), fast = down('KeyW', 'ArrowUp');
+      ride.u += sec.speed / SPEED * TUN * (fast ? FAST : 1) * dt;
+      state.hint = sec.name + ' → ' + (ride.rev ? sec.from : sec.to) + (why ? ' steht (' + why + ')' : ' · ' + Math.min(99, Math.round(ride.u / sec.len * 100)) + ' % · W Zeitraffer');
+      if (ride.u >= sec.len) {
+        const rev = ride.rev;
+        ride = null;
+        state.lift = null;
+        player.object.visible = true;
+        if (rev) player.spawnAt(sec.a[0] - sec.dx * 24, sec.a[1] - sec.dz * 24, sec.heading + Math.PI);
+        else player.spawnAt(sec.b[0] + sec.dx * 22, sec.b[1] + sec.dz * 22, sec.heading);
+      }
+    } else if (ride) {
       ride.u += ride.sec.speed * dt;
       const why = stop.get(ride.sec.name);
       state.hint = why ? ride.sec.name + ' steht (' + why + ') · E: Bergung' : ride.sec.name + ' → ' + ride.sec.to + ' · W Zeitraffer';
@@ -259,30 +357,37 @@ export function createLift(terrain, pistes) {
         else player.spawnAt(sec.b[0] + sec.dx * 20, sec.b[1] + sec.dz * 20, sec.heading);
       }
     } else if (state.crashed <= 0) {
-      const sec = sections.find(s => Math.hypot(state.pos.x - s.a[0], state.pos.z - s.a[1]) < BOARD);
+      let rev = false, sec = sections.find(s => Math.hypot(state.pos.x - s.a[0], state.pos.z - s.a[1]) < BOARD);
+      if (!sec) { sec = sections.find(s => s.tunnel && Math.hypot(state.pos.x - s.b[0], state.pos.z - s.b[1]) < BOARD); rev = !!sec; }
       if (sec && stop.has(sec.name)) state.hint = sec.name + ' – ' + (stop.get(sec.name) === 'geschlossen' ? 'Lift geschlossen' : stop.get(sec.name));
       else if (sec && shut.has(sec.name)) state.hint = sec.name + ' geschlossen';
       else if (sec) {
-        state.hint = 'E: ' + sec.name + ' → ' + sec.to;
-        if (consume('KeyE')) { board(sec, state); player.object.visible = false; }
+        state.hint = 'E: ' + sec.name + ' → ' + (rev ? sec.from : sec.to);
+        if (consume('KeyE')) { board(sec, state, rev); player.object.visible = false; }
       }
     }
     consume('KeyE');
 
-    let n = 0;
     for (const sec of sections) {
+      if (!sec.cabs) continue;
       q.setFromAxisAngle(yAx, sec.heading);
-      for (let i = 0; i < sec.count; i++, n++) {
+      for (let i = 0; i < sec.count; i++) {
         cabinAt(sec, i, v);
         m4.compose(v, q, sc.set(1, 1, 1));
-        cBody.setMatrixAt(n, m4);
-        cGlass.setMatrixAt(n, m4);
-        cFrame.setMatrixAt(n, m4);
+        for (const m of sec.cabs) m.setMatrixAt(i, m4);
       }
+      for (const m of sec.cabs) m.instanceMatrix.needsUpdate = true;
     }
-    cBody.instanceMatrix.needsUpdate = cGlass.instanceMatrix.needsUpdate = cFrame.instanceMatrix.needsUpdate = true;
 
-    if (ride) {
+    if (ride && ride.tunnel) {
+      const sec = ride.sec, e = ride.rev ? sec.b : sec.a;
+      state.pos.set(e[0], terrain.heightAt(e[0], e[1]) + 1, e[1]);
+      state.dir.set(sec.dx, 0, sec.dz);
+      state.look.set(sec.dx, 0, sec.dz);
+      state.heading = sec.heading;
+      state.speed = 0;
+      state.grounded = true;
+    } else if (ride) {
       cabinAt(ride.sec, ride.i, tmp);
       state.pos.set(tmp.x, tmp.y - 0.9, tmp.z);
       state.dir.set(ride.sec.dx, 0, ride.sec.dz);
@@ -349,5 +454,6 @@ export function createLift(terrain, pistes) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  return { group, sections, update, collide, leave, clear, shut, stop, setOpen, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
+  const api = { group, sections, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null };
+  return api;
 }

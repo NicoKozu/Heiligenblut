@@ -101,9 +101,10 @@ const col = h => COL[h] ||= new THREE.Color(h);
 
 export function createProps(terrain, pistes, lift, osm) {
   const group = new THREE.Group();
-  const stations = lift.sections.flatMap(s => [s.a, s.b]);
+  const all = [...lift.sections, ...(lift.planned || [])], ropes = all.filter(s => !s.tunnel);
+  const stations = all.flatMap(s => [s.a, s.b]);
   const pisteD = (x, z) => { const q = pistes.nearest(x, z, 120); return q ? q.d - q.p.width / 2 : 1e9; };
-  const liftD = (x, z) => Math.min(...lift.sections.map(s => segDist(x, z, s.a, s.b)));
+  const liftD = (x, z) => Math.min(...ropes.map(s => segDist(x, z, s.a, s.b)));
   const { originX, originZ, nx, nz, cell } = terrain.meta;
   const W = (nx - 1) * cell, D = (nz - 1) * cell;
 
