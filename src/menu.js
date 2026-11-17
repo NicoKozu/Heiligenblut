@@ -2,7 +2,7 @@ const KEYS = [
   ['W', 'Hocke'], ['S', 'Bremsen / Seitrutschen'], ['A / D', 'Kurven / Carven'], ['Leertaste', 'Sprung'],
   ['Q', 'Ski ↔ Snowboard'], ['R', 'Neustart'], ['1–9 / 0', 'Pistenstart / Talstation'], ['E', 'Gondel einsteigen'],
   ['+ / −', 'Zeitfaktor (Manager)'], ['Tab', 'Manager-Panel'], ['B', 'Büro (Manager)'],
-  ['C', 'Ego-/Verfolgerkamera'], ['Linksklick + Maus', 'Kamera drehen'], ['Mausrad', 'Kamera-Abstand'], ['M', 'Ton an/aus'], ['P', 'Gipfelnamen'], ['F', 'FPS-Anzeige'], ['Esc', 'Menü']
+  ['C', 'Ego-/Verfolgerkamera'], ['Linksklick + Maus', 'Kamera drehen'], ['Mausrad', 'Kamera-Abstand'], ['M', 'Ton an/aus'], ['P', 'Gipfelnamen'], ['F', 'Flugmodus an / landen'], ['Flug: WASD · Leertaste/Shift · Strg · Mausrad', 'bewegen · hoch/runter · schnell · Tempo'], ['I', 'FPS-Anzeige'], ['Esc', 'Menü']
 ];
 
 const SAVE = 'hb-biz-v1';

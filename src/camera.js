@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { down } from './input.js';
 
 export function createFollowCamera(terrain) {
   const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.3, 25000);
@@ -11,6 +12,7 @@ export function createFollowCamera(terrain) {
   const up = new THREE.Vector3(0, 1, 0);
   let mode = 'follow', fov = 65, eye = 1.6;
   let yaw = 0, pitch = 0, zoom = 1, drag = false, idle = 9, mx = 0, my = 0;
+  let prev = 'follow', fy = 0, fp = 0, fv = 40;
 
   addEventListener('contextmenu', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); });
   addEventListener('mousedown', e => { if (e.button === 0 && e.target.tagName === 'CANVAS') { drag = true; mx = e.clientX; my = e.clientY; e.preventDefault(); } });
@@ -21,6 +23,7 @@ export function createFollowCamera(terrain) {
     if (!(e.buttons & 1)) { drag = false; return; }
     const dx = e.clientX - mx, dy = e.clientY - my;
     mx = e.clientX; my = e.clientY;
+    if (mode === 'fly') { fy -= dx * 0.004; fp = Math.max(-1.5, Math.min(1.5, fp - dy * 0.004)); return; }
     yaw -= dx * 0.005;
     yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
     pitch = Math.max(-0.5, Math.min(1.1, pitch + dy * 0.004));
@@ -28,6 +31,7 @@ export function createFollowCamera(terrain) {
   });
   addEventListener('wheel', e => {
     if (e.target.tagName !== 'CANVAS') return;
+    if (mode === 'fly') { fv = Math.max(5, Math.min(400, fv * Math.exp(-e.deltaY * 0.001))); return; }
     zoom = Math.max(0.45, Math.min(3, zoom * Math.exp(e.deltaY * 0.001)));
   }, { passive: true });
 
@@ -77,7 +81,48 @@ export function createFollowCamera(terrain) {
     camera.lookAt(look.copy(head).add(tmp));
   }
 
+  function fly(dt) {
+    const fw = (down('KeyW', 'ArrowUp') ? 1 : 0) - (down('KeyS', 'ArrowDown') ? 1 : 0);
+    const sd = (down('KeyD', 'ArrowRight') ? 1 : 0) - (down('KeyA', 'ArrowLeft') ? 1 : 0);
+    const ud = (down('Space', 'KeyE') ? 1 : 0) - (down('ShiftLeft', 'ShiftRight', 'KeyQ') ? 1 : 0);
+    const cp = Math.cos(fp);
+    gaze.set(Math.sin(fy) * cp, Math.sin(fp), Math.cos(fy) * cp);
+    back.set(-Math.cos(fy), 0, Math.sin(fy));
+    const v = fv * (down('ControlLeft', 'ControlRight') ? 4 : 1) * dt;
+    tmp.copy(gaze).multiplyScalar(fw).addScaledVector(back, sd);
+    if (tmp.lengthSq() > 1) tmp.normalize();
+    tmp.multiplyScalar(v);
+    tmp.y += ud * v;
+    const p = camera.position, nx = p.x + tmp.x, nz = p.z + tmp.z;
+    if (terrain.inside(nx, nz)) { p.x = nx; p.z = nz; }
+    p.y = Math.min(9000, Math.max(terrain.heightAt(p.x, p.z) + 1.5, p.y + tmp.y));
+    camera.lookAt(look.copy(p).add(gaze));
+  }
+
+  function startFly() {
+    if (mode === 'fly') return;
+    prev = mode;
+    mode = 'fly';
+    camera.getWorldDirection(tmp);
+    fy = Math.atan2(tmp.x, tmp.z);
+    fp = Math.asin(Math.max(-1, Math.min(1, tmp.y)));
+    if (!terrain.inside(camera.position.x, camera.position.z)) camera.position.set(0, terrain.heightAt(0, 0) + 50, 0);
+  }
+
+  function endFly() {
+    mode = prev;
+    yaw = 0; pitch = 0;
+    return { x: camera.position.x, z: camera.position.z, heading: fy };
+  }
+
   function update(target, dir, dt, snap = false, opt = {}) {
+    if (mode === 'fly') {
+      fly(dt);
+      const f = 70;
+      fov += (f - fov) * (1 - Math.exp(-dt * 3));
+      if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
+      return;
+    }
     relax(dt);
     if (mode === 'ego') ego(target, dir, dt, snap, opt);
     else follow(target, dir, dt, snap);
@@ -87,9 +132,10 @@ export function createFollowCamera(terrain) {
   }
 
   function toggle() {
+    if (mode === 'fly') return mode;
     mode = mode === 'ego' ? 'follow' : 'ego';
     return mode;
   }
 
-  return { camera, update, toggle, get mode() { return mode; } };
+  return { camera, update, toggle, startFly, endFly, get mode() { return mode; } };
 }

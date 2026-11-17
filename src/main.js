@@ -159,14 +159,28 @@ async function start() {
       return;
     }
     adapt(raw);
-    if (consume('KeyC')) { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
+    if (consume('KeyC') && cam.mode !== 'fly') { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
     if (consume('KeyM')) { audio.init(); player.state.note = audio.toggle() ? 'Ton an' : 'Ton aus'; player.state.noteT = 1.2; }
-    if (consume('KeyF')) fps.hidden = !fps.hidden;
+    if (consume('KeyI')) fps.hidden = !fps.hidden;
+    if (consume('KeyF') && !lift.riding()) {
+      const st = player.state;
+      if (cam.mode === 'fly') {
+        const l = cam.endFly();
+        player.spawnAt(l.x, l.z, l.heading);
+        st.note = 'Gelandet'; st.noteT = 1.2; snap = true;
+      } else {
+        cam.startFly();
+        st.vel.set(0, 0, 0); st.speed = 0;
+        st.note = 'Flugmodus · F = landen'; st.noteT = 1e9;
+      }
+    }
+    const flying = cam.mode === 'fly';
+    if (flying) flush();
     if (consume('Escape')) pause();
     if (consume('KeyP')) peaks.toggle();
     if (pending) { lift.leave(player.state); applyStart(pending).catch(e => fail('Manager: ' + e.message)); pending = null; }
     const hold = biz?.hold;
-    if (!hold && !lift.riding()) {
+    if (!flying && !hold && !lift.riding()) {
       player.update(dt);
       pistes.collide(player.state);
       lift.collide(player.state);
@@ -180,7 +194,7 @@ async function start() {
     biz?.update(Math.min(raw, 1));
     if (hold) flush();
     crowd.update(dt, cam.camera);
-    player.object.visible = !lift.riding() && cam.mode !== 'ego';
+    player.object.visible = !lift.riding() && cam.mode !== 'ego' && !flying;
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
     hud.update(player.state, dt);
     const st = player.state;
