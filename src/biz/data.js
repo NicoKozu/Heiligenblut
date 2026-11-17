@@ -5,10 +5,40 @@ export const D = {
   start: { cash: 1200000, loan: 0, credit: 6000000, rate: 0.055, rep: 55, cond: [70, 85] },
   time: { open: 510, close: 990, gameSecPerSec: 8, factors: [1, 2, 5, 10, 20], maxSteps: 40, warn: 15 },
   lifts: [
-    { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, ride: 9 },
-    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, ride: 8 },
-    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, ride: 6 }
+    { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, ride: 9, from: 'tal', to: 'rossbach' },
+    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, ride: 8, from: 'rossbach', to: 'schareck' },
+    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, ride: 6, from: 'fallbichl', to: 'schareck' }
   ],
+  nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl' },
+  pistes: [
+    { id: '4', name: 'Schareckabfahrt', level: 'mittel', km: 2.33, from: 'schareck', to: 'rossbach' },
+    { id: '5', name: 'Kärntnerabfahrt', level: 'leicht', km: 2.86, from: 'schareck', to: 'rossbach' },
+    { id: '5a', name: 'Kärntnerabfahrt Variante', level: 'mittel', km: 3.1, from: 'schareck', to: 'rossbach' },
+    { id: '1', name: 'Fallbichlabfahrt', level: 'schwer', km: 1.39, from: 'schareck', to: 'fallbichl' },
+    { id: '2', name: 'Seppenalmabfahrt', level: 'mittel', km: 3.03, from: 'schareck', to: 'rossbach' },
+    { id: '10', name: 'Talabfahrt', level: 'mittel', km: 1.83, from: 'rossbach', to: 'tal' }
+  ],
+  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.4, 1.2], offer: [0.3, 0.7], eps: [0.9, 1.1] },
+  flow: {
+    arrive: { from: 495, peak: 570, to: 660 },
+    half: { from: 690, peak: 720, to: 780 },
+    leave: { from: 870, to: 990 },
+    lunch: { from: 705, to: 810, share: 0.6, dur: 40, nodes: ['rossbach', 'schareck'] },
+    speed: { leicht: 25, mittel: 32, schwer: 38 },
+    pause: { leicht: 4, mittel: 3, schwer: 2 },
+    skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 },
+    pref: {
+      leicht: { leicht: 1, mittel: 0.15, schwer: 0 },
+      mittel: { leicht: 0.5, mittel: 1, schwer: 0.2 },
+      schwer: { leicht: 0.2, mittel: 0.8, schwer: 1 }
+    },
+    liftW: 1,
+    queueTau: 12,
+    seasonShare: 0.08,
+    densityRef: 2500,
+    pulkWait: 5,
+    wait: [5, 15]
+  },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 350,
   admin: 3200,
@@ -19,6 +49,10 @@ export const D = {
     half: { label: 'Halbtag ab 11:30', price: 50, from: 690 },
     season: { label: 'Saisonkarte Erw.', price: 520 }
   },
+  guestLabels: { adult: 'Erwachsene', youth: 'Jugend', child: 'Kinder', half: 'Halbtag', season: 'Saisonkarte' },
+  ticketOf: { adult: 'day', youth: 'youth', child: 'child', half: 'half' },
+  priceStep: 1,
+  priceRange: [0, 300],
   mix: { adult: 0.62, youth: 0.13, child: 0.25, half: 0.15 },
   demand: {
     early: { label: '1.–19. Dez', wd: 350, we: 750 },

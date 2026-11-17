@@ -1,9 +1,10 @@
 import * as S from './sim.js';
 import { createUI } from './ui.js';
+import { D } from './data.js';
 import { consume } from '../input.js';
 
-export function createBiz({ lift, player }) {
-  const ui = createUI({ refresh: () => ui.render(G), action });
+export function createBiz({ lift, player, crowd }) {
+  const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
   let G = null, active = false, hold = false, acc = 0;
@@ -23,6 +24,7 @@ export function createBiz({ lift, player }) {
     if (a === 'start' && S.startDay(G)) { ui.close(); save(); note('Lifte offen', 2); }
     else if (a === 'next' && S.nextDay(G)) { ui.open('prep'); save(); }
     else if (a === 'close') ui.close();
+    else if (a.startsWith('price:') && G.phase !== 'open') { const [, k, d] = a.split(':'); S.setPrice(G, k, G.prices[k] + Number(d)); save(); }
     ui.render(G);
   }
 
@@ -59,6 +61,8 @@ export function createBiz({ lift, player }) {
     hold = false;
     ui.show(false);
     lift.shut.clear();
+    crowd?.setDensity(1);
+    crowd?.setQueue(0);
   }
 
   function update(dt) {
@@ -79,6 +83,11 @@ export function createBiz({ lift, player }) {
       if (e === 'closed') { note('16:30 – Lifte schließen', 3); save(); }
     }
     sync();
+    if (crowd) {
+      const f = G.flow, open = G.phase === 'open';
+      crowd.setDensity(open ? f.present / D.flow.densityRef : 0);
+      crowd.setQueue(open && f.wait.rossbach > D.flow.pulkWait ? f.queue.rossbach * 0.12 : 0);
+    }
 
     const want = G.phase !== 'open' && !lift.riding();
     if (want && !hold) park();

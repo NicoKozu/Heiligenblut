@@ -1,6 +1,8 @@
 import { D } from './data.js';
 import { int, seed as newSeed } from './rng.js';
 import { addDays, isSeason, seasonOf, seasonStart, baseDemand, phase as calPhase } from './calendar.js';
+import { defaultPrices, demand, expected } from './demand.js';
+import { newFlow, step, endFlow } from './flow.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
 const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
@@ -10,15 +12,28 @@ export function newGame(seed = newSeed()) {
     version: D.version, seed, rng: seed, date: D.startDate, season: seasonOf(D.startDate), day: 1,
     phase: 'prep', min: D.time.open, factor: 1,
     cash: D.start.cash, loan: D.start.loan, rep: D.start.rep,
-    lifts: [], today: null, history: []
+    lifts: [], today: null, history: [], prices: defaultPrices(), pistes: {}, flow: null
   };
   G.lifts = D.lifts.map(l => ({ id: l.id, name: l.name, open: true, cond: int(G, D.start.cond[0], D.start.cond[1]), run: 0, util: 0 }));
+  migrate(G);
   resetToday(G);
   return G;
 }
 
+function migrate(G) {
+  G.prices = { ...defaultPrices(), ...(G.prices || {}) };
+  G.pistes = G.pistes || {};
+  for (const p of D.pistes) if (G.pistes[p.id] == null) G.pistes[p.id] = true;
+  if (!G.flow) G.flow = newFlow(0, 0);
+  if (!G.today || !G.today.types) resetToday(G);
+  return G;
+}
+
 function resetToday(G) {
-  G.today = { date: G.date, cashStart: G.cash, costs: zero(), revenue: {}, guests: 0, demand: baseDemand(G.date), phase: calPhase(G.date) };
+  G.today = {
+    date: G.date, cashStart: G.cash, costs: zero(), revenue: {}, guests: 0, demand: baseDemand(G.date), phase: calPhase(G.date),
+    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0
+  };
 }
 
 function pay(G, k, v) {
@@ -31,6 +46,9 @@ export function startDay(G) {
   resetToday(G);
   G.phase = 'open';
   G.min = D.time.open;
+  const dm = demand(G, G.date);
+  G.today.expected = dm.n;
+  G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half);
   pay(G, 'admin', D.admin);
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.maintPerLift); }
   if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate / 365);
@@ -38,6 +56,7 @@ export function startDay(G) {
 }
 
 function minute(G) {
+  step(G, G.min);
   for (const l of G.lifts) {
     if (!l.open) continue;
     const spec = D.lifts.find(s => s.id === l.id);
@@ -60,15 +79,35 @@ export function tick(G, minutes) {
 function close(G) {
   G.phase = 'closed';
   G.min = D.time.close;
+  endFlow(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
-  G.history.push({ date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs } });
+  G.history.push({
+    date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
+    revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0
+  });
   if (G.history.length > 400) G.history.shift();
+}
+
+export function nextDate(G) {
+  let d = addDays(G.date, 1);
+  if (!isSeason(d)) d = seasonStart(seasonOf(d) + (d >= seasonStart(seasonOf(d)) ? 1 : 0));
+  return d;
+}
+
+export function forecast(G) {
+  const date = G.phase === 'closed' ? nextDate(G) : G.date;
+  return { date, n: expected(G, date) };
+}
+
+export function setPrice(G, k, v) {
+  if (!(k in G.prices)) return;
+  const n = Math.round(Number(v));
+  if (Number.isFinite(n)) G.prices[k] = Math.max(D.priceRange[0], Math.min(D.priceRange[1], n));
 }
 
 export function nextDay(G) {
   if (G.phase !== 'closed') return false;
-  let d = addDays(G.date, 1);
-  if (!isSeason(d)) d = seasonStart(seasonOf(d) + (d >= seasonStart(seasonOf(d)) ? 1 : 0));
+  const d = nextDate(G);
   G.date = d;
   G.season = seasonOf(d);
   G.day++;
@@ -95,7 +134,7 @@ export function save(G, store = globalThis.localStorage) {
 export function load(store = globalThis.localStorage) {
   try {
     const G = JSON.parse(store.getItem(D.saveKey));
-    return G && G.version === D.version ? G : null;
+    return G && G.version === D.version ? migrate(G) : null;
   } catch (e) { return null; }
 }
 
