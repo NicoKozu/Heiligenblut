@@ -2,7 +2,8 @@ import { D } from './data.js';
 import { int, seed as newSeed } from './rng.js';
 import { addDays, isSeason, seasonOf, seasonStart, baseDemand, phase as calPhase } from './calendar.js';
 import { defaultPrices, demand, expected, expectedSeg } from './demand.js';
-import { newFlow, step, endFlow } from './flow.js';
+import { newFlow, step, endFlow, ensureKeys } from './flow.js';
+import { initBuild, buildDay, depreciate, solvency } from './build.js';
 import { pay, initAssets, liftMinute, dayStart, overnight, running } from './assets.js';
 import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfaction.js';
 import { initWeather, applyWind } from './weather.js';
@@ -21,7 +22,7 @@ export function newGame(seed = newSeed()) {
     cash: D.start.cash, loan: D.start.loan, rep: D.start.rep, sat: null, seasonShare: D.flow.seasonShare,
     lifts: [], today: null, history: [], prices: defaultPrices(), pistes: {}, flow: null, log: []
   };
-  G.lifts = D.lifts.map(l => ({ id: l.id, name: l.name, open: true, cond: int(G, D.start.cond[0], D.start.cond[1]), run: 0, util: 0 }));
+  G.lifts = D.lifts.filter(l => !l.proj).map(l => ({ id: l.id, name: l.name, open: true, cond: int(G, D.start.cond[0], D.start.cond[1]), run: 0, util: 0 }));
   initAssets(G);
   initSnow(G, true);
   migrate(G);
@@ -32,9 +33,10 @@ export function newGame(seed = newSeed()) {
 
 function migrate(G) {
   G.prices = { ...defaultPrices(), ...(G.prices || {}) };
+  initBuild(G);
   initAssets(G);
   if (!G.flow) G.flow = newFlow(0, 0);
-  if (!G.flow.board) G.flow.board = Object.fromEntries(D.lifts.map(l => [l.id, 0]));
+  ensureKeys(G.flow);
   initSnow(G, false);
   initStaff(G);
   initMkt(G);
@@ -52,15 +54,15 @@ function migrate(G) {
 function resetToday(G) {
   G.today = {
     date: G.date, cashStart: G.cash, costs: zero(), revenue: {}, guests: 0, demand: baseDemand(G.date), phase: calPhase(G.date),
-    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0, side: {}
+    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0, side: {}, invest: 0, depr: 0, loan: 0
   };
 }
 
 export function startDay(G) {
-  if (G.phase !== 'prep') return false;
+  if (G.phase !== 'prep' || G.fin.over) return false;
   const o = G.today;
   resetToday(G);
-  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue } });
+  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue }, invest: o.invest || 0, loan: o.loan || 0 });
   G.phase = 'open';
   G.min = D.time.open;
   const dm = demand(G, G.date, demandExtra(G, G.date));
@@ -109,11 +111,12 @@ function close(G) {
   const staff = evening(G);
   sideEvening(G);
   endFlow(G);
+  depreciate(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
     date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
-    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, sale: t.sale || 0, debt: G.loan
   });
   if (G.history.length > 400) G.history.shift();
 }
@@ -137,12 +140,15 @@ export function setPrice(G, k, v) {
 }
 
 export function nextDay(G) {
-  if (G.phase !== 'closed') return false;
+  if (G.phase !== 'closed' || G.fin.over) return false;
+  solvency(G);
+  if (G.fin.over) return true;
   const d = nextDate(G);
   overnight(G);
   night(G, d);
   compDay(G);
   if (seasonOf(d) !== G.season) { G.seasonShare = seasonShare(G.rep); newSeason(G); seasonEnd(G); }
+  buildDay(G, seasonOf(d) !== G.season);
   G.date = d;
   const ns = seasonOf(d) !== G.season;
   G.season = seasonOf(d);

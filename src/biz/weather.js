@@ -100,5 +100,5 @@ export function applyWind(G) {
   }
 }
 
-export const avalClose = () => D.aval.close.filter(id => D.pistes.some(p => p.id === id));
+export const avalClose = G => D.aval.close.filter(id => G.pistes?.[id]);
 export const fmtT = t => (Math.round(t) > 0 ? '+' : Math.round(t) < 0 ? '−' : '') + Math.abs(Math.round(t)) + ' °C';

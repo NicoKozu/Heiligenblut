@@ -198,10 +198,11 @@ export function detailMaterials(assets) {
 
 export function createScenery(terrain, pistes, lift, assets, blocked) {
   const group = new THREE.Group();
-  const stations = lift.sections.flatMap(s => [s.a, s.b]);
-  const towers = lift.sections.flatMap(s => s.towers.map(t => [t.x, t.z]));
+  const all = [...lift.sections, ...(lift.planned || [])], ropes = all.filter(s => !s.tunnel);
+  const stations = all.flatMap(s => [s.a, s.b]);
+  const towers = ropes.flatMap(s => s.towers.map(t => [t.x, t.z]));
   const pisteClear = (x, z, m) => { const q = pistes.nearest(x, z, 80); return !q || q.d > q.p.width / 2 + m; };
-  const liftClear = (x, z, m) => lift.sections.every(s => segDist(x, z, s.a, s.b) > m);
+  const liftClear = (x, z, m) => ropes.every(s => segDist(x, z, s.a, s.b) > m);
 
   const wood = {};
   const mats = {

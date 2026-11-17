@@ -6,6 +6,7 @@ import * as N from './snow.js';
 import * as P from './staff.js';
 import * as M from './marketing.js';
 import * as X from './side.js';
+import * as B from './build.js';
 import { consume } from '../input.js';
 
 export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
@@ -46,6 +47,12 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     else if (a.startsWith('mkt:')) { const id = a.slice(4); if (M.act(G, id)) { save(); note(D.mkt.campaigns[id].label + (D.mkt.campaigns[id].kind === 'weekly' ? (G.mkt.on[id] ? ' gestartet' : ' gestoppt') : ' gebucht'), 2); } }
     else if (a === 'bonus') { if (P.bonus(G)) { save(); note('Prämie ausgezahlt', 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
+    else if (a.startsWith('build:')) { const [, id, w] = a.split(':'); if (B.order(G, id, w === 's')) { save(); note(D.build.projects[id].label + ' beauftragt', 2.5); } }
+    else if (a.startsWith('loan:')) { const v = a.slice(5), n = v === 'all' ? -G.loan : Number(v), r = n > 0 ? B.borrow(G, n) : B.repay(G, -n); if (r) { save(); note(n > 0 ? 'Kredit aufgenommen' : 'Kredit getilgt', 1.5); } }
+    else if (a.startsWith('mach:')) { if (B.groomer(G, Number(a.slice(5)))) save(); }
+    else if (a.startsWith('can:')) { const [, id, d] = a.split(':'); if (B.cannon(G, id, Number(d))) save(); }
+    else if (a.startsWith('pipe:')) { if (B.pipe(G, a.slice(5))) save(); }
+    else if (a === 'newgame') { begin(true); note('Neues Spiel', 2); return; }
     ui.render(G);
   }
 
@@ -55,8 +62,18 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     player.spawnAt(v.x, v.z, v.heading);
   }
 
-  const why = { closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' };
+  const why = { build: 'Umbau', closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' };
+  const LIFTS = Object.entries(D.build.projects).flatMap(([id, p]) => (p.lifts || []).map(l => [id, l]));
+  const PROJ = Object.fromEntries(D.pistes.filter(p => p.proj).map(p => [p.id, p.proj]));
   function sync() {
+    for (const [pid, lid] of LIFTS) {
+      if (active && B.done(G, pid)) lift.addSection(lid);
+      else lift.removeSection(lid);
+    }
+    for (const id in D.build.projects) {
+      const j = active && B.job(G, id), p = D.build.projects[id];
+      for (const lid of [...(p.lifts || []), ...(p.close || [])]) lift.site(lid, !!(j && j.left != null));
+    }
     lift.shut.clear();
     for (const s of lift.sections) {
       const l = G && G.lifts.find(x => x.id === s.id);
@@ -67,7 +84,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     }
     for (const p of pistes?.list || []) {
       const o = active && G.pistes[p.id];
-      pistes.setOpen(p.id, !o || o.open);
+      pistes.setOpen(p.id, active && PROJ[p.id] && !o ? false : !o || o.open);
       if (!pistes.setSurface) continue;
       if (!o) { pistes.setSurface(p.id, 1, 0, 0); continue; }
       const lb = N.label(o), C = D.cover;
@@ -135,7 +152,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     else if (hold) player.state.reset = false;
     hold = want;
     if (hold) {
-      const v = G.phase === 'prep' ? 'prep' : 'daily';
+      const v = G.fin?.over ? 'over' : G.phase === 'prep' ? 'prep' : 'daily';
       if (ui.view !== v) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';

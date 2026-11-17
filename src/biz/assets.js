@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { built } from './area.js';
 import { int, next as rand } from './rng.js';
 import { hit } from './satisfaction.js';
 import { techFactor, riskFactor, canOpen } from './staff.js';
@@ -22,10 +23,11 @@ export function log(G, text, lvl = 'info') {
   if (G.log.length > D.logMax) G.log.shift();
 }
 
-export const running = l => l.open && !l.broken && !(l.insp > 0) && !l.wind;
-export const pisteOpen = (G, id) => G.pistes?.[id]?.open !== false;
+export const running = l => l.open && !l.broken && !(l.insp > 0) && !l.wind && !l.build;
+export const pisteOpen = (G, id) => !!G.pistes?.[id] && G.pistes[id].open !== false;
 
 export function status(l) {
+  if (l.build) return 'build';
   if (l.broken) return l.repairLeft > 0 ? 'repair' : 'fault';
   if (l.insp > 0) return 'insp';
   if (l.wind) return 'wind';
@@ -45,6 +47,7 @@ export function initAssets(G) {
   const P = G.pistes || {};
   G.pistes = {};
   for (const p of D.pistes) {
+    if (!built(G, p)) continue;
     const o = P[p.id];
     G.pistes[p.id] = o && typeof o === 'object' ? o : { id: p.id, open: o !== false, cond: D.pisteStart.cond, snow: D.pisteStart.snow, groomed: true };
   }

@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { pl } from './area.js';
 import { int, next as rand } from './rng.js';
 import { running } from './assets.js';
 import { openPistes, offerShare, priceEq, segOffer, segPriceEq } from './demand.js';
@@ -33,8 +34,8 @@ export function instant(G) {
   const present = f ? f.present : 0;
   return {
     wait: q >= 1 ? qs / q : 100,
-    offer: share * 100,
-    quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : D.pistes),
+    offer: Math.min(100, share * 100),
+    quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : pl(G)),
     price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), 0, 100),
     crowd: lin(present / Math.max(km, 0.5), S.crowd[0], S.crowd[1]),
     service: service(G)
@@ -108,7 +109,7 @@ export function dayParts(G) {
   return o;
 }
 
-const offerNow = G => { const open = openPistes(G); return Object.fromEntries(SEGS.map(sg => [sg, segOffer(G, sg, open) * 100])); };
+const offerNow = G => { const open = openPistes(G); return Object.fromEntries(SEGS.map(sg => [sg, Math.min(100, segOffer(G, sg, open) * 100)])); };
 
 export function live(G) {
   if (G.phase === 'open') {
@@ -127,7 +128,7 @@ function voices(G, parts, z) {
   const v = {
     lift: peak ? D.lifts.find(l => l.id === peak[0]).name.replace(/^Gondel /, '') : 'Lift',
     min: peak ? Math.max(1, Math.round(peak[1])) : 0,
-    piste: (open.length ? pick(G, open) : pick(G, D.pistes)).name,
+    piste: (open.length ? pick(G, open) : pick(G, pl(G))).name,
     price: G.prices.day
   };
   const order = [...K].sort((a, b) => parts[a] - parts[b]);

@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { pl } from './area.js';
 import { next as rand } from './rng.js';
 import { tempAt, advance, applyWind, avalClose, weatherFactor, forecastFor } from './weather.js';
 import { pay, log } from './assets.js';
@@ -8,7 +9,6 @@ import { duty, patrolShort } from './staff.js';
 const C = D.cover, S = D.snow, W = D.weather;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const PISTE = Object.fromEntries(D.pistes.map(p => [p.id, p]));
-const KM = D.pistes.reduce((a, p) => a + p.km, 0);
 
 export const pisteH = p => (D.nodeH[p.from] + D.nodeH[p.to]) / 2;
 export const pisteT = (p, day) => tempAt(day.tTal, pisteH(p));
@@ -16,7 +16,7 @@ export const area = p => p.km * 1000 * S.width;
 export const label = o => o.cond < C.worn ? 'abgefahren' : o.q || 'griffig';
 export const depthF = cm => clamp(C.depth[2] + (1 - C.depth[2]) * (cm - C.depth[0]) / (C.depth[1] - C.depth[0]), C.depth[2], 1);
 export const score = (G, id) => { const o = G.pistes[id]; return clamp((o.cond ?? 0) * (C.q[label(o)] ?? 1) * depthF(o.snow ?? 0), 0, 100); };
-export const avgSnow = G => D.pistes.reduce((a, p) => a + p.km * (G.pistes[p.id].snow || 0), 0) / KM;
+export const avgSnow = G => { const L = pl(G); return L.reduce((a, p) => a + p.km * (G.pistes[p.id].snow || 0), 0) / L.reduce((a, p) => a + p.km, 0); };
 const newAt = (cm, h) => cm * clamp(W.lowSnow + (1 - W.lowSnow) * (h - W.ref) / (W.top - W.ref), W.lowSnow, 1.2);
 
 export function cannons(G) {
@@ -30,7 +30,7 @@ export function cannons(G) {
 export function initSnow(G, fresh) {
   cannons(G);
   if (!G.groom) G.groom = { machines: D.groom.start };
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     const o = G.pistes[p.id];
     if (fresh) o.snow = Math.round(C.natural[0] + C.natural[1] * (pisteH(p) - W.ref) + (G.cannons[p.id] ? C.cannonStart : 0));
     if (!o.q) o.q = 'griffig';
@@ -73,7 +73,7 @@ export function groomPlan(G) {
   const cap = Math.min(G.groom.machines, duty(G, 'groomer')) * D.groomNight.shift;
   let hours = 0;
   const list = [];
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     if (!G.pistes[p.id].grm) continue;
     const h = p.km * D.groom.hoursPerKm;
     if (hours + h > cap + 1e-6) continue;
@@ -81,13 +81,13 @@ export function groomPlan(G) {
     list.push(p.id);
   }
   const drivers = Math.ceil(hours / D.groomNight.shift - 1e-6);
-  const want = D.pistes.filter(p => G.pistes[p.id].grm).reduce((a, p) => a + p.km * D.groom.hoursPerKm, 0);
+  const want = pl(G).filter(p => G.pistes[p.id].grm).reduce((a, p) => a + p.km * D.groom.hoursPerKm, 0);
   return { cap, hours, want, list, drivers, cost: hours * D.groom.perHour };
 }
 
 export function nightTotals(G) {
   const g = groomPlan(G), t = { m3: 0, cost: 0, water: 0, kwh: 0 };
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     const q = gunPlan(G, p.id);
     if (!q.n || !q.h || !q.cold) continue;
     t.m3 += q.m3; t.cost += q.cost; t.water += q.water; t.kwh += q.kwh;
@@ -98,7 +98,7 @@ export function nightTotals(G) {
 export function night(G, date) {
   const prev = G.weather.today, g = groomPlan(G), rep = { date, pistes: {}, groomCost: g.cost, gunCost: 0, m3: 0, closed: [], opened: [], skipped: [] };
   const warm = {};
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     const o = G.pistes[p.id], t = pisteT(p, prev), r = rep.pistes[p.id] = { melt: 0, gun: 0, groomed: false, fresh: 0 };
     warm[p.id] = t > C.refreeze;
     if (t > 0) r.melt += C.melt * t * (C.meltBy[prev.type] || 1);
@@ -115,7 +115,7 @@ export function night(G, date) {
   advance(G, date);
   const day = G.weather.today;
   rep.newCm = day.cm;
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     const o = G.pistes[p.id], r = rep.pistes[p.id], t = pisteT(p, day);
     const fresh = day.cm > 0 && t <= C.rainAt ? newAt(day.cm, pisteH(p)) : 0;
     o.snow += fresh * C.settle;
@@ -149,7 +149,7 @@ export function night(G, date) {
   if (rep.skipped.length) log(G, 'Beschneiung zu warm: Piste ' + rep.skipped.join(', '), 'bad');
   applyWind(G);
   if (G.lifts.some(l => l.wind)) log(G, 'Sturm ' + day.wind + ' km/h – ' + G.lifts.filter(l => l.wind).map(l => l.name).join(' und ') + ' geschlossen', 'bad');
-  if (G.weather.aval >= 4) log(G, 'Lawinenwarnstufe ' + G.weather.aval + ' – Piste ' + avalClose().join('/') + ' sperren!', 'bad');
+  if (G.weather.aval >= 4) log(G, 'Lawinenwarnstufe ' + G.weather.aval + ' – Piste ' + avalClose(G).join('/') + ' sperren!', 'bad');
   G.night = rep;
   return rep;
 }
@@ -157,7 +157,7 @@ export function night(G, date) {
 export function minute(G) {
   const a = G.weather?.aval || 1;
   if (a < 4) return;
-  for (const id of avalClose()) {
+  for (const id of avalClose(G)) {
     const o = G.pistes[id];
     if (!o.open || rand(G) >= D.aval.risk * (a - 3) * (1 + patrolShort(G)) * (G.flow?.present > 0 ? 1 : 0)) continue;
     o.open = false;
@@ -167,10 +167,12 @@ export function minute(G) {
 }
 
 
+export const startSnow = (G, p) => Math.round(C.natural[0] + C.natural[1] * (pisteH(p) - W.ref) + (cannons(G)[p.id] ? C.cannonStart : 0));
+
 export function newSeason(G) {
-  for (const p of D.pistes) {
+  for (const p of pl(G)) {
     const o = G.pistes[p.id];
-    o.snow = Math.round(C.natural[0] + C.natural[1] * (pisteH(p) - W.ref) + (cannons(G)[p.id] ? C.cannonStart : 0));
+    o.snow = startSnow(G, p);
     if (o.aper) o.open = true;
     o.aper = false;
     o.cond = D.pisteStart.cond;

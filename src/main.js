@@ -53,13 +53,14 @@ async function start() {
   const { scene, followSun } = world;
   const assetsP = loadAssets();
   const osmP = get('public/osm.json', 'json');
+  const expP = get('public/expansion.json', 'json');
   menu.setStatus('Lade Gelände …');
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
   menu.setStatus('Lade Pisten …');
   const pistes = await loadPistes(terrain);
   scene.add(pistes.group);
-  const lift = createLift(terrain, pistes);
+  const lift = createLift(terrain, pistes, await expP);
   scene.add(lift.group);
   menu.setStatus('Lade Modelle …');
   const assets = await assetsP;
@@ -79,6 +80,7 @@ async function start() {
 
   const crowd = createCrowd(terrain, pistes, lift, assets);
   scene.add(crowd.group);
+  lift.onAdd = sec => crowd.link(sec);
   const player = createPlayer(terrain, assets);
   scene.add(player.object);
   const goTo = k => {

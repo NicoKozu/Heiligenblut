@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { DIRS, keys } from './area.js';
 import { running, pisteOpen } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
@@ -6,7 +7,7 @@ import { ticketPrice, kidsFree } from './marketing.js';
 import * as SD from './side.js';
 
 const F = D.flow;
-const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
+const LIFT = Object.fromEntries(DIRS.map(l => [l.id, l]));
 const PISTE = Object.fromEntries(D.pistes.map(p => [p.id, p]));
 const smooth = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -33,15 +34,21 @@ export function skillMix(seg) {
 
 export function newFlow(full, half, seg) {
   const zeros = n => new Array(n).fill(0), t = seg ? Object.values(seg).reduce((a, b) => a + b, 0) || 1 : 0;
-  return SD.sideFlow({
+  return SD.sideFlow(ensureKeys({
     plan: { full, half }, seg: seg ? Object.fromEntries(Object.entries(seg).map(([k, v]) => [k, v / t])) : null, skill: seg ? skillMix(seg) : null, done: { full: 0, half: 0 },
-    queue: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
-    ride: Object.fromEntries(D.lifts.map(l => [l.id, zeros(l.ride)])),
-    run: Object.fromEntries(D.pistes.map(p => [p.id, zeros(runMinutes(p))])),
-    wait: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
-    board: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
+    queue: {}, ride: {}, run: {}, wait: {}, board: {},
     present: 0, lunched: 0, avgWait: 0, cashQ: 0, cashWait: 0, cashServed: 0
-  });
+  }));
+}
+
+export function ensureKeys(f) {
+  for (const k of ['queue', 'ride', 'run', 'wait', 'board']) if (!f[k]) f[k] = {};
+  for (const l of DIRS) {
+    for (const k of ['queue', 'wait', 'board']) if (f[k][l.id] == null) f[k][l.id] = 0;
+    if (!f.ride[l.id]) f.ride[l.id] = new Array(l.ride).fill(0);
+  }
+  for (const p of D.pistes) if (!f.run[p.id]) f.run[p.id] = new Array(runMinutes(p)).fill(0);
+  return f;
 }
 
 function shift(a) {
@@ -87,9 +94,12 @@ function dispatch(G, f, node, X, t, d) {
   }
   const opts = [];
   for (const l of G.lifts) {
-    const s = LIFT[l.id];
-    if (s.from !== node || !running(l)) continue;
-    opts.push({ l, w: Math.max(0.02, F.liftW * (1 - d) * Math.exp(-f.wait[l.id] / F.queueTau)) });
+    if (!running(l)) continue;
+    for (const k of keys(l)) {
+      const s = LIFT[k];
+      if (s.from !== node) continue;
+      opts.push({ k, w: Math.max(0.02, F.liftW * (s.back ? 0.3 + 1.5 * d : 1 - d) * Math.exp(-f.wait[k] / F.queueTau)) });
+    }
   }
   for (const p of D.pistes) {
     if (p.from !== node || !pisteOpen(G, p.id)) continue;
@@ -99,7 +109,7 @@ function dispatch(G, f, node, X, t, d) {
   const W = opts.reduce((a, o) => a + o.w, 0);
   for (const o of opts) {
     const n = X * o.w / W;
-    if (o.l) f.queue[o.l.id] += n;
+    if (o.k) f.queue[o.k] += n;
     else { const r = f.run[o.p.id]; r[r.length - 1] += n; }
   }
 }
@@ -119,28 +129,32 @@ export function step(G, t) {
   f.cashServed = sv;
   T.cashPeak = Math.max(T.cashPeak || 0, f.cashWait);
   at.tal += a - dq + sv;
-  for (const l of D.lifts) at[l.to] += shift(f.ride[l.id]);
+  for (const l of DIRS) at[l.to] += shift(f.ride[l.id]);
   for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
   SD.hutsOut(G, f, at);
-  for (const l of G.lifts) if (!running(l) && f.queue[l.id] > 0) { at[LIFT[l.id].from] += f.queue[l.id]; f.queue[l.id] = 0; }
+  for (const l of G.lifts) if (!running(l)) for (const k of keys(l)) if (f.queue[k] > 0) { at[LIFT[k].from] += f.queue[k]; f.queue[k] = 0; }
   for (const n in at) dispatch(G, f, n, at[n], t, d);
   SD.hutsIn(G, f);
   let ws = 0, bs = 0;
   for (const l of G.lifts) {
-    const c = capPerMin(l);
-    const on = running(l), b = on ? Math.min(f.queue[l.id], c) : 0;
-    f.queue[l.id] -= b;
-    if (f.queue[l.id] < 1e-6) f.queue[l.id] = 0;
-    const r = f.ride[l.id];
-    r[r.length - 1] += b;
-    l.util = c ? b / c : 0;
-    const w = on ? f.queue[l.id] / c : 0;
-    f.wait[l.id] = w;
-    f.board[l.id] = b;
-    T.rides[l.id] = (T.rides[l.id] || 0) + b;
-    T.peak[l.id] = Math.max(T.peak[l.id] || 0, w);
-    ws += w * b;
-    bs += b;
+    const c = capPerMin(l), on = running(l), K = keys(l);
+    let u = 0;
+    for (const k of K) {
+      const b = on ? Math.min(f.queue[k], c) : 0;
+      f.queue[k] -= b;
+      if (f.queue[k] < 1e-6) f.queue[k] = 0;
+      const r = f.ride[k];
+      r[r.length - 1] += b;
+      u += c ? b / c / K.length : 0;
+      const w = on ? f.queue[k] / c : 0;
+      f.wait[k] = w;
+      f.board[k] = b;
+      T.rides[l.id] = (T.rides[l.id] || 0) + b;
+      T.peak[l.id] = Math.max(T.peak[l.id] || 0, w);
+      ws += w * b;
+      bs += b;
+    }
+    l.util = u;
   }
   f.avgWait = bs ? ws / bs : 0;
   T.waitSum += ws;
