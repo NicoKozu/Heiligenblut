@@ -24,7 +24,7 @@ export const D = {
     arrive: { from: 495, peak: 570, to: 660 },
     half: { from: 690, peak: 720, to: 780 },
     leave: { from: 870, to: 990 },
-    lunch: { from: 705, to: 810, share: 0.6, dur: 40, nodes: ['rossbach', 'schareck'] },
+    lunch: { from: 705, to: 810, share: 0.65, dur: 40 },
     speed: { leicht: 25, mittel: 32, schwer: 38 },
     pause: { leicht: 4, mittel: 3, schwer: 2 },
     skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 },
@@ -95,16 +95,16 @@ export const D = {
       patrol: { label: 'Pistenrettung', start: 4, perm: 2, info: 'mind. 1 je 3 offene Pisten, sonst Unfälle' },
       cashier: { label: 'Kassa', start: 5, perm: 2, info: 'zu wenige → Kassenschlange morgens' },
       instructor: { label: 'Skilehrer', start: 10, perm: 3, info: 'je Skilehrer 8 Schüler (Skischule)' },
-      gastro: { label: 'Gastro', start: 18, perm: 5, info: 'je Kraft ~100 Gäste, sonst leidet der Service' }
+      gastro: { label: 'Gastro', start: 18, perm: 5, info: 'je Kraft 36 Sitzplätze in offenen Hütten, sonst weniger Plätze und Wartezeit' }
     },
     delay: 2, fireDays: 5, max: 80,
     wage: [90, 120], wageStep: 5,
     morale: { start: 65, base: 70, wageK: 1.5, over: 60, rate: 0.2, cut: 1.5, fire: 0.5, sickBelow: 40, sick: [0.02, 0.12] },
     bonus: { perHead: 200, gain: 12 },
     relief: 1.25, techPerLift: 1, techBase: 1, techRef: 4, techMin: 0.5, techRisk: 0.3,
-    patrolPer: 3, accident: 0.002, gastroPer: 100, pupils: 8,
+    patrolPer: 3, accident: 0.002, pupils: 8,
     cash: { rate: 4, online: 0.3, auto: 0.5, wait: [2, 20] },
-    service: { cash: 0.4, morale: 0.35, gastro: 0.25 },
+    service: { cash: 0.35, morale: 0.3, gastro: 0.25, side: 0.1 },
     returnRate: [0.3, 0.9]
   },
   cover: {
@@ -142,10 +142,10 @@ export const D = {
   snowFactor: { steps: [[20, 0.3], [40, 0.7], [60, 0.9]], top: 1.05, powder: 15, powderAdd: 0.2 },
   aval: { decay: 0.6, wind: 40, windAdd: 12, levels: [10, 25, 45, 70], close: ['1', '12'], risk: 0.0006 },
   segs: {
-    fam: { label: 'Familien', color: '#ffb14a', share: 0.35, el: 1.8, wx: 1, mix: { adult: 0.5, youth: 0.1, child: 0.4 }, skill: { leicht: 0.6, mittel: 0.35, schwer: 0.05 }, pref: { leicht: 1, mittel: 0.5, schwer: 0.1 }, fair: 0.85, w: { wait: 0.2, offer: 0.12, quality: 0.13, price: 0.25, crowd: 0.2, service: 0.1 }, info: 'preisbewusst, leichte Pisten, Gedränge stört' },
-    sport: { label: 'Sportliche', color: '#ff6b5a', share: 0.2, el: 1.0, wx: 0.9, mix: { adult: 0.8, youth: 0.17, child: 0.03 }, skill: { leicht: 0.1, mittel: 0.45, schwer: 0.45 }, pref: { leicht: 0.3, mittel: 0.8, schwer: 1 }, fair: 1.1, w: { wait: 0.2, offer: 0.25, quality: 0.3, price: 0.08, crowd: 0.07, service: 0.1 }, info: 'Präparierung und schwere Pisten zählen' },
-    day: { label: 'Tagesgäste', color: '#5aa2ff', share: 0.25, el: 1.4, wx: 1.4, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1, w: null, info: 'kommen spontan bei gutem Wetter' },
-    week: { label: 'Wochengäste', color: '#7be07b', share: 0.2, el: 1.2, wx: 0.5, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1.05, w: null, info: 'gebucht, wetterunabhängig (NL/DE)' }
+    fam: { label: 'Familien', color: '#ffb14a', share: 0.35, el: 1.8, wx: 1, mix: { adult: 0.5, youth: 0.1, child: 0.4 }, skill: { leicht: 0.6, mittel: 0.35, schwer: 0.05 }, pref: { leicht: 1, mittel: 0.5, schwer: 0.1 }, fair: 0.85, w: { wait: 0.2, offer: 0.12, quality: 0.13, price: 0.25, crowd: 0.2, service: 0.1 }, gastro: 1, info: 'preisbewusst, leichte Pisten, Gedränge stört' },
+    sport: { label: 'Sportliche', color: '#ff6b5a', share: 0.2, el: 1.0, wx: 0.9, mix: { adult: 0.8, youth: 0.17, child: 0.03 }, skill: { leicht: 0.1, mittel: 0.45, schwer: 0.45 }, pref: { leicht: 0.3, mittel: 0.8, schwer: 1 }, fair: 1.1, w: { wait: 0.2, offer: 0.25, quality: 0.3, price: 0.08, crowd: 0.07, service: 0.1 }, gastro: 0.3, info: 'Präparierung und schwere Pisten zählen' },
+    day: { label: 'Tagesgäste', color: '#5aa2ff', share: 0.25, el: 1.4, wx: 1.4, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1, w: null, gastro: 0.6, info: 'kommen spontan bei gutem Wetter' },
+    week: { label: 'Wochengäste', color: '#7be07b', share: 0.2, el: 1.2, wx: 0.5, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1.05, w: null, gastro: 0.5, info: 'gebucht, wetterunabhängig (NL/DE)' }
   },
   mkt: {
     campaigns: {
@@ -169,10 +169,24 @@ export const D = {
     }
   },
   side: {
-    gastro: { perGuest: 19, margin: 0.38 },
-    rental: { share: 0.18, price: 36 },
-    school: { share: 0.06, price: 75 },
-    parking: { share: 0.55, price: 6 }
+    gastro: { perGuest: 19, margin: 0.38, goods: 0.5, lunchRef: 0.55 },
+    rental: { share: 0.18, price: 36, el: 1.3, start: 68, wear: 0.004, upkeep: 8, cond: [0.7, 0.3], buy: 95000, service: { cost: 6000, gain: 8, max: 80 } },
+    school: { share: 0.06, price: 75, el: 1.4 },
+    parking: { share: 0.55, persons: 2, price: 12, el: 0.5, maxShare: 0.8, cap: 600, fix: 150, satK: 1.5 },
+    huts: [
+      { id: 'rossbach', name: 'Rossbach Alm', node: 'rossbach', seats: 180, draw: 1 },
+      { id: 'schareck', name: 'Panoramarestaurant Schareck', node: 'schareck', seats: 240, draw: 1.2 },
+      { id: 'spatzl', name: 'Spatzl Alm', node: 'schareck', seats: 100, draw: 0.8 },
+      { id: 'fleiss', name: 'Skihütte Fleißalm', node: 'rossbach', seats: 80, draw: 0.5 }
+    ],
+    levels: {
+      cheap: { label: 'günstig', price: 0.8, goods: 1, draw: 1.15, sat: 8 },
+      normal: { label: 'normal', price: 1, goods: 1, draw: 1, sat: 0 },
+      upscale: { label: 'gehoben', price: 1.3, goods: 1.12, draw: 0.85, sat: -18 }
+    },
+    spendEl: 0.8, priceK: 0.6, seatsPerStaff: 36, hutFix: 450, maxWait: 25, giveUp: 0.08, wait: [5, 30], miss: 100,
+    score: { lunch: 0.6, staff: 0.4 },
+    areas: { tickets: { label: 'Tickets', color: '#5aa2ff' }, gastro: { label: 'Gastro', color: '#ffb14a' }, rental: { label: 'Verleih', color: '#7be07b' }, school: { label: 'Skischule', color: '#ff6b5a' }, parking: { label: 'Parkplatz', color: '#b48cff' } }
   },
   invest: {
     fleissbahn: { label: 'Fleißbahn (Gondel)', price: 4800000 },
@@ -230,7 +244,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

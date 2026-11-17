@@ -116,7 +116,7 @@ async function start() {
     player.setMode(c.mode);
     if (c.game === 'free') biz?.end();
     else {
-      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx });
+      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx, scenery });
       biz.begin(c.game === 'new');
     }
     if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);

@@ -7,6 +7,7 @@ import { live, stars } from './satisfaction.js';
 import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
 import { GROUPS, duty, needs, wages, heads, dayCost, pendingOf, nextArrival, bonusCost, bonusDone } from './staff.js';
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
+import * as X from './side.js';
 import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
@@ -94,6 +95,13 @@ body.menu #biz-panel,body.menu #biz-over{display:none}
 #biz-over .voice{padding:6px 10px;margin:4px 0;background:rgba(255,255,255,.06);border-left:3px solid #5aa2ff;border-radius:4px}
 #biz-over .voice small{display:block;opacity:.65;font-size:12px}
 #biz-over canvas{width:100%;height:130px;display:block}
+#biz-over .pie{display:flex;gap:18px;align-items:center}
+#biz-over .pie canvas{width:130px;height:130px;flex:none}
+#biz-over .lvs{display:inline-flex;gap:3px;margin-top:4px}
+#biz-over .lvs button{font:inherit;font-size:12px;color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:2px 8px;cursor:pointer}
+#biz-over .lvs button.on{background:rgba(255,177,74,.3);border-color:#ffb14a}
+#biz-over .lvs button:disabled{cursor:default;opacity:.55}
+#biz-over .lvs button.on:disabled{opacity:.9}
 `;
 
 export function eur(n) {
@@ -109,7 +117,8 @@ const row = (k, v, c = '') => '<div class="row"><span>' + k + '</span><b class="
 const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
 const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
 const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
-const revLabel = k => D.tickets[k]?.label || k;
+const revLabel = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
+const ticketSum = o => Object.entries(o || {}).reduce((a, [k, v]) => a + (k in D.tickets ? v : 0), 0);
 const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad', staff: 'bad' };
 const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
 const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
@@ -202,7 +211,9 @@ export function createUI(h) {
       '<div class="sep"></div>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       row('Kosten heute', eur(c)) +
-      row('Umsatz heute (Tickets)', eur(sumv(G.today.revenue))) +
+      row('Umsatz heute', eur(sumv(G.today.revenue))) +
+      row('davon Nebengeschäfte', eur(sumv(G.today.revenue) - ticketSum(G.today.revenue))) +
+      (open ? row('Hütten · Parkplatz', (X.hutWaitNow(G.flow) >= 0.5 ? '<span class="' + wtone(X.hutWaitNow(G.flow)) + '">' + mins(X.hutWaitNow(G.flow)) + '</span> · ' : num(X.inHuts(G.flow)) + ' Gäste · ') + '<span class="' + (G.flow.cars >= G.side.park.cap - 0.5 ? 'biz-bad' : G.flow.cars > G.side.park.cap * 0.85 ? 'biz-warn' : '') + '">' + num(G.flow.cars) + '/' + num(G.side.park.cap) + '</span>') : '') +
       '<div class="sep"></div>' +
       row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
       (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) +
@@ -225,7 +236,7 @@ export function createUI(h) {
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee'], ['side', 'Gastro & Service']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -336,6 +347,36 @@ export function createUI(h) {
       '</table><p class="note">Einstellung wirkt nach ' + D.staff.delay + ' Tagen, Kündigung kostet ' + D.staff.fireDays + ' Tageslöhne (nicht während des Betriebs). Moral sinkt bei Überlastung (zu wenig Leute) und Lohnkürzung, steigt mit Lohn und Prämie; unter ' + D.staff.morale.sickBelow + ' gibt es Krankmeldungen. Saisonkräfte enden am Saisonende, je nach Moral kommt ein Teil wieder.</p>';
   }
 
+  function sideTab(G) {
+    const edit = G.phase !== 'open', L = D.side.levels, sd = G.side, fc = forecast(G), o = X.outlook(G, fc.n), f = G.flow, live = G.phase === 'open';
+    const pr = (k, v, max) => edit ? '<span class="price"><button data-act="sp:' + k + ':-1">−</button><input data-price="side:' + k + '" type="number" min="0" max="' + max + '" value="' + v + '"> €<button data-act="sp:' + k + ':1">+</button></span>' : eur(v);
+    const lv = id => Object.entries(L).map(([k, v]) => '<button class="lv' + (sd.huts[id].level === k ? ' on' : '') + '" data-act="lvl:' + id + ':' + k + '"' + (edit ? '' : ' disabled') + '>' + v.label + '</button>').join('');
+    const gd = duty(G, 'gastro'), gn = X.gastroNeed(G), ts = G.today.side || {};
+    return '<h2>Hütten</h2><table>' + D.side.huts.map(h => {
+      const s = sd.huts[h.id], eff = X.seatsEff(G, h.id), w = live ? f.hutWait[h.id] : 0;
+      return '<tr><td><b>' + h.name + '</b><br><span style="opacity:.75;font-size:13px">bei ' + D.nodes[h.node] + ' · ' + num(X.seats(G, h.id)) + ' Plätze' + (s.open && eff < X.seats(G, h.id) - 0.5 ? ' (<span class="biz-warn">' + num(eff) + ' besetzt</span>)' : '') + ' · Personal ' + X.hutNeed(G, h.id) + ' · Ø ' + eur(X.spend(G, h.id)) + '/Gast' +
+        (live && s.open ? ' · jetzt ' + num(f.hut[h.id].reduce((a, b) => a + b, 0)) + (w >= 0.5 ? ' · <span class="' + wtone(w) + '">Wartezeit ' + mins(w) + '</span>' : '') : '') + (ts['h_' + h.id] ? ' · heute ' + eur(ts['h_' + h.id]) : '') + '</span><br><span class="lvs">' + lv(h.id) + '</span></td><td>' + sw('hut', h.id, s.open) + '</td></tr>';
+    }).join('') +
+      tr('Gastro-Personal im Dienst / benötigt', '<span class="' + (gd >= gn ? 'biz-good' : gd >= gn * 0.8 ? 'biz-warn' : 'biz-bad') + '">' + gd + '</span> / ' + gn + ' · <button class="btn" data-tab="staff">Personal</button>') + '</table>' +
+      '<p class="note">Preisniveau: günstig ×' + dec(L.cheap.price, 2) + ' (weniger Marge, Familien zufriedener), gehoben ×' + dec(L.upscale.price, 2) + ' (mehr Marge, Familien unzufriedener). Je Gastro-Kraft ' + D.side.seatsPerStaff + ' Plätze; volle Hütte mittags → Wartezeit, zählt in die Service-Note. Fixkosten ' + eur(D.side.hutFix) + ' je offener Hütte und Tag.</p>' +
+      '<h2>Verleih</h2><table>' + tr('Mietpreis Tag', pr('rental', sd.rental.price, 300)) + tr('Ausrüstung', '<span class="' + tone(sd.rental.cond, 70, 45) + '">' + Math.round(sd.rental.cond) + ' %</span> · −' + dec(D.side.rental.wear * 100, 1) + ' Pp. je 100 Mieten') +
+      tr('Wartung (+' + D.side.rental.service.gain + ' Pp., bis ' + D.side.rental.service.max + ' %)', eur(D.side.rental.service.cost) + ' <button class="btn" data-act="rent:svc"' + (sd.rental.cond >= D.side.rental.service.max || G.cash < D.side.rental.service.cost ? ' disabled' : '') + '>Warten</button>') +
+      tr('Neukauf (100 %)', eur(D.side.rental.buy) + ' <button class="btn" data-act="rent:buy"' + (G.cash < D.side.rental.buy ? ' disabled' : '') + '>Kaufen</button>') + tr('Mietquote', dec(X.rentShare(G) * 100) + ' % der Gäste') + '</table>' +
+      '<h2>Skischule</h2><table>' + tr('Kurspreis Tag', pr('school', sd.school.price, 300)) + tr('Plätze', num(duty(G, 'instructor') * D.staff.pupils) + ' (' + duty(G, 'instructor') + ' Skilehrer × ' + D.staff.pupils + ') · <button class="btn" data-tab="staff">Personal</button>') + (ts.schoolWant ? tr('Heute gebucht / gewünscht', num(ts.pupils || 0) + ' / ' + num(ts.schoolWant)) : '') + '</table>' +
+      '<h2>Parkplatz</h2><table>' + tr('Gebühr je Auto', pr('park', sd.park.price, 40)) + tr('Kapazität', num(sd.park.cap) + ' Plätze' + (live ? ' · belegt <span class="' + (f.cars >= sd.park.cap - 0.5 ? 'biz-bad' : '') + '">' + num(f.cars) + '</span>' : '')) + tr('Autos je 100 Gäste', dec(X.parkShare(G) / D.side.parking.persons * 100)) + (ts.turned >= 1 ? tr('Heute umgekehrt', '<span class="biz-bad">' + num(ts.turned) + ' Gäste</span>') : '') + '</table>' +
+      '<p class="note">Parkplatz voll → ankommende Autogäste kehren um. Hohe Gebühr: weniger Autos, aber schlechtere Preis-Leistung.' + (edit ? '' : ' Preise und Preisniveau sind während des Betriebs gesperrt.') + '</p>' +
+      '<h2>Prognose ' + fmtDate(fc.date) + ' (' + num(fc.n) + ' Gäste)</h2><table>' + ['gastro', 'rental', 'school', 'parking'].map(k => tr(D.side.areas[k].label, eur(o[k]))).join('') +
+      (o.cars > sd.park.cap ? tr('Parkplatz', '<span class="biz-bad">voll – ' + num((o.cars - sd.park.cap) * D.side.parking.persons) + ' Gäste kehren um</span>') : '') + tr('Summe Nebengeschäfte', eur(o.gastro + o.rental + o.school + o.parking), 'sum') + '</table>';
+  }
+
+  function areaReport(r) {
+    const a = X.byArea(r.revs), t = sumv(a), s = r.side || {};
+    return '<h2>Umsatz nach Bereich</h2><div class="pie"><canvas data-chart="pie" data-v="' + X.AREAS.map(k => a[k].toFixed(0)).join(',') + '" width="130" height="130"></canvas><table>' + X.AREAS.map(k => tr('<i class="biz-dot" style="background:' + D.side.areas[k].color + '"></i> ' + D.side.areas[k].label, eur(a[k]) + ' · ' + Math.round(t ? a[k] / t * 100 : 0) + ' %')).join('') + tr('Summe', eur(t), 'sum') + '</table></div>' +
+      '<h2>Nebengeschäfte</h2><table>' + tr('Mittagessen in Hütten', num(s.lunch || 0) + ' Gäste · Spitze Wartezeit <span class="' + wtone(s.hutPeak || 0) + '">' + mins(s.hutPeak || 0) + '</span>' + (s.lunchMiss >= 1 ? ' · <span class="biz-bad">' + num(s.lunchMiss) + ' ohne Essen</span>' : '')) +
+      tr('Wareneinsatz Gastro', eur(r.costs.goods || 0)) + tr('Verleih', num(s.rent || 0) + ' Mieten') + tr('Skischule', num(s.pupils || 0) + ' Schüler' + (s.schoolMiss >= 1 ? ' · <span class="biz-bad">' + num(s.schoolMiss) + ' abgewiesen</span>' : '')) +
+      tr('Parkplatz', num(s.cars || 0) + ' Autos' + (s.turned >= 1 ? ' · <span class="biz-bad">' + num(s.turned) + ' Gäste umgekehrt</span>' : '')) + '</table>';
+  }
+
   function nightReport(G) {
     const n = G.night;
     if (!n || n.date !== G.date) return '';
@@ -351,7 +392,7 @@ export function createUI(h) {
       '</table>';
   }
 
-  const body = G => tab === 'mkt' ? mkt(G) : tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
+  const body = G => tab === 'side' ? sideTab(G) : tab === 'mkt' ? mkt(G) : tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
@@ -365,9 +406,9 @@ export function createUI(h) {
     const costs = Object.entries(r.costs).filter(([, v]) => v > 0).map(([k, v]) => tr(D.costLabels[k] || k, eur(-v))).join('');
     return '<h1>Tagesbericht</h1><p class="sub">' + fmtDate(r.date) + ' · Feierabend 16:30</p>' + tabs() +
       (body(G) || satReport(G, r) +
-        '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + tr('Umsatz je Gast (Tickets)', eur(sumv(r.revs) / Math.max(1, r.guests))) + (r.free >= 1 ? tr('Kinder gratis (Samstag)', num(r.free)) : '') + '</table>' +
+        '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + tr('Umsatz je Gast (Tickets)', eur(ticketSum(r.revs) / Math.max(1, r.guests))) + tr('Umsatz je Gast (gesamt)', eur(r.revenue / Math.max(1, r.guests))) + (r.free >= 1 ? tr('Kinder gratis (Samstag)', num(r.free)) : '') + '</table>' +
         (r.seg ? '<h2>Zielgruppen</h2>' + segBar(r.seg) + '<table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(r.seg[s] || 0) + (r.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(r.sat.seg[s]) + '">' + Math.round(r.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' : '') +
-        '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
+        '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).filter(([k]) => k in D.tickets).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Tickets', eur(ticketSum(r.revs)), 'sum') + '</table>' + areaReport(r) +
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
         (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Im Dienst / benötigt', r.staff.duty + ' / ' + r.staff.need + (r.staff.sick ? ' · <span class="biz-bad">' + r.staff.sick + ' krank</span>' : '')) + tr('Moral', '<span class="' + tone(r.staff.morale, 60, 40) + '">' + Math.round(r.staff.morale) + '</span> · Überlastung ' + Math.round(r.staff.over * 100) + ' %') + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
@@ -386,8 +427,27 @@ export function createUI(h) {
       '<h2>Ruf – letzte ' + D.sat.quotes.chart + ' Tage</h2><canvas data-chart="rep" width="620" height="130"></canvas>';
   }
 
+  function pie(cv) {
+    const v = cv.dataset.v.split(',').map(Number), t = v.reduce((a, b) => a + b, 0), dpr = Math.min(2, devicePixelRatio || 1), w = 130;
+    cv.width = w * dpr; cv.height = w * dpr;
+    const c = cv.getContext('2d');
+    c.scale(dpr, dpr);
+    let a = -Math.PI / 2;
+    if (!t) return;
+    X.AREAS.forEach((k, i) => {
+      const d = v[i] / t * Math.PI * 2;
+      c.fillStyle = D.side.areas[k].color;
+      c.beginPath(); c.moveTo(w / 2, w / 2); c.arc(w / 2, w / 2, w / 2 - 2, a, a + d); c.closePath(); c.fill();
+      a += d;
+    });
+    c.fillStyle = 'rgba(12,32,54,1)';
+    c.beginPath(); c.arc(w / 2, w / 2, w * 0.24, 0, 7); c.fill();
+  }
+
   function chart(G) {
-    const cv = over.querySelector('canvas[data-chart]');
+    const pc = over.querySelector('canvas[data-chart="pie"]');
+    if (pc) pie(pc);
+    const cv = over.querySelector('canvas[data-chart="rep"]');
     if (!cv) return;
     const H = G.history.filter(h => h.sat).slice(-D.sat.quotes.chart);
     const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth || 620, h = cv.clientHeight || 130;

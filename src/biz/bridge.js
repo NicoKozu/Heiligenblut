@@ -5,10 +5,11 @@ import * as A from './assets.js';
 import * as N from './snow.js';
 import * as P from './staff.js';
 import * as M from './marketing.js';
+import * as X from './side.js';
 import { consume } from '../input.js';
 
-export function createBiz({ lift, player, crowd, pistes, env }) {
-  const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { S.setPrice(G, k, v); save(); ui.render(G); } });
+export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
+  const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
   let G = null, active = false, hold = false, acc = 0;
@@ -29,6 +30,10 @@ export function createBiz({ lift, player, crowd, pistes, env }) {
     else if (a === 'next' && S.nextDay(G)) { ui.open('prep'); save(); }
     else if (a === 'close') ui.close();
     else if (a.startsWith('price:') && G.phase !== 'open') { const [, k, d] = a.split(':'); S.setPrice(G, k, G.prices[k] + Number(d)); save(); }
+    else if (a.startsWith('tog:hut:')) { if (X.toggleHut(G, a.slice(8))) save(); }
+    else if (a.startsWith('lvl:')) { const [, id, lv] = a.split(':'); if (X.setLevel(G, id, lv)) save(); }
+    else if (a.startsWith('sp:')) { const [, k, d] = a.split(':'), o = k === 'rental' ? G.side.rental : k === 'school' ? G.side.school : G.side.park; if (X.setSidePrice(G, k, o.price + Number(d))) save(); }
+    else if (a.startsWith('rent:')) { if (X.rentalAct(G, a.slice(5))) { save(); note(a === 'rent:buy' ? 'Neue Leihausrüstung gekauft' : 'Leihausrüstung gewartet', 2); } }
     else if (a.startsWith('tog:')) { const [, k, id] = a.split(':'), o = k === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id]; if (!o) return; if (A.setOpen(G, k, id, !o.open)) save(); else if (k === 'lift' && !o.open && !P.canOpen(G, id)) note('Zu wenig Liftpersonal für ' + o.name, 3); }
     else if (a.startsWith('repair:')) { const [, id, x] = a.split(':'); if (A.repair(G, id, x === 'x')) { ui.drop(id); save(); note('Reparatur beauftragt', 2); } }
     else if (a.startsWith('insp:')) { if (A.inspect(G, a.slice(5))) save(); }
@@ -69,6 +74,7 @@ export function createBiz({ lift, player, crowd, pistes, env }) {
       pistes.setSurface(p.id, o.groomed && lb !== 'pulvrig' ? Math.min(1, Math.max(0, (o.cond - 40) / 45)) : 0, lb === 'pulvrig' ? 0 : Math.min(1, Math.max(0, (88 - o.cond) / 50)), Math.min(1, Math.max(0, (C.thin - o.snow) / (C.thin - C.minOpen + 6))));
     }
     env?.set(active ? G.weather?.today : null);
+    if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.phase !== 'closed'));
   }
 
   function begin(fresh) {
