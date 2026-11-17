@@ -13,8 +13,8 @@ const CSS = `
 #biz-panel .row b{font-variant-numeric:tabular-nums;font-weight:600}
 #biz-panel .sep{height:1px;background:rgba(255,255,255,.12);margin:6px 0}
 #biz-panel .keys{margin-top:6px;font-size:11px;opacity:.55}
-#biz-panel .tab{position:absolute;left:4px;top:8px;font-size:11px;opacity:.5;writing-mode:vertical-rl}
-#biz-panel.off .tab{opacity:.9}
+#biz-panel .tab{display:none;position:absolute;left:6px;top:8px;font-size:11px;writing-mode:vertical-rl}
+#biz-panel.off .tab{display:block;opacity:.9}
 .biz-good{color:#7be07b}.biz-warn{color:#ffd84a}.biz-bad{color:#ff6b5a}
 .biz-phase{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600}
 .biz-phase.prep{background:#7a5cff55;color:#d6ccff}.biz-phase.open{background:#2fae5e55;color:#a6f0c0}.biz-phase.closed{background:#e0803055;color:#ffd0a6}

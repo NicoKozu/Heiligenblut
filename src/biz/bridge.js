@@ -20,7 +20,7 @@ export function createBiz({ lift, player }) {
   function save() { if (G) S.save(G); }
 
   function action(a) {
-    if (a === 'start' && S.startDay(G)) { ui.close(); save(); note('Lifte offen – guten Betrieb!', 2); }
+    if (a === 'start' && S.startDay(G)) { ui.close(); save(); note('Lifte offen', 2); }
     else if (a === 'next' && S.nextDay(G)) { ui.open('prep'); save(); }
     else if (a === 'close') ui.close();
     ui.render(G);
