@@ -3,6 +3,7 @@ import { next as rand } from './rng.js';
 import { tempAt, advance, applyWind, avalClose, weatherFactor, forecastFor } from './weather.js';
 import { pay, log } from './assets.js';
 import { hit } from './satisfaction.js';
+import { duty, patrolShort } from './staff.js';
 
 const C = D.cover, S = D.snow, W = D.weather;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -28,7 +29,7 @@ export function cannons(G) {
 
 export function initSnow(G, fresh) {
   cannons(G);
-  if (!G.groom) G.groom = { machines: D.groom.start, drivers: D.groomNight.drivers };
+  if (!G.groom) G.groom = { machines: D.groom.start };
   for (const p of D.pistes) {
     const o = G.pistes[p.id];
     if (fresh) o.snow = Math.round(C.natural[0] + C.natural[1] * (pisteH(p) - W.ref) + (G.cannons[p.id] ? C.cannonStart : 0));
@@ -69,7 +70,7 @@ export function gunPlan(G, id, h = G.pistes[id].gun) {
 }
 
 export function groomPlan(G) {
-  const cap = Math.min(G.groom.machines, G.groom.drivers) * D.groomNight.shift;
+  const cap = Math.min(G.groom.machines, duty(G, 'groomer')) * D.groomNight.shift;
   let hours = 0;
   const list = [];
   for (const p of D.pistes) {
@@ -81,7 +82,7 @@ export function groomPlan(G) {
   }
   const drivers = Math.ceil(hours / D.groomNight.shift - 1e-6);
   const want = D.pistes.filter(p => G.pistes[p.id].grm).reduce((a, p) => a + p.km * D.groom.hoursPerKm, 0);
-  return { cap, hours, want, list, drivers, cost: hours * D.groom.perHour + drivers * D.staffCost.groomer };
+  return { cap, hours, want, list, drivers, cost: hours * D.groom.perHour };
 }
 
 export function nightTotals(G) {
@@ -158,7 +159,7 @@ export function minute(G) {
   if (a < 4) return;
   for (const id of avalClose()) {
     const o = G.pistes[id];
-    if (!o.open || rand(G) >= D.aval.risk * (a - 3) * (G.flow?.present > 0 ? 1 : 0)) continue;
+    if (!o.open || rand(G) >= D.aval.risk * (a - 3) * (1 + patrolShort(G)) * (G.flow?.present > 0 ? 1 : 0)) continue;
     o.open = false;
     hit(G, 'accident');
     log(G, 'Lawinenabgang auf Piste ' + id + ' – Unfall, Piste gesperrt', 'bad');

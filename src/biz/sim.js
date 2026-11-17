@@ -6,6 +6,7 @@ import { newFlow, step, endFlow } from './flow.js';
 import { pay, initAssets, liftMinute, dayStart, overnight, running } from './assets.js';
 import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfaction.js';
 import { initWeather, applyWind } from './weather.js';
+import { initStaff, morning, evening, wages, minute as staffMinute, seasonEnd } from './staff.js';
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
@@ -23,6 +24,7 @@ export function newGame(seed = newSeed()) {
   initSnow(G, true);
   migrate(G);
   resetToday(G);
+  morning(G);
   return G;
 }
 
@@ -32,6 +34,8 @@ function migrate(G) {
   if (!G.flow) G.flow = newFlow(0, 0);
   if (!G.flow.board) G.flow.board = Object.fromEntries(D.lifts.map(l => [l.id, 0]));
   initSnow(G, false);
+  initStaff(G);
+  if (G.flow.cashQ == null) Object.assign(G.flow, { cashQ: 0, cashWait: 0, cashServed: 0 });
   if (!G.weather) { initWeather(G); applyWind(G); }
   if (G.seasonShare == null) G.seasonShare = D.flow.seasonShare;
   if (G.sat === undefined) G.sat = null;
@@ -57,6 +61,7 @@ export function startDay(G) {
   G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half);
   dayStart(G);
   pay(G, 'admin', D.admin);
+  pay(G, 'staff', wages(G));
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.maintPerLift); }
   if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate / 365);
   return true;
@@ -72,6 +77,7 @@ function minute(G, ev) {
     pay(G, 'power', spec.kw * (D.power.base + D.power.load * l.util) * D.power.price / 60);
   }
   snowMinute(G);
+  staffMinute(G);
   satMinute(G);
   G.min++;
 }
@@ -90,12 +96,13 @@ function close(G) {
   G.phase = 'closed';
   G.min = D.time.close;
   const sat = satEnd(G);
+  const staff = evening(G);
   endFlow(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
     date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
-    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff
   });
   if (G.history.length > 400) G.history.shift();
 }
@@ -122,13 +129,14 @@ export function nextDay(G) {
   const d = nextDate(G);
   overnight(G);
   night(G, d);
-  if (seasonOf(d) !== G.season) { G.seasonShare = seasonShare(G.rep); newSeason(G); }
+  if (seasonOf(d) !== G.season) { G.seasonShare = seasonShare(G.rep); newSeason(G); seasonEnd(G); }
   G.date = d;
   G.season = seasonOf(d);
   G.day++;
   G.phase = 'prep';
   G.min = D.time.open;
   resetToday(G);
+  morning(G);
   return true;
 }
 

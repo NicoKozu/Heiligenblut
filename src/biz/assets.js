@@ -1,6 +1,7 @@
 import { D } from './data.js';
 import { int, next as rand } from './rng.js';
 import { hit } from './satisfaction.js';
+import { techFactor, riskFactor, canOpen } from './staff.js';
 
 const F = D.fault;
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -28,6 +29,7 @@ export function status(l) {
   if (l.broken) return l.repairLeft > 0 ? 'repair' : 'fault';
   if (l.insp > 0) return 'insp';
   if (l.wind) return 'wind';
+  if (!l.open && l.staffOff) return 'staff';
   return l.open ? 'run' : 'closed';
 }
 
@@ -98,7 +100,7 @@ export function liftMinute(G, l, ev) {
   }
   if (!l.open) return;
   l.cond = Math.max(0, l.cond - D.wear.perHour / 60 * (D.wear.base + l.util));
-  if (rand(G) < faultChance(l.cond)) breakLift(G, l, ev);
+  if (rand(G) < faultChance(l.cond) * riskFactor(G)) breakLift(G, l, ev);
 }
 
 export function dayStart(G) {
@@ -118,16 +120,16 @@ export function overnight(G) {
   }
 }
 
-export function repairQuote(l, express) {
+export function repairQuote(l, express, G) {
   if (!l.broken) return null;
   const x = express ? D.express : { cost: 1, time: 1 };
-  return { cost: Math.round(l.broken.cost * x.cost / 100) * 100, min: Math.max(15, Math.round(l.broken.min * x.time)) };
+  return { cost: Math.round(l.broken.cost * x.cost / 100) * 100, min: Math.max(15, Math.round(l.broken.min * x.time * (G ? techFactor(G) : 1))) };
 }
 
 export function repair(G, id, express) {
   const l = G.lifts.find(x => x.id === id);
   if (!l || !l.broken || l.repairLeft > 0) return false;
-  const q = repairQuote(l, express);
+  const q = repairQuote(l, express, G);
   pay(G, 'repair', q.cost);
   l.repairLeft = q.min;
   log(G, 'Reparatur ' + l.name + (express ? ' (Express)' : '') + ' beauftragt');
@@ -146,6 +148,11 @@ export function inspect(G, id) {
 export function setOpen(G, kind, id, open) {
   const o = kind === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id];
   if (!o || o.open === open || (open && kind === 'piste' && o.aper)) return false;
+  if (open && kind === 'lift' && !canOpen(G, id)) {
+    log(G, o.name + ' kann nicht öffnen – zu wenig Liftpersonal', 'bad');
+    return false;
+  }
+  if (kind === 'lift') o.staffOff = false;
   if (!open && !(kind === 'lift' && (o.broken || o.insp > 0))) hit(G, kind === 'lift' ? 'fault' : 'pisteClose');
   o.open = open;
   const name = kind === 'lift' ? o.name : 'Piste ' + id + ' ' + D.pistes.find(p => p.id === id).name;
