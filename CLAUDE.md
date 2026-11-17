@@ -64,6 +64,7 @@
 - Etappen 1–11 fertig.
 - Etappe 12: fertig. Menü: Spielmodus Manager (Standard) / Freies Fahren, Manager mit „Weiterspielen · Datum“ / „Neues Spiel“ (Bestätigung). `src/biz/`: `data.js` (alle Werte Abschnitt B), `rng.js` (mulberry32, Zustand `G.rng`), `calendar.js` (ISO-Datumsstrings, Ostern Gauß, Saisonende min(Ostermontag, 6. Apr), Nachfragephase, `fmtDate`), `sim.js` (`newGame/startDay/tick/nextDay/clock/save/load`, Phasen prep→open→closed, bucht Verwaltung, Wartung, Strom nach Laufzeit, Zinsen; Historie), `ui.js` (Panel rechts, Overlays Vorbereitung/Tagesbericht/Büro mit Tabs), `bridge.js` (Tasten +/−, Tab, B, Enter; Lifte via `lift.shut` gesperrt außerhalb Betrieb; Fahrer steht in prep/closed an Talstation, laufende Gondelfahrt endet normal). Biz wird per dynamischem Import nur im Manager geladen. Autosave bei Feierabend, Tageswechsel, Pause, `pagehide`. Fahrer-HUD wandert im Manager nach links. Zahlen `de-DE` (Punkt als Tausender, `de-AT` liefert Leerzeichen).
 - Etappe 13: fertig. `biz/demand.js` (N = B·P·R·O·ε, Platzhalter Wetter/Schnee/Marketing; P relativ zum Ø-Preis der Startpreise, sonst wäre P bei Startpreisen 1,28), `biz/flow.js` (Flussmodell pro Minute: Queue/Lift-Pipeline/Pisten-Pipeline/Hütte, Glockenkurven-Ankunft, Halbtag, Abreise-Rampe, Mittag, Wartezeit-Aversion). Gebietsgraph statisch in `data.js` (`nodes`, `pistes`, Lifte mit `from/to`), da Sim headless sein muss. Tickets bei Ankunft, 8 % Saisonkarte. Tab Preise (±1 €, Eingabe, Prognose), Panel Gäste/Umsatz/Wartezeit/Auslastung, Tagesbericht nach Typ/Ticketart/Spitzenwartezeit. `crowd.setDensity/setQueue` (Pulk an Talstation ab 5 min). Alte Spielstände per `migrate()`.
+- Etappe 14: fertig. `biz/assets.js`: Verschleiß (0,3 %/h × (0,5+Auslastung)), Defekte pro Minute nach Zustand (Kleinstörung/Antrieb/Seil, Tabelle `D.fault`), Bergung (Kabineninhalt → Warteschlange, Meldung), Reparatur normal/Express (bezahlt bei Auftrag, Dauer in Minuten, nachts −960 min), Inspektion (nächster Morgen 2 h zu, +8 %), Öffnen/Schließen, Meldungslog `G.log`, Pisten jetzt Objekte `{open, cond, snow, groomed}`. Nachfrage-Angebot zählt nur über laufende Lifte erreichbare Pisten. 3D: `lift.setOpen(id, open, grund)` (Kabinen bremsen ab, Hinweis, in stehender Gondel E = Bergung), `pistes.setOpen(id, open)` (Absperrband + Schild GESPERRT, HUD „(gesperrt)“), Crowd meidet gesperrte Pisten/Lifte. UI: Panel mit Status-Punkt, Zustandsbalken, Schaltern (pointerdown), Toast mit „Reparieren“, Tab Anlagen. Simtest Saison: ~27 Defekte, ~650 k€ Reparaturen, ~130k Skitage.
 - Simtest Saison: ~144k Skitage (über Ziel 90–130k, liegt an Tabelle B; Wetter/Schnee in Etappe 16 senken), Preis Erw. 90 € → −30 % Gäste, Weihnachten Rossbach Spitze ~50 min, Jänner-Werktag ~0.
 - Tests: `simtest.mjs` (Scratchpad, Node) und Playwright-Smoke; jsdelivr ist in der Session gesperrt → Three per `npm pack three@0.170.0` lokal und `page.route` umleiten. SwiftShader rendert ~1 FPS, Sim holt Frames bis 1 s nach.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
@@ -79,8 +80,8 @@
 - `public/models/` – `spruce.glb`, `spruce_leaves.png`, `figure.glb`
 - `src/input.js` – Tastatur (`keys`, `down()`, `consume()`)
 - `src/hud.js` – `createHud(pistes).update(state, dt)`, zeigt Modus, Piste, Meldungen
-- `src/lift.js` – `createLift(terrain, pistes)` → `{ group, sections, update(dt, state, player, goTo), collide(state), leave(state), clear(pts), riding(), valleySpawn }`
-- `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max) }`, `LEVELS`
+- `src/lift.js` – `createLift(terrain, pistes)` → `{ group, sections, update(dt, state, player, goTo), collide(state), leave(state), clear(pts), riding(), valleySpawn, shut, stop, setOpen(id, open, why) }`
+- `src/pistes.js` – `loadPistes(terrain)` → `{ group, list, at(pos), collide(state), startOf(k), nearest(x,z,max), setOpen(id, open) }` (`p.closed`), `LEVELS`
 - `public/pistes.json` – Pisten (id, name, level, width, pts [x,z] alle 20 m)
 - `public/terrain/heiligenblut.bin|json` – Heightmap Uint16 (Höhe×10), 430×389, 30 m Raster, + Meta/POIs
 - `src/props.js` – `createProps(terrain, pistes, lift, osm)` → `{ group, blocked(x,z,m), build(huts), update(camera), collide(state, onHit), count }`
@@ -100,7 +101,8 @@
 - `src/biz/demand.js` – `defaultPrices, avgPrice, priceFactor, factors, expected, demand`
 - `src/biz/flow.js` – `newFlow, step(G, t), endFlow`, `G.flow` (queue, ride, run, hut, wait, present, avgWait)
 - `src/biz/bridge.js` – `createBiz({ lift, player, crowd })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
-- `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, prices, pistes{id:open}, flow, lifts[{id,name,open,cond,run,util}], today{costs,revenue,guests,demand,expected,types,rides,peak}, history[])
+- `src/biz/assets.js` – `pay, log, running, status, liftMinute, dayStart, overnight, repair(G,id,express), repairQuote, inspect, setOpen(G,kind,id,open)`
+- `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, prices, pistes{id:{open,cond,snow,groomed}}, flow, log[], lifts[{id,name,open,cond,run,util,broken,repairLeft,insp,inspPlan}], today{costs,revenue,guests,demand,expected,types,rides,peak}, history[])
 
 ## Gebietsdaten
 Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoehen.de, Skiclub-Pistenplan (PDF), Skimagazin Heiligenblut 2025/26. skiresort.info und bergfex waren aus der Session nicht direkt abrufbar.

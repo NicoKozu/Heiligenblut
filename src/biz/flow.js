@@ -1,4 +1,5 @@
 import { D } from './data.js';
+import { running, pisteOpen } from './assets.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
@@ -68,11 +69,11 @@ function dispatch(G, f, node, X, t, d) {
   const opts = [];
   for (const l of G.lifts) {
     const s = LIFT[l.id];
-    if (s.from !== node || !l.open) continue;
+    if (s.from !== node || !running(l)) continue;
     opts.push({ l, w: Math.max(0.02, F.liftW * (1 - d) * Math.exp(-f.wait[l.id] / F.queueTau)) });
   }
   for (const p of D.pistes) {
-    if (p.from !== node || G.pistes[p.id] === false) continue;
+    if (p.from !== node || !pisteOpen(G, p.id)) continue;
     opts.push({ p, w: levelWeight(p.level) * (1 + 2 * d) });
   }
   if (!opts.length) { f.present -= X; return; }
@@ -94,18 +95,18 @@ export function step(G, t) {
   for (const l of D.lifts) at[l.to] += shift(f.ride[l.id]);
   for (const p of D.pistes) at[p.to] += shift(f.run[p.id]);
   for (const n in f.hut) at[n] += shift(f.hut[n]);
-  for (const l of G.lifts) if (!l.open && f.queue[l.id] > 0) { at[LIFT[l.id].from] += f.queue[l.id]; f.queue[l.id] = 0; }
+  for (const l of G.lifts) if (!running(l) && f.queue[l.id] > 0) { at[LIFT[l.id].from] += f.queue[l.id]; f.queue[l.id] = 0; }
   for (const n in at) dispatch(G, f, n, at[n], t, d);
   let ws = 0, bs = 0;
   for (const l of G.lifts) {
     const c = capPerMin(l);
-    const b = l.open ? Math.min(f.queue[l.id], c) : 0;
+    const on = running(l), b = on ? Math.min(f.queue[l.id], c) : 0;
     f.queue[l.id] -= b;
     if (f.queue[l.id] < 1e-6) f.queue[l.id] = 0;
     const r = f.ride[l.id];
     r[r.length - 1] += b;
     l.util = c ? b / c : 0;
-    const w = l.open ? f.queue[l.id] / c : 0;
+    const w = on ? f.queue[l.id] / c : 0;
     f.wait[l.id] = w;
     T.rides[l.id] = (T.rides[l.id] || 0) + b;
     T.peak[l.id] = Math.max(T.peak[l.id] || 0, w);

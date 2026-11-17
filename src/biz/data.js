@@ -41,6 +41,20 @@ export const D = {
   },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 350,
+  wear: { perHour: 0.3, base: 0.5 },
+  fault: {
+    base: 0.0015, ref: 20,
+    types: [
+      { id: 'minor', label: 'Kleinstörung', w: 0.75, min: [30, 90], cost: [2000, 6000], gain: 0 },
+      { id: 'drive', label: 'Antrieb', w: 0.2, min: [1440, 2880], cost: [25000, 60000], gain: 6 },
+      { id: 'rope', label: 'Seil/Klemme', w: 0.05, min: [4320, 7200], cost: [80000, 150000], gain: 12 }
+    ]
+  },
+  express: { cost: 1.8, time: 0.5 },
+  inspect: { cost: 4000, gain: 8, min: 120 },
+  night: 960,
+  pisteStart: { cond: 80, snow: 80 },
+  logMax: 60,
   admin: 3200,
   tickets: {
     day: { label: 'Tageskarte Erw.', price: 62 },
@@ -87,6 +101,7 @@ export const D = {
     garage: { label: 'Parkhaus', price: 900000 }
   },
   balance: { skierDays: [90000, 130000], revenue: [5e6, 7e6], profit: [4e5, 1.2e6], badRep: 35, sat: [60, 80] },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', interest: 'Kreditzinsen' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen' },
+  liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

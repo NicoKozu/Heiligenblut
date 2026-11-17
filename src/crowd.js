@@ -109,8 +109,9 @@ export function createCrowd(terrain, pistes, lift, assets) {
 
   function choose(g, node, first) {
     const opts = [];
-    for (const r of nodes[node].starts) opts.push({ r, w: (g.k.lv[r.p.level] ?? 1) * (first ? 1 : 0.5) + 0.02 });
-    for (const sec of nodes[node].lifts) opts.push({ sec, w: first ? 0.8 : 1.5 });
+    for (const r of nodes[node].starts) if (!r.p.closed) opts.push({ r, w: (g.k.lv[r.p.level] ?? 1) * (first ? 1 : 0.5) + 0.02 });
+    for (const sec of nodes[node].lifts) if (!lift.stop.has(sec.name)) opts.push({ sec, w: first ? 0.8 : 1.5 });
+    if (!opts.length) return null;
     let t = R() * opts.reduce((a, o) => a + o.w, 0);
     for (const o of opts) if ((t -= o.w) <= 0) return o;
     return opts[opts.length - 1];
@@ -305,6 +306,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
       g.s += g.v * dt;
       if (g.s - g.maxLag >= g.path.len) startWait(g);
     } else if (g.state === 'wait') {
+      if (lift.stop.has(g.sec.name)) return;
       g.cabs = grabCabins(g, Math.ceil(g.members.length / CAP), false);
       if (g.cabs) g.state = 'ride';
     } else if (g.state === 'ride') {
