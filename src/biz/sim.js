@@ -9,6 +9,7 @@ import { initWeather, applyWind } from './weather.js';
 import { initStaff, morning, evening, wages, minute as staffMinute, seasonEnd } from './staff.js';
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
+import { initSide, sideFlow, dayStart as sideStart, evening as sideEvening } from './side.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
 const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
@@ -37,6 +38,8 @@ function migrate(G) {
   initSnow(G, false);
   initStaff(G);
   initMkt(G);
+  initSide(G);
+  sideFlow(G.flow);
   if (G.flow.cashQ == null) Object.assign(G.flow, { cashQ: 0, cashWait: 0, cashServed: 0 });
   if (!G.weather) { initWeather(G); applyWind(G); }
   if (G.seasonShare == null) G.seasonShare = D.flow.seasonShare;
@@ -49,7 +52,7 @@ function migrate(G) {
 function resetToday(G) {
   G.today = {
     date: G.date, cashStart: G.cash, costs: zero(), revenue: {}, guests: 0, demand: baseDemand(G.date), phase: calPhase(G.date),
-    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0
+    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0, side: {}
   };
 }
 
@@ -66,6 +69,7 @@ export function startDay(G) {
   G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half, dm.seg);
   mktDay(G);
   dayStart(G);
+  sideStart(G);
   pay(G, 'admin', D.admin);
   pay(G, 'staff', wages(G));
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.maintPerLift); }
@@ -103,12 +107,13 @@ function close(G) {
   G.min = D.time.close;
   const sat = satEnd(G);
   const staff = evening(G);
+  sideEvening(G);
   endFlow(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
     date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
-    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }
   });
   if (G.history.length > 400) G.history.shift();
 }

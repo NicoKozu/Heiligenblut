@@ -5,6 +5,7 @@ import { openPistes, offerShare, priceEq, segOffer, segPriceEq } from './demand.
 import { SEGS, kidsFree } from './marketing.js';
 import { score } from './snow.js';
 import { service } from './staff.js';
+import { levelAdj, parkAdj } from './side.js';
 
 const S = D.sat;
 const K = Object.keys(S.w);
@@ -71,7 +72,7 @@ function segZ(G, parts, offer, share) {
   const mix = segMix(G), seg = {};
   let z = 0;
   for (const sg of SEGS) {
-    const p = { ...parts, offer: offer[sg], price: segPrice(G, sg, share) };
+    const p = { ...parts, offer: offer[sg], price: clamp(segPrice(G, sg, share) + D.side.priceK * levelAdj(G, sg) + parkAdj(G), 0, 100), service: clamp(parts.service + levelAdj(G, sg), 0, 100) };
     seg[sg] = adjust(G, combine(p, D.segs[sg].w || S.w));
     z += mix[sg] * seg[sg];
   }

@@ -3,6 +3,7 @@ import { next as rand } from './rng.js';
 import { addDays } from './calendar.js';
 import { pay, log } from './assets.js';
 import { hit } from './satisfaction.js';
+import { gastroNeed, gastroScore, sideScore } from './side.js';
 
 const S = D.staff;
 export const GROUPS = Object.keys(S.groups);
@@ -35,7 +36,7 @@ export function needs(G, n) {
     patrol: Math.ceil(openCount(G) / S.patrolPer),
     cashier: Math.ceil(peak * (1 - s) * (1 - S.cash.online) / S.cash.rate),
     instructor: Math.ceil(n * D.side.school.share / S.pupils),
-    gastro: Math.ceil(n / S.gastroPer)
+    gastro: gastroNeed(G)
   };
 }
 
@@ -170,7 +171,6 @@ export const techFactor = G => Math.max(S.techMin, S.techRef / Math.max(duty(G, 
 export const riskFactor = G => clamp(1 + S.techRisk * (S.techRef - duty(G, 'tech')) / S.techRef, 1 - S.techRisk, 1 + S.techRisk);
 export const patrolShort = G => Math.max(0, openCount(G) / S.patrolPer - duty(G, 'patrol'));
 export const cashCap = G => (duty(G, 'cashier') + S.cash.auto) * S.cash.rate;
-export const capacity = G => ({ school: duty(G, 'instructor') * S.pupils, gastro: duty(G, 'gastro') * S.gastroPer });
 
 export function minute(G) {
   const sh = patrolShort(G), f = G.flow;
@@ -185,7 +185,5 @@ export function minute(G) {
 export function service(G) {
   const f = G.flow, c = S.cash.wait, w = S.service, st = G.staff;
   const cash = clamp((c[1] - (f?.cashWait || 0)) / (c[1] - c[0]), 0, 1) * 100;
-  const need = Math.max(1, (f?.present || 0) / S.gastroPer);
-  const gastro = clamp(duty(G, 'gastro') / need, 0, 1) * 100;
-  return w.cash * cash + w.morale * st.morale + w.gastro * gastro;
+  return w.cash * cash + w.morale * st.morale + w.gastro * gastroScore(G) + w.side * sideScore(G);
 }

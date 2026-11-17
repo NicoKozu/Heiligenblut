@@ -3,6 +3,7 @@ import { running, pisteOpen } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
 import { ticketPrice, kidsFree } from './marketing.js';
+import * as SD from './side.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
@@ -32,16 +33,15 @@ export function skillMix(seg) {
 
 export function newFlow(full, half, seg) {
   const zeros = n => new Array(n).fill(0), t = seg ? Object.values(seg).reduce((a, b) => a + b, 0) || 1 : 0;
-  return {
+  return SD.sideFlow({
     plan: { full, half }, seg: seg ? Object.fromEntries(Object.entries(seg).map(([k, v]) => [k, v / t])) : null, skill: seg ? skillMix(seg) : null, done: { full: 0, half: 0 },
     queue: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     ride: Object.fromEntries(D.lifts.map(l => [l.id, zeros(l.ride)])),
     run: Object.fromEntries(D.pistes.map(p => [p.id, zeros(runMinutes(p))])),
-    hut: Object.fromEntries(F.lunch.nodes.map(n => [n, zeros(F.lunch.dur)])),
     wait: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     board: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     present: 0, lunched: 0, avgWait: 0, cashQ: 0, cashWait: 0, cashServed: 0
-  };
+  });
 }
 
 function shift(a) {
@@ -53,9 +53,13 @@ function shift(a) {
 function arrivals(G, f, t) {
   const T = G.today, s = G.seasonShare ?? F.seasonShare, m = D.mix;
   const cf = bell(F.arrive, t + 1), ch = bell(F.half, t + 1);
-  const A = f.plan.full * (cf - f.done.full), H = f.plan.half * (ch - f.done.half);
+  let A = f.plan.full * (cf - f.done.full), H = f.plan.half * (ch - f.done.half);
   f.done.full = cf;
   f.done.half = ch;
+  const k = SD.arrive(G, f, A + H);
+  A *= k;
+  H *= k;
+  SD.guests(G, f, A, A + H);
   const add = (k, n) => { T.types[k] = (T.types[k] || 0) + n; };
   const earn = (k, n) => { const v = n * ticketPrice(G, D.ticketOf[k]); T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };
   add('season', (A + H) * s);
@@ -74,12 +78,12 @@ function arrivals(G, f, t) {
 
 function dispatch(G, f, node, X, t, d) {
   if (X <= 1e-9) return;
-  if (node === 'tal' && d > 0) { const g = X * d; f.present -= g; X -= g; }
+  if (node === 'tal' && d > 0) { const g = X * d; f.present -= g; X -= g; SD.leave(G, f, g); }
   const L = F.lunch;
-  if (f.hut[node] && t >= L.from && t < L.to) {
+  if (SD.NODES.has(node) && t >= L.from && t < L.to) {
     const want = L.share * smooth((t + 1 - L.from) / (L.to - L.from)) * f.present - f.lunched;
-    const h = Math.max(0, Math.min(X * 0.8, want));
-    if (h > 0) { f.hut[node][L.dur - 1] += h; f.lunched += h; X -= h; }
+    const h = Math.max(0, Math.min(X * SD.lunchRate(G, f, node), want));
+    if (h > 0) { f.lunched += h; X -= h - SD.lunch(G, f, node, h); }
   }
   const opts = [];
   for (const l of G.lifts) {
@@ -117,9 +121,10 @@ export function step(G, t) {
   at.tal += a - dq + sv;
   for (const l of D.lifts) at[l.to] += shift(f.ride[l.id]);
   for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
-  for (const n in f.hut) at[n] += shift(f.hut[n]);
+  SD.hutsOut(G, f, at);
   for (const l of G.lifts) if (!running(l) && f.queue[l.id] > 0) { at[LIFT[l.id].from] += f.queue[l.id]; f.queue[l.id] = 0; }
   for (const n in at) dispatch(G, f, n, at[n], t, d);
+  SD.hutsIn(G, f);
   let ws = 0, bs = 0;
   for (const l of G.lifts) {
     const c = capPerMin(l);
@@ -146,7 +151,8 @@ export function step(G, t) {
 export function endFlow(G) {
   const f = G.flow;
   for (const k in f.queue) f.queue[k] = 0;
-  for (const o of [f.ride, f.run, f.hut]) for (const k in o) o[k].fill(0);
+  for (const o of [f.ride, f.run]) for (const k in o) o[k].fill(0);
+  SD.endFlow(f);
   for (const k in f.wait) f.wait[k] = 0;
   for (const k in f.board || {}) f.board[k] = 0;
   for (const l of G.lifts) l.util = 0;

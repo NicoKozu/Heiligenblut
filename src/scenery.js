@@ -101,12 +101,15 @@ function signTex(text) {
 }
 
 function buildHut(o, mats) {
-  const g = new THREE.Group();
+  const g = new THREE.Group(), on = new THREE.Group(), off = new THREE.Group();
+  off.visible = false;
   const { w, l, h } = o;
+  const glass = mats.glass.clone();
+  let to = g;
   const box = (sx, sy, sz, m, x, y, z) => {
     const b = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
     b.position.set(x, y, z);
-    g.add(b);
+    to.add(b);
     return b;
   };
   box(w + 0.6, 4, l + 0.6, mats.stone, 0, -1.2, 0);
@@ -133,17 +136,27 @@ function buildHut(o, mats) {
   const nWin = Math.max(2, Math.floor(l / 3.5));
   for (const s of [-1, 1]) for (let i = 0; i < nWin; i++) {
     const z = -l / 2 + (i + 0.5) * l / nWin;
-    box(0.12, 1.1, 0.9, mats.glass, s * (w / 2 + 0.03), 0.8 + h * 0.55, z);
+    box(0.12, 1.1, 0.9, glass, s * (w / 2 + 0.03), 0.8 + h * 0.55, z);
+    to = on;
     box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), 0.8 + h * 0.55, z - 0.65);
     box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), 0.8 + h * 0.55, z + 0.65);
+    to = off;
+    box(0.1, 1.25, 1.0, mats.shutter, s * (w / 2 + 0.09), 0.8 + h * 0.55, z);
+    to = g;
   }
   box(1.3, 2.2, 0.15, mats.door, 0, 0.8 + 1.1, l / 2 + 0.05);
-  for (const s of [-1, 1]) box(0.9, 1.1, 0.12, mats.glass, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.03);
+  for (const s of [-1, 1]) box(0.9, 1.1, 0.12, glass, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.03);
+  to = off;
+  for (const s of [-1, 1]) box(1.0, 1.25, 0.1, mats.shutter, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.09);
+  box(1.4, 2.3, 0.1, mats.shutter, 0, 0.8 + 1.15, l / 2 + 0.13);
+  for (const s of [-1, 1]) box(1.8, 0.9, 0.9, mats.deck, s * w * 0.25, 1.25, l / 2 + 1.2);
+  to = g;
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.8, 7), Math.min(w * 0.8, 7) / 4), new THREE.MeshLambertMaterial({ map: signTex(o.name) }));
   sign.position.set(0, top + rh * 0.4, l / 2 + 0.05);
   g.add(sign);
   const deck = 6;
   box(w + 2, 0.5, deck, mats.deck, 0, 0.55, l / 2 + deck / 2);
+  to = on;
   for (const s of [-1, 1]) {
     const tx = s * w * 0.25, tz = l / 2 + deck / 2;
     box(1.8, 0.08, 0.8, mats.deck, tx, 1.55, tz);
@@ -153,10 +166,27 @@ function buildHut(o, mats) {
     box(0.06, 2.4, 0.06, mats.shutter, tx, 2, tz);
     const um = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 8, 1, true), mats.parasol);
     um.position.set(tx, 3.2, tz);
-    g.add(um);
+    on.add(um);
   }
+  to = g;
+  g.add(on, off);
   g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
-  return { group: g, hl: l / 2 + 0.3, hw: w / 2 + 0.3, top: top + rh, reach: Math.max(w + 2, l + deck * 2) / 2 + 3 };
+  const bulbs = [];
+  for (let i = 0; i <= 8; i++) bulbs.push(new THREE.Vector3(-w / 2 - 1 + (w + 2) * i / 8, 2.9 - Math.sin(i / 8 * Math.PI) * 0.5, l / 2 + deck - 0.2));
+  const lamp = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 6, 4), mats.bulb, bulbs.length);
+  bulbs.forEach((p, i) => lamp.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)));
+  on.add(lamp);
+  const cord = new THREE.Line(new THREE.BufferGeometry().setFromPoints(bulbs), mats.cord);
+  on.add(cord);
+  let open = true;
+  const setOpen = v => {
+    if (v === open) return;
+    open = v;
+    on.visible = v;
+    off.visible = !v;
+    glass.emissive.setHex(v ? 0x6a4a1a : 0x000000);
+  };
+  return { group: g, setOpen, hl: l / 2 + 0.3, hw: w / 2 + 0.3, top: top + rh, reach: Math.max(w + 2, l + deck * 2) / 2 + 3 };
 }
 
 export function detailMaterials(assets) {
@@ -183,7 +213,9 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     shutter: new THREE.MeshLambertMaterial({ color: 0x8c2a22 }),
     door: new THREE.MeshLambertMaterial({ color: 0x4a2f1c }),
     deck: new THREE.MeshLambertMaterial({ color: 0x9a7350 }),
-    parasol: new THREE.MeshLambertMaterial({ color: 0xc8302a, side: THREE.DoubleSide })
+    parasol: new THREE.MeshLambertMaterial({ color: 0xc8302a, side: THREE.DoubleSide }),
+    bulb: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
+    cord: new THREE.LineBasicMaterial({ color: 0x222222 })
   };
 
   const huts = [];
@@ -388,5 +420,6 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     }
   }
 
-  return { group, update, collide, huts, treeCount: N };
+  const setHut = (name, open) => huts.find(h => h.name === name)?.setOpen(open);
+  return { group, update, collide, huts, setHut, treeCount: N };
 }

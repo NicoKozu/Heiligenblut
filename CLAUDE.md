@@ -11,6 +11,7 @@
 ## Arbeitsweise
 - Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`, PR selbst direkt mergen. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
 - Nächste Etappe erst nach "weiter" bzw. "Etappe XX". Vorher diese Datei aktualisieren.
+- Playwright-Smoke-Test entfällt immer (Nutzerwunsch, dauert zu lange); nur `node --check` + `simtest.mjs`.
 - Bei "Etappe XX" (ab 12): `MANAGER.md` lesen – nur Abschnitt A (Grundregeln), B (Referenzwerte) und den Abschnitt der Etappe. Genau das umsetzen, Abnahme-Liste dort prüfen, dann Stand hier eintragen.
 - Nach jeder Etappe muss das Spiel lauffähig bleiben.
 
@@ -74,6 +75,8 @@
 - Simtest Saison: ~144k Skitage (über Ziel 90–130k, liegt an Tabelle B; Wetter/Schnee in Etappe 16 senken), Preis Erw. 90 € → −30 % Gäste, Weihnachten Rossbach Spitze ~50 min, Jänner-Werktag ~0.
 - Etappe 18: fertig. Zielgruppen `D.segs` (Familien 35 %/Sportliche 20 %/Tagesgäste 25 %/Wochengäste 20 %) je mit Preisempfindlichkeit (`el` 1,8/1,0/1,4/1,2), Ticketmix, Fahrkönnen (→ `flow.skill`), Pistenvorliebe (Angebot je Gruppe), Wetterempfindlichkeit `wx`, Fairpreis-Faktor und eigenen Zufriedenheitsgewichten; Nachfrage und Z je Gruppe, Gesamt-Z = Gästemix-Mittel. `biz/marketing.js`: Kampagnen (`D.mkt.campaigns`: weekly/once/pre), Wirkung `M` je Gruppe (Nebengruppen 25 %), Abnutzung −30 % nach 21 Tagen, Kosten täglich bei Tagesstart (Posten Marketing), „Kinder gratis am Samstag“ (Kinderkarten 0 €), Frühbucher nur am 1. Saisontag in Vorbereitung (Erlös + Saisonkarten-Anteil + 3 % Nachfrage). Konkurrenz `G.comp` (3 fiktive Gebiete, Preis-/Schnee-Drift nachts) → Faktor `K`. Tab Marketing, Panel-Balken nach Zielgruppe, Tagesbericht Zielgruppen + Umsatz/Gast. Fix: Kosten/Erlöse aus der Vorbereitung bleiben im Tagesbericht (vorher von `resetToday` gelöscht).
 - Simtest Etappe 18 (Saison, 5 Seeds): Standard ~138k Skitage, Ø-Z 60; Social+Radio dauerhaft +12 % Gäste (209 k€); Reisebüro: Wochengäste Tag 15–42 +11 %; Familienaktion Samstage: Umsatz/Gast 47,5 → 40,7 €, Familien +25 %, Familien-Z 46,8 → 49,0. Simtest repariert Defekte sofort (Rossbach Express) und inspiziert < 72 %.
+- Etappe 19: fertig. `biz/side.js`: Hütten (`D.side.huts`: Rossbach Alm/Fleißalm an Knoten Rossbach, Panoramarestaurant/Spatzl Alm an Schareck; Sitzplätze, `draw`), Preisniveau günstig/normal/gehoben (Preis ×0,8/1/1,3, Ausgabe-Elastizität 0,8, Wareneinsatz 50 % → Marge vor Personal ~37/50/57 %), Personal: Gastro-Bedarf = Plätze/36 der offenen Hütten, Unterbesetzung senkt nutzbare Plätze. Mittag im `flow`: Esser je Knoten nach Sitzanteil (`lunchRate`), Warteschlange je Hütte (`hutQ/hutWait`), ab 25 min geben Gäste auf (ohne Essen), Umsatz bei Einlass (19 €/0,55 je Esser ≈ 19 €/Gast). Verleih (Preis, Mietquote 18 % × Preis^−1,3 × Zustand, Zustand −0,4 Pp./100 Mieten, Wartung 6.000 €/+8 bis 80 %, Neukauf 95.000 €), Skischule (Kurspreis, Plätze = Skilehrer × 8), Parkplatz (Gebühr je Auto 12 € = B 55 % × 6 €/Gast bei 2 Pers./Auto, 600 Plätze, voll → Gäste kehren vor Ticketkauf um, Gebühr senkt Autoanteil und Preis-Leistung). Service-Note = 0,35 Kassa + 0,3 Moral + 0,25 Gastro (Hütten-Wartezeit, Esser ohne Platz, Besetzung) + 0,1 Verleih/Skischule; Preisniveau wirkt je Zielgruppe (`segs.gastro`, Familien 1) auf Service und ×0,6 auf Preis-Leistung. Kosten: Wareneinsatz, Betrieb Hütten (450 €/Tag je offene Hütte)/Verleih (8 €/Miete)/Parkplatz, Verleih Service/Neukauf. Erlösschlüssel `gastro/rental/school/parking` in `today.revenue`, Details `today.side`. UI: Tab „Gastro & Service“, Panel Umsatz gesamt/Nebengeschäfte, Hütten-Wartezeit/Parkplatz, Tagesbericht Umsatz nach Bereich (Torte) + Nebengeschäfte. 3D: `scenery.setHut(name, open)` – offen: Tische, Schirme, Lichterkette, Fenster leuchten; zu: Fensterläden und Tür zu, Tische gestapelt (zu auch bei Feierabend).
+- Simtest Etappe 19 (Saison, 5 Seeds): Gastro ~20 % des Umsatzes, Nebengeschäfte gesamt ~36 %; Familien-Z günstig 54,3 / normal 52,9 / gehoben 49,6; Schareck-Hütten zu → 22 % ohne Mittagessen; ~1.600 Gäste/Saison am vollen Parkplatz umgekehrt (Weihnachten, Feb). Gewinn jetzt ~6 Mio (weit über Ziel 0,4–1,2 Mio) → Kostenbalancing in Etappe 23.
 - Tests: `simtest.mjs` (Scratchpad, Node) und Playwright-Smoke; jsdelivr ist in der Session gesperrt → Three per `npm pack three@0.170.0` lokal und `page.route` umleiten. SwiftShader rendert ~1 FPS, Sim holt Frames bis 1 s nach.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -95,7 +98,7 @@
 - `src/props.js` – `createProps(terrain, pistes, lift, osm)` → `{ group, blocked(x,z,m), build(huts), update(camera), collide(state, onHit), count }`
 - `public/osm.json` – OSM-Gebäude/Fels/Latschen/Zäune (Weltkoordinaten)
 - `src/crowd.js` – `createCrowd(terrain, pistes, lift, assets)` → `{ group, update(dt, camera), collide(state, onHit), setDensity(f), setQueue(n), count }`
-- `src/scenery.js` – `createScenery(terrain, pistes, lift, assets, blocked)`, `detailMaterials(assets)` → `{ group, update(camera), collide(state, onHit), huts, treeCount }`
+- `src/scenery.js` – `createScenery(terrain, pistes, lift, assets, blocked)`, `detailMaterials(assets)` → `{ group, update(camera), collide(state, onHit), huts, setHut(name, open), treeCount }`
 - `src/effects.js` – `createEffects(terrain)` → `{ group, update(dt, state, riding, canvasH), burst(state, n, v) }`
 - `src/panorama.js` – `loadPanorama(terrain, world)` → `{ scene, camera, bake(renderer), shade(root), update(cam, dt), render(renderer, nearScene, cam), heightAny, peaks, visibleFrom }`
 - `src/peaks.js` – `createPeakLabels(pano)` → `{ update(cam), toggle() }`
@@ -108,7 +111,7 @@
 - `MANAGER.md` – Spezifikation Manager-Modus (Etappen 12–23), `src/biz/` – Simulation (ab Etappe 12)
 - `src/biz/demand.js` – `defaultPrices, avgPrice, priceFactor, segPrice, segPriceFactor, segOffer, segFactors, expectedSeg, factors, expected, demand` (→ `{n, eps, seg}`)
 - `src/biz/flow.js` – `newFlow, step(G, t), endFlow`, `G.flow` (queue, ride, run, hut, wait, present, avgWait)
-- `src/biz/bridge.js` – `createBiz({ lift, player, crowd })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
+- `src/biz/bridge.js` – `createBiz({ lift, player, crowd, pistes, env, scenery })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
 - `src/biz/assets.js` – `pay, log, running, status, liftMinute, dayStart, overnight, repair(G,id,express), repairQuote, inspect, setOpen(G,kind,id,open)`
 - `src/biz/satisfaction.js` – `instant, minute, live, endDay, hit, deduction, combine, stars, seasonShare`; `G.sat` (Vortag z/parts), `history[].sat` (z, parts, ded, lost, hits, quotes)
 - `src/biz/weather.js` – `initWeather, advance, applyWind, forecastFor, weatherFactor, stormy, tempAt, avalClose, fmtT`; `G.weather` {today, ahead[3] (mit `fc`), anom, score, aval}
@@ -116,6 +119,7 @@
 - `src/weatherfx.js` – `createWeatherFx(world, pano, renderer)` → `{ object, set(day), update(dt, cam, canvasH) }`
 - `src/biz/staff.js` – `initStaff, needs(G, gäste), duty, wages, assign, canOpen, morning, evening, hire, fire, setWage, bonus, seasonEnd, techFactor, riskFactor, patrolShort, cashCap, capacity, service`; `G.staff` {n, pending, sick, wage, morale, over, bonus}
 - `src/biz/marketing.js` – `SEGS, CAMPAIGNS, initMkt, act(G,id), day, mFactor(G,date,seg), kFactor(G,seg,snow), ticketPrice, kidsFree, status, weeklyCost, canEarly, earlyQuote, compDay, newSeason`; `G.mkt` {on{id:Datum}, orders[{id,from,to}], run, spent, early}, `G.comp`
+- `src/biz/side.js` – `initSide, sideFlow, seats, seatsEff, hutNeed, gastroNeed, staffRatio, spend, arrive, guests, leave, lunch, lunchRate, hutsOut, hutsIn, gastroScore, sideScore, levelAdj, parkAdj, outlook, byArea, setLevel, toggleHut, setSidePrice, rentalAct`; `G.side` {huts{id:{open,level,extra}}, rental{price,cond}, school{price}, park{price,cap}}; `flow.hut/hutQ/hutWait/cars/school`
 - `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, prices, pistes{id:{open,cond,snow,groomed}}, flow, log[], lifts[{id,name,open,cond,run,util,broken,repairLeft,insp,inspPlan}], today{costs,revenue,guests,demand,expected,types,rides,peak}, history[])
 
 ## Gebietsdaten
