@@ -37,12 +37,13 @@ export function openPistes(G) {
 }
 
 const KM = baseKm;
-const prefKm = (list, sg) => list.reduce((a, p) => a + p.km * D.segs[sg].pref[p.level], 0);
+const prefKm = (list, sg) => list.reduce((a, p) => a + p.km * D.segs[sg].pref[p.level] * (p.exp ? M.expW : 1), 0);
 const SKM = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes.filter(p => !p.exp), s)]));
 export const segOffer = (G, sg, open = openPistes(G)) => prefKm(open, sg) / SKM[sg];
 export const openKm = G => openPistes(G).reduce((a, p) => a + p.km, 0);
 export const offerShare = G => openKm(G) / KM;
-export const offerFactor = G => M.offer[0] + M.offer[1] * offerShare(G);
+export const offerF = o => o > 0 ? M.offer[0] + M.offer[1] * o : 0;
+export const offerFactor = G => offerF(offerShare(G));
 export const priceEq = p => D.sat.price.ref * avgPrice(p) / REF;
 
 export function wordFactor(G) {
@@ -56,7 +57,7 @@ export function segFactors(G, date, sg, extra = {}) {
     B: baseDemand(date) * S.share,
     P: segPriceFactor(G.prices, sg),
     R: repFactor(G.rep),
-    O: M.offer[0] + M.offer[1] * segOffer(G, sg),
+    O: offerF(segOffer(G, sg)),
     weather: 1 + (w - 1) * S.wx,
     snow: extra.snow ?? 1,
     marketing: extra.noMkt ? 1 : mFactor(G, date, sg),

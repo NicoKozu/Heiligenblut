@@ -90,6 +90,8 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 
 **Hinweis Ausbau-Start (nach Etappe 20):** Das Spiel startet nur mit Gondel Rossbach, Piste 10 und Rossbach Alm (Kasse 1,5 Mio €, Personal 19, 1 Pistengerät, 10 Kanonen). Alles Weitere wird gebaut. Die alten Ziele (90–130k Skitage in Saison 1) galten für das voll ausgebaute Gebiet und sind ersetzt.
 
+**Stand nach Etappe 20b:** Maßgeblich sind die Werte in `biz/data.js` (Bauprojekte ~50 % der obigen Investitionspreise, Nachfrage-Tabelle ×0,65, Fixkosten je Lift/Gast höher), nicht die Tabellen oben.
+
 **Balancing-Ziele (prüfen mit `node tools/simtest.mjs --check`, je 5 Seeds, Mittelwert):**
 | Strategie | Saison 1 | Saison 2 | Saison 3 |
 |---|---|---|---|

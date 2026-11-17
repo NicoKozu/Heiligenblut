@@ -42,12 +42,12 @@ function asset(G, id, label, cost, life, n) {
   else G.fin.items.push({ id, label, cost, val: cost, life, ...(n ? { n } : {}) });
 }
 
-export function check(G, id) {
+export function check(G, id, summer) {
   const p = P[id];
   if (!p) return 'unbekannt';
   if (done(G, id)) return 'fertig';
   if (job(G, id)) return 'im Bau';
-  const miss = (p.needs || []).filter(n => !done(G, n));
+  const miss = (p.needs || []).filter(n => !done(G, n) && !(summer && job(G, n)?.left === null));
   if (miss.length) return 'erst ' + miss.map(n => P[n].label).join(', ');
   if (G.cash + room(G) < p.price) return 'zu wenig Geld/Kredit';
   return '';
@@ -60,7 +60,7 @@ function closures(G, id, on) {
 }
 
 export function order(G, id, summer) {
-  if (check(G, id)) return false;
+  if (check(G, id, summer)) return false;
   const p = P[id];
   if (G.cash < p.price) borrow(G, Math.ceil((p.price - G.cash) / FN.autoDraw) * FN.autoDraw);
   invest(G, p.price);

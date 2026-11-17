@@ -74,7 +74,7 @@ export function startDay(G) {
   sideStart(G);
   pay(G, 'admin', D.admin + D.adminLift * G.lifts.length);
   pay(G, 'staff', wages(G));
-  for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.maintPerLift); }
+  for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.lifts.find(x => x.id === l.id).maint ?? D.maintPerLift); }
   if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate / 365);
   return true;
 }

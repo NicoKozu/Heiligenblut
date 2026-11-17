@@ -14,6 +14,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lin = (v, a, b) => clamp((b - v) / (b - a), 0, 1) * 100;
 
 export const waitScore = w => lin(w, S.wait[0], S.wait[1]);
+export const offerScore = v => 100 * Math.pow(clamp(v, 0, 1), S.offerExp);
 export function combine(p, w = S.w) {
   const m = K.reduce((a, k) => a + w[k] * (p[k] ?? 0), 0), lo = Math.min(...K.map(k => p[k] ?? 0));
   return m - S.worst * Math.max(0, m - lo);
@@ -35,9 +36,9 @@ export function instant(G) {
   const present = f ? f.present : 0;
   return {
     wait: q >= 1 ? qs / q : 100,
-    offer: 100 * Math.pow(Math.min(1, share), 0.45),
+    offer: offerScore(share),
     quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : pl(G)),
-    price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), 0, 100),
+    price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), S.price.floor, 100),
     crowd: lin(present / Math.max(km, 0.5), S.crowd[0], S.crowd[1]),
     service: service(G)
   };
@@ -62,7 +63,7 @@ const adjust = (G, z) => clamp(z * (1 - S.lostW * lostShare(G)) - deduction(G), 
 
 export function segPrice(G, sg, share) {
   const fair = S.price.ref * (S.price.base + S.price.offer * share) * D.segs[sg].fair;
-  return clamp(S.price.atFair - S.price.perEur * (segPriceEq(G.prices, sg, kidsFree(G, G.date) ? 0 : G.prices.child) - fair), 0, 100);
+  return clamp(S.price.atFair - S.price.perEur * (segPriceEq(G.prices, sg, kidsFree(G, G.date) ? 0 : G.prices.child) - fair), S.price.floor, 100);
 }
 
 function segMix(G) {
@@ -74,7 +75,7 @@ function segZ(G, parts, offer, share) {
   const mix = segMix(G), seg = {};
   let z = 0;
   for (const sg of SEGS) {
-    const p = { ...parts, offer: offer[sg], price: clamp(segPrice(G, sg, share) + D.side.priceK * levelAdj(G, sg) + parkAdj(G), 0, 100), service: clamp(parts.service + levelAdj(G, sg), 0, 100) };
+    const p = { ...parts, offer: offer[sg], price: clamp(segPrice(G, sg, share) + D.side.priceK * levelAdj(G, sg) + parkAdj(G), S.price.floor, 100), service: clamp(parts.service + levelAdj(G, sg), 0, 100) };
     seg[sg] = adjust(G, combine(p, D.segs[sg].w || S.w));
     z += mix[sg] * seg[sg];
   }
@@ -92,7 +93,7 @@ export function minute(G) {
   if (wt > 0) {
     for (const k of K) if (k !== 'wait') s.acc[k] += p[k] * wt;
     const open = openPistes(G);
-    for (const sg of SEGS) s.seg[sg] += segOffer(G, sg, open) * 100 * wt;
+    for (const sg of SEGS) s.seg[sg] += offerScore(segOffer(G, sg, open)) * wt;
     s.wt += wt;
   }
   for (const l of G.lifts) {
@@ -110,7 +111,7 @@ export function dayParts(G) {
   return o;
 }
 
-const offerNow = G => { const open = openPistes(G); return Object.fromEntries(SEGS.map(sg => [sg, Math.min(100, segOffer(G, sg, open) * 100)])); };
+const offerNow = G => { const open = openPistes(G); return Object.fromEntries(SEGS.map(sg => [sg, offerScore(segOffer(G, sg, open))])); };
 
 export function live(G) {
   if (G.phase === 'open') {
@@ -156,7 +157,8 @@ export function endDay(G) {
   const r = segZ(G, parts, offer, parts.offer / 100), z = r.z, seg = r.seg, lost = G.today.lost || 0;
   const quotes = voices(G, parts, z);
   const rep0 = G.rep;
-  G.rep = clamp((1 - S.rep) * G.rep + S.rep * z, 0, 100);
+  const rw = G.today.guests > 0 ? S.rep : S.repClosed;
+  G.rep = clamp((1 - rw) * G.rep + rw * z, 0, 100);
   G.sat = { z, seg, parts, ded, lost, date: G.today.date };
   return { z, seg, mix: r.mix, parts, ded, lost, rep0, hits: { ...(G.today.hits || {}) }, quotes };
 }
