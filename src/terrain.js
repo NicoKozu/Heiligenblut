@@ -59,7 +59,7 @@ function snowMaterial(bump, sat, forest, rect, surf) {
   vSurf = pSurf[int(pist.z + 0.5)];`);
     const bumpPars = THREE.ShaderChunk.bumpmap_pars_fragment.replace('vec2 dHdxy_fwd()', 'vec2 dHdxy_tex()') + `
   vec2 dHdxy_fwd() {
-    float pm = clamp(vPist.x, 0.0, 1.0);
+    float pm = clamp(vPist.x, 0.0, 1.0) * step(-0.5, vSurf.x);
     vec2 uv = vBumpMapUv, dx = dFdx(uv), dy = dFdy(uv);
     float h0 = texture2D(bumpMap, uv).x;
     vec2 g = vec2(texture2D(bumpMap, uv + dx).x - h0, texture2D(bumpMap, uv + dy).x - h0);
@@ -84,7 +84,7 @@ uniform vec4 satR;
 ${NOISE}`)
       .replace('#include <bumpmap_pars_fragment>', bumpPars)
       .replace('#include <color_fragment>', `#include <color_fragment>
-  float tPm = clamp(vPist.x, 0.0, 1.0);
+  float tPm = clamp(vPist.x, 0.0, 1.0) * step(-0.5, vSurf.x);
   float tCo = tPm * vSurf.x;
   vec2 tUv = (vTw.xz - satR.xy) / satR.zw;
   vec3 tSat = texture2D(satMap, tUv).rgb;

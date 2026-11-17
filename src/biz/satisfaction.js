@@ -29,12 +29,13 @@ export function instant(G) {
     q += n;
     qs += n * waitScore(f.wait[l.id] || 0);
   }
+  if (f && f.hold > 0) { q += f.hold; qs += f.hold * waitScore(S.wait[1]); }
   if (f && f.cashQ > 0) { q += f.cashQ; qs += f.cashQ * waitScore(f.cashWait || 0); }
   const fair = S.price.ref * (S.price.base + S.price.offer * share);
   const present = f ? f.present : 0;
   return {
     wait: q >= 1 ? qs / q : 100,
-    offer: Math.min(100, share * 100),
+    offer: 100 * Math.pow(Math.min(1, share), 0.45),
     quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : pl(G)),
     price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), 0, 100),
     crowd: lin(present / Math.max(km, 0.5), S.crowd[0], S.crowd[1]),

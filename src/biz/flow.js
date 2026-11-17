@@ -83,6 +83,8 @@ function arrivals(G, f, t) {
   return A + H;
 }
 
+const exit = (G, node) => D.pistes.some(p => p.from === node && pisteOpen(G, p.id)) || G.lifts.some(l => running(l) && keys(l).some(k => LIFT[k].from === node));
+
 function dispatch(G, f, node, X, t, d) {
   if (X <= 1e-9) return;
   if (node === 'tal' && d > 0) { const g = X * d; f.present -= g; X -= g; SD.leave(G, f, g); }
@@ -97,7 +99,7 @@ function dispatch(G, f, node, X, t, d) {
     if (!running(l)) continue;
     for (const k of keys(l)) {
       const s = LIFT[k];
-      if (s.from !== node) continue;
+      if (s.from !== node || !exit(G, s.to)) continue;
       opts.push({ k, w: Math.max(0.02, F.liftW * (s.back ? 0.3 + 1.5 * d : 1 - d) * Math.exp(-f.wait[k] / F.queueTau)) });
     }
   }
@@ -105,6 +107,7 @@ function dispatch(G, f, node, X, t, d) {
     if (p.from !== node || !pisteOpen(G, p.id)) continue;
     opts.push({ p, w: levelWeight(p.level, f.skill || F.skill) * (1 + 2 * d) });
   }
+  if (!opts.length && node === 'tal' && G.lifts.some(l => l.open && !running(l) && LIFT[l.id].from === 'tal')) { const g = X * F.holdGiveUp; f.hold = (f.hold || 0) + X - g; X = g; }
   if (!opts.length) { f.present -= X; G.today.lost = (G.today.lost || 0) + X; return; }
   const W = opts.reduce((a, o) => a + o.w, 0);
   for (const o of opts) {
@@ -133,6 +136,8 @@ export function step(G, t) {
   for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
   SD.hutsOut(G, f, at);
   for (const l of G.lifts) if (!running(l)) for (const k of keys(l)) if (f.queue[k] > 0) { at[LIFT[k].from] += f.queue[k]; f.queue[k] = 0; }
+  at.tal += f.hold || 0;
+  f.hold = 0;
   for (const n in at) dispatch(G, f, n, at[n], t, d);
   SD.hutsIn(G, f);
   let ws = 0, bs = 0;

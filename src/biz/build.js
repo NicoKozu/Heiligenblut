@@ -11,9 +11,18 @@ const item = (G, id) => G.fin.items.find(x => x.id === id);
 
 export function initBuild(G) {
   if (!G.build) G.build = { done: [], jobs: [] };
+  if (G.build.v !== 2) legacy(G);
   if (!G.pipes) G.pipes = [...D.snow.pistes];
   if (!G.fin) G.fin = { items: FN.start.map(x => ({ ...x })), insolv: 0, over: null };
   for (const id of G.build.done) applyDone(G, id);
+}
+
+function legacy(G) {
+  G.build.v = 2;
+  const add = id => { if (!G.build.done.includes(id)) G.build.done.push(id); };
+  if (G.lifts.some(l => l.id === 'schareck')) for (const id of ['schareck', 'panorama', 'p4', 'p5', 'p5a', 'p2', 'p1', 'new:schareck', 'new:spatzl', 'new:fleiss']) add(id);
+  if (G.build.done.includes('fleissbahn')) { add('p11'); add('p12'); }
+  if (G.build.done.includes('hochfleiss')) add('p11a');
 }
 
 export const done = (G, id) => G.build.done.includes(id);
@@ -65,6 +74,7 @@ function applyDone(G, id) {
   const p = P[id];
   for (const lid of p.lifts || []) if (!G.lifts.some(l => l.id === lid)) G.lifts.push({ id: lid, name: D.lifts.find(l => l.id === lid).name, open: true, cond: 100, run: 0, util: 0 });
   for (const lid in p.boost || {}) { const l = G.lifts.find(x => x.id === lid); if (l) l.boost = p.boost[lid]; }
+  if (p.hut && G.side?.huts[p.hut]) { const h = G.side.huts[p.hut]; if (!h.own) { h.own = true; h.open = true; } }
 }
 
 function complete(G, j) {
@@ -192,7 +202,7 @@ export function seasonPL(G, sy = G.season) {
 export function benefit(G, id, fc) {
   const p = P[id], cap = (p.lifts || []).reduce((a, l) => a + D.lifts.find(x => x.id === l).cap, 0) + Object.entries(p.boost || {}).reduce((a, [l, b]) => a + D.lifts.find(x => x.id === l).cap * b, 0);
   const km = (p.pistes || []).reduce((a, x) => a + D.pistes.find(y => y.id === x).km, 0);
-  const seats = sum(p.seats);
+  const seats = sum(p.seats) + (p.hut ? D.side.huts.find(h => h.id === p.hut).seats : 0);
   let gain = null;
   if (fc && (km || cap)) {
     const cl = () => { const X = JSON.parse(JSON.stringify({ ...G, history: [], log: [] })); for (const l of X.lifts) { l.broken = null; l.build = false; l.open = true; } return X; };
