@@ -3,6 +3,7 @@ import { int, next as rand } from './rng.js';
 import { running } from './assets.js';
 import { openPistes, offerShare, priceEq } from './demand.js';
 import { score } from './snow.js';
+import { service } from './staff.js';
 
 const S = D.sat;
 const K = Object.keys(S.w);
@@ -25,6 +26,7 @@ export function instant(G) {
     q += n;
     qs += n * waitScore(f.wait[l.id] || 0);
   }
+  if (f && f.cashQ > 0) { q += f.cashQ; qs += f.cashQ * waitScore(f.cashWait || 0); }
   const fair = S.price.ref * (S.price.base + S.price.offer * share);
   const present = f ? f.present : 0;
   return {
@@ -33,7 +35,7 @@ export function instant(G) {
     quality: (q => q.reduce((a, p) => a + p.km * score(G, p.id), 0) / q.reduce((a, p) => a + p.km, 0))(km ? open : D.pistes),
     price: clamp(S.price.atFair - S.price.perEur * (priceEq(G.prices) - fair), 0, 100),
     crowd: lin(present / Math.max(km, 0.5), S.crowd[0], S.crowd[1]),
-    service: S.service
+    service: service(G)
   };
 }
 
@@ -65,6 +67,7 @@ export function minute(G) {
     const b = f.board?.[l.id] || 0;
     if (b > 0) { s.wait[0] += b * waitScore(f.wait[l.id] || 0); s.wait[1] += b; }
   }
+  if (f.cashServed > 0) { s.wait[0] += f.cashServed * waitScore(f.cashWait || 0); s.wait[1] += f.cashServed; }
   if (!s.live) s.live = { ...p };
   else { const a = 1 - Math.exp(-1 / S.liveTau); for (const k of K) s.live[k] += (p[k] - s.live[k]) * a; }
 }

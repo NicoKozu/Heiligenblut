@@ -5,6 +5,7 @@ import { avgPrice, priceFactor } from './demand.js';
 import { status, repairQuote, fmtDur } from './assets.js';
 import { live, stars } from './satisfaction.js';
 import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
+import { GROUPS, duty, needs, wages, heads, dayCost, pendingOf, nextArrival, bonusCost, bonusDone } from './staff.js';
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
 
 const CSS = `
@@ -104,7 +105,7 @@ const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
 const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
 const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const revLabel = k => D.tickets[k]?.label || k;
-const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad' };
+const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad', staff: 'bad' };
 const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
 const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
 const pName = id => D.pistes.find(p => p.id === id).name;
@@ -121,6 +122,9 @@ function parts(sat) {
     (sat.lost >= 1 ? '<div class="biz-part"><span>Ohne Fahrt abgereist</span><span></span><b class="biz-bad">' + num(sat.lost) + '</b></div>' : '') +
     (sat.ded ? '<div class="biz-part"><span>Ereignis-Abzug</span><span></span><b class="biz-bad">−' + Math.round(sat.ded) + '</b></div>' : '');
 }
+const guestsN = G => G.phase === 'prep' ? forecast(G).n : Math.max(G.today.expected || 0, G.today.guests || 0);
+const sumK = o => GROUPS.reduce((a, k) => a + o[k], 0);
+const ddmm = d => d.slice(8) + '.' + d.slice(5, 7) + '.';
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
 const atone = a => a >= 4 ? 'biz-bad' : a >= 3 ? 'biz-warn' : 'biz-good';
 const stone = s => s >= 60 ? 'biz-good' : s >= 30 ? 'biz-warn' : 'biz-bad';
@@ -194,6 +198,9 @@ export function createUI(h) {
       '<div class="sep"></div>' +
       row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
+      (open && G.flow.cashWait >= 0.5 ? row('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
+      '<div class="sep"></div>' +
+      (st => { const nd = sumK(needs(G, guestsN(G))), du = GROUPS.reduce((a, k) => a + duty(G, k), 0); return row('Personal im Dienst / benötigt', du + ' / ' + nd, du >= nd ? 'biz-good' : du >= nd * 0.85 ? 'biz-warn' : 'biz-bad') + row('Moral', Math.round(st.morale), tone(st.morale, 60, 40)) + row('Lohnkosten heute', eur(G.today.costs.staff || wages(G))); })(G.staff) +
       '<div class="sep"></div>' +
       G.lifts.map(l => {
         const st = status(l), on = open && st === 'run', w = on ? G.flow.wait[l.id] : 0;
@@ -209,7 +216,7 @@ export function createUI(h) {
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -230,7 +237,7 @@ export function createUI(h) {
   function liftActs(G, l) {
     const st = status(l);
     if (st === 'fault') {
-      const a = repairQuote(l, false), b = repairQuote(l, true);
+      const a = repairQuote(l, false, G), b = repairQuote(l, true, G);
       return '<button class="btn primary" data-act="repair:' + l.id + '">Reparieren · ' + eur(a.cost) + ' · ' + fmtDur(a.min) + '</button><button class="btn" data-act="repair:' + l.id + ':x">Express · ' + eur(b.cost) + ' · ' + fmtDur(b.min) + '</button>';
     }
     if (st === 'repair') return '<span class="biz-warn">Reparatur läuft · noch ' + fmtDur(l.repairLeft) + '</span>';
@@ -276,11 +283,28 @@ export function createUI(h) {
       }).join('') + '</table>' +
       '<h2>Bedarf heute Nacht</h2><table>' +
       tr('Gerätestunden', dec(g.hours) + ' / ' + dec(g.cap) + ' h' + (g.want > g.cap + 1e-6 ? ' <span class="biz-warn">(Bedarf ' + dec(g.want) + ' h)</span>' : '')) +
-      tr('Pistengeräte · Fahrer', G.groom.machines + ' · ' + g.drivers + ' / ' + G.groom.drivers + ' im Einsatz') +
+      tr('Pistengeräte · Fahrer', G.groom.machines + ' Geräte · ' + g.drivers + ' / ' + duty(G, 'groomer') + ' Fahrer im Einsatz') +
       tr('Präparierung', eur(g.cost)) +
       tr('Beschneiung', num(t.gun.m3) + ' m³ Schnee · ' + num(t.gun.water) + ' m³ Wasser · ' + num(t.gun.kwh) + ' kWh') +
       tr('Kosten Beschneiung', eur(t.gun.cost)) + tr('Summe Nacht', eur(t.total), 'sum') + '</table>' +
-      '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h + Fahrer. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
+      '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h, je Fahrer max. ' + D.groomNight.shift + ' h. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
+  }
+
+  function staffTab(G) {
+    const st = G.staff, nd = needs(G, guestsN(G)), open = G.phase === 'open', SG = D.staff.groups;
+    const pm = (act, dis) => '<button data-act="' + act + '"' + (dis ? ' disabled' : '') + '>' + (act.startsWith('fire') || act.endsWith('-' + D.staff.wageStep) ? '−' : '+') + '</button>';
+    return '<h2>Personal · Bedarf für ' + num(guestsN(G)) + ' Gäste</h2><table>' + GROUPS.map(k => {
+      const d = duty(G, k), pd = pendingOf(G, k), sk = st.sick[k] || 0;
+      return '<tr><td><b>' + SG[k].label + '</b> <span style="opacity:.6;font-size:12px">' + eur(dayCost(G, k)) + '/Tag</span><br><span style="opacity:.8;font-size:13px">im Dienst <span class="' + (d >= nd[k] ? 'biz-good' : d >= nd[k] * 0.85 ? 'biz-warn' : 'biz-bad') + '">' + d + '</span> / benötigt ' + nd[k] +
+        (sk ? ' · <span class="biz-bad">' + sk + ' krank</span>' : '') + (pd ? ' · <span class="biz-good">+' + pd + ' ab ' + ddmm(nextArrival(G, k)) + '</span>' : '') + '</span><br><span style="opacity:.55;font-size:12px">' + SG[k].info + '</span></td>' +
+        '<td><span class="price">' + pm('fire:' + k, open || (!st.n[k] && !pd)) + '<b style="min-width:34px;text-align:center">' + st.n[k] + '</b>' + pm('hire:' + k) + '</span></td></tr>';
+    }).join('') + tr('Gesamt', heads(G) + ' Köpfe · ' + eur(wages(G)) + '/Tag', 'sum') + '</table>' +
+      '<h2>Lohn und Moral</h2><table>' +
+      tr('Lohnniveau', '<span class="price">' + pm('wage:-' + D.staff.wageStep, st.wage <= D.staff.wage[0]) + '<b style="min-width:44px;text-align:center">' + st.wage + ' %</b>' + pm('wage:' + D.staff.wageStep, st.wage >= D.staff.wage[1]) + '</span>') +
+      tr('Moral', '<span class="' + tone(st.morale, 60, 40) + '">' + Math.round(st.morale) + '</span>' + (st.morale < D.staff.morale.sickBelow ? ' · <span class="biz-bad">Krankmeldungen!</span>' : '')) +
+      tr('Überlastung letzter Tag', '<span class="' + (st.over > 0.1 ? 'biz-bad' : st.over > 0.02 ? 'biz-warn' : 'biz-good') + '">' + Math.round(st.over * 100) + ' %</span>') +
+      tr('Prämie', '<button class="btn' + (bonusDone(G) ? '' : ' primary') + '" data-act="bonus"' + (bonusDone(G) ? ' disabled' : '') + '>' + (bonusDone(G) ? 'heute ausgezahlt' : 'Prämie zahlen · ' + eur(bonusCost(G)) + ' · Moral +' + D.staff.bonus.gain) + '</button>') +
+      '</table><p class="note">Einstellung wirkt nach ' + D.staff.delay + ' Tagen, Kündigung kostet ' + D.staff.fireDays + ' Tageslöhne (nicht während des Betriebs). Moral sinkt bei Überlastung (zu wenig Leute) und Lohnkürzung, steigt mit Lohn und Prämie; unter ' + D.staff.morale.sickBelow + ' gibt es Krankmeldungen. Saisonkräfte enden am Saisonende, je nach Moral kommt ein Teil wieder.</p>';
   }
 
   function nightReport(G) {
@@ -298,7 +322,7 @@ export function createUI(h) {
       '</table>';
   }
 
-  const body = G => tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
+  const body = G => tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
@@ -315,6 +339,7 @@ export function createUI(h) {
         '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + '</table>' +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
+        (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Im Dienst / benötigt', r.staff.duty + ' / ' + r.staff.need + (r.staff.sick ? ' · <span class="biz-bad">' + r.staff.sick + ' krank</span>' : '')) + tr('Moral', '<span class="' + tone(r.staff.morale, 60, 40) + '">' + Math.round(r.staff.morale) + '</span> · Überlastung ' + Math.round(r.staff.over * 100) + ' %') + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
         '<h2>Morgen</h2><table>' + (G.weather?.ahead[0] ? tr('Wetter (Prognose)', wline(G.weather.ahead[0].fc)) : '') + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + tr('Nacht-Aufträge', eur(nightTotals(G).total) + ' · <button class="btn" data-tab="snow">Schnee planen</button>') + '</table>') +
@@ -379,7 +404,7 @@ export function createUI(h) {
     toast(G, id) {
       const l = G.lifts.find(x => x.id === id);
       if (!l || !l.broken) return;
-      const q = repairQuote(l, false);
+      const q = repairQuote(l, false, G);
       const el = toasts.get(id) || document.createElement('div');
       el.className = 't';
       el.innerHTML = '<span>Störung ' + l.name + ' (' + l.broken.label + ') – Reparatur ca. ' + fmtDur(q.min) + ', ' + eur(q.cost) + '</span><button class="primary" data-act="repair:' + id + '">Reparieren</button><button data-act="tab:assets">Details</button><button data-act="drop:' + id + '">✕</button>';

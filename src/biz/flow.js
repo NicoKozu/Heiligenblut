@@ -1,6 +1,7 @@
 import { D } from './data.js';
 import { running, pisteOpen } from './assets.js';
 import { wear } from './snow.js';
+import { cashCap } from './staff.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
@@ -32,7 +33,7 @@ export function newFlow(full, half) {
     hut: Object.fromEntries(F.lunch.nodes.map(n => [n, zeros(F.lunch.dur)])),
     wait: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     board: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
-    present: 0, lunched: 0, avgWait: 0
+    present: 0, lunched: 0, avgWait: 0, cashQ: 0, cashWait: 0, cashServed: 0
   };
 }
 
@@ -93,7 +94,15 @@ export function step(G, t) {
   const at = Object.fromEntries(Object.keys(D.nodes).map(k => [k, 0]));
   const a = arrivals(G, f, t);
   f.present += a;
-  at.tal += a;
+  const s = G.seasonShare ?? F.seasonShare, cap = cashCap(G), dq = a * (1 - s) * (1 - D.staff.cash.online);
+  f.cashQ = (f.cashQ || 0) + dq;
+  const sv = Math.min(f.cashQ, cap);
+  f.cashQ -= sv;
+  if (f.cashQ < 1e-6) f.cashQ = 0;
+  f.cashWait = f.cashQ / cap;
+  f.cashServed = sv;
+  T.cashPeak = Math.max(T.cashPeak || 0, f.cashWait);
+  at.tal += a - dq + sv;
   for (const l of D.lifts) at[l.to] += shift(f.ride[l.id]);
   for (const p of D.pistes) { const n = shift(f.run[p.id]); wear(G, p.id, n); at[p.to] += n; }
   for (const n in f.hut) at[n] += shift(f.hut[n]);
@@ -131,6 +140,9 @@ export function endFlow(G) {
   for (const l of G.lifts) l.util = 0;
   f.present = 0;
   f.avgWait = 0;
+  f.cashQ = 0;
+  f.cashWait = 0;
+  f.cashServed = 0;
 }
 
 export const inArea = G => G.flow ? G.flow.present : 0;

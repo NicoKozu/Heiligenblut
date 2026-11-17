@@ -86,7 +86,27 @@ export const D = {
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
   groom: { price: 190000, perHour: 145, hoursPerKm: 1.3, start: 4 },
   snow: { perM3: 4.2, price: 22000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 30, pistes: ['10', '4', '5'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
-  groomNight: { shift: 8, drivers: 4 },
+  groomNight: { shift: 8 },
+  staff: {
+    groups: {
+      lift: { label: 'Liftpersonal', start: 14, perm: 6, info: 'Mindestbesetzung je Lift (Rossbach 4, Schareck 4, Panorama 3), Bedarf inkl. Ablöse ×1,25' },
+      tech: { label: 'Techniker', start: 4, perm: 3, info: 'Reparaturdauer × 4 / Techniker (min. ×0,5), weniger Störungen' },
+      groomer: { label: 'Pistengerätefahrer', start: 5, perm: 3, info: 'max. 8 h Präparierung je Fahrer und Nacht' },
+      patrol: { label: 'Pistenrettung', start: 4, perm: 2, info: 'mind. 1 je 3 offene Pisten, sonst Unfälle' },
+      cashier: { label: 'Kassa', start: 5, perm: 2, info: 'zu wenige → Kassenschlange morgens' },
+      instructor: { label: 'Skilehrer', start: 10, perm: 3, info: 'je Skilehrer 8 Schüler (Skischule)' },
+      gastro: { label: 'Gastro', start: 18, perm: 5, info: 'je Kraft ~100 Gäste, sonst leidet der Service' }
+    },
+    delay: 2, fireDays: 5, max: 80,
+    wage: [90, 120], wageStep: 5,
+    morale: { start: 65, base: 70, wageK: 1.5, over: 60, rate: 0.2, cut: 1.5, fire: 0.5, sickBelow: 40, sick: [0.02, 0.12] },
+    bonus: { perHead: 200, gain: 12 },
+    relief: 1.25, techPerLift: 1, techBase: 1, techRef: 4, techMin: 0.5, techRisk: 0.3,
+    patrolPer: 3, accident: 0.002, gastroPer: 100, pupils: 8,
+    cash: { rate: 4, online: 0.3, auto: 0.5, wait: [2, 20] },
+    service: { cash: 0.4, morale: 0.35, gastro: 0.25 },
+    returnRate: [0.3, 0.9]
+  },
   cover: {
     natural: [25, 0.04], cannonStart: 30, minOpen: 12, thin: 30, melt: 1.6, meltBy: { sun: 1.3, foehn: 1.6 }, rainAt: 1.5, rainMelt: 0.35,
     wear: 0.012, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45,
@@ -143,7 +163,6 @@ export const D = {
     wait: [3, 30],
     crowd: [60, 160],
     price: { ref: 62, base: 0.6, offer: 0.4, atFair: 100, perEur: 3 },
-    service: 70,
     worst: 0.3,
     lostW: 0.6,
     ded: { rescue: 8, fault: 3, pisteClose: 2, accident: 5 },
@@ -184,7 +203,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung' },
-  liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien' },
+  liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

@@ -3,6 +3,7 @@ import { createUI } from './ui.js';
 import { D } from './data.js';
 import * as A from './assets.js';
 import * as N from './snow.js';
+import * as P from './staff.js';
 import { consume } from '../input.js';
 
 export function createBiz({ lift, player, crowd, pistes, env }) {
@@ -27,12 +28,16 @@ export function createBiz({ lift, player, crowd, pistes, env }) {
     else if (a === 'next' && S.nextDay(G)) { ui.open('prep'); save(); }
     else if (a === 'close') ui.close();
     else if (a.startsWith('price:') && G.phase !== 'open') { const [, k, d] = a.split(':'); S.setPrice(G, k, G.prices[k] + Number(d)); save(); }
-    else if (a.startsWith('tog:')) { const [, k, id] = a.split(':'), o = k === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id]; if (o && A.setOpen(G, k, id, !o.open)) save(); }
+    else if (a.startsWith('tog:')) { const [, k, id] = a.split(':'), o = k === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id]; if (!o) return; if (A.setOpen(G, k, id, !o.open)) save(); else if (k === 'lift' && !o.open && !P.canOpen(G, id)) note('Zu wenig Liftpersonal für ' + o.name, 3); }
     else if (a.startsWith('repair:')) { const [, id, x] = a.split(':'); if (A.repair(G, id, x === 'x')) { ui.drop(id); save(); note('Reparatur beauftragt', 2); } }
     else if (a.startsWith('insp:')) { if (A.inspect(G, a.slice(5))) save(); }
     else if (a.startsWith('drop:')) ui.drop(a.slice(5));
     else if (a.startsWith('grm:')) { if (N.setGroom(G, a.slice(4))) save(); }
     else if (a.startsWith('gun:')) { const [, id, d] = a.split(':'); if (N.setGun(G, id, Number(d))) save(); }
+    else if (a.startsWith('hire:')) { if (P.hire(G, a.slice(5))) save(); }
+    else if (a.startsWith('fire:')) { if (P.fire(G, a.slice(5))) save(); }
+    else if (a.startsWith('wage:')) { if (P.setWage(G, Number(a.slice(5)))) save(); }
+    else if (a === 'bonus') { if (P.bonus(G)) { save(); note('Prämie ausgezahlt', 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
     ui.render(G);
   }
@@ -43,7 +48,7 @@ export function createBiz({ lift, player, crowd, pistes, env }) {
     player.spawnAt(v.x, v.z, v.heading);
   }
 
-  const why = { closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion', wind: 'Sturm' };
+  const why = { closed: 'geschlossen', fault: 'Störung', repair: 'Störung – Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' };
   function sync() {
     lift.shut.clear();
     for (const s of lift.sections) {
