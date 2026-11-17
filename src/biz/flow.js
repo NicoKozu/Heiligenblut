@@ -1,6 +1,6 @@
 import { D } from './data.js';
 import { DIRS, keys } from './area.js';
-import { running, pisteOpen } from './assets.js';
+import { running, pisteOpen, pay } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
 import { ticketPrice, kidsFree } from './marketing.js';
@@ -81,6 +81,7 @@ function arrivals(G, f, t) {
   add('half', H * (1 - s));
   earn('half', H * (1 - s));
   T.guests += A + H;
+  pay(G, 'guest', (A + H) * D.guestCost);
   return A + H;
 }
 

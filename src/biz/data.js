@@ -5,12 +5,12 @@ export const D = {
   start: { cash: 1500000, loan: 0, credit: 6000000, rate: 0.055, rep: 55, cond: [70, 85] },
   time: { open: 510, close: 990, gameSecPerSec: 8, factors: [1, 2, 5, 10, 20], maxSteps: 40, warn: 15 },
   lifts: [
-    { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, ride: 9, from: 'tal', to: 'rossbach' },
-    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, ride: 8, from: 'rossbach', to: 'schareck', exposed: true, proj: 'schareck' },
-    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true, proj: 'panorama' },
-    { id: 'tunnelbahn', name: 'Tunnelbahn Fleißalm', cap: 1000, kw: 240, staff: 2, ride: 5, from: 'rossbach', to: 'fleissalm', both: true, proj: 'tunnelbahn' },
-    { id: 'fleissbahn', name: 'Fleißbahn', cap: 2000, kw: 320, staff: 3, ride: 8, from: 'fleissalm', to: 'fleisstop', proj: 'fleissbahn' },
-    { id: 'hochfleiss', name: 'Hochfleiß', cap: 1400, kw: 160, staff: 2, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, proj: 'hochfleiss' }
+    { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, maint: 1800, ride: 9, from: 'tal', to: 'rossbach' },
+    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, maint: 2400, ride: 8, from: 'rossbach', to: 'schareck', exposed: true, proj: 'schareck' },
+    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, maint: 2000, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true, proj: 'panorama' },
+    { id: 'tunnelbahn', name: 'Tunnelbahn Fleißalm', cap: 1000, kw: 240, staff: 2, maint: 800, ride: 5, from: 'rossbach', to: 'fleissalm', both: true, proj: 'tunnelbahn' },
+    { id: 'fleissbahn', name: 'Fleißbahn', cap: 2000, kw: 320, staff: 3, maint: 1500, ride: 8, from: 'fleissalm', to: 'fleisstop', proj: 'fleissbahn' },
+    { id: 'hochfleiss', name: 'Hochfleiß', cap: 1400, kw: 160, staff: 2, maint: 1000, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, proj: 'hochfleiss' }
   ],
   nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl', fleissalm: 'Fleißalm', fleisstop: 'Fleißbahn Berg', hochfleiss: 'Hochfleiß' },
   nodeH: { tal: 1309, rossbach: 1750, schareck: 2556, fallbichl: 2219, fleissalm: 1808, fleisstop: 2470, hochfleiss: 2920 },
@@ -25,7 +25,7 @@ export const D = {
     { id: '12', name: 'Muldenabfahrt', level: 'mittel', km: 2.15, from: 'fleisstop', to: 'fleissalm', proj: 'p12', exp: true },
     { id: '11a', name: 'Gratabfahrt', level: 'mittel', km: 3.58, from: 'hochfleiss', to: 'fleissalm', proj: 'p11a', exp: true }
   ],
-  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.4, 1.2], offer: [0.12, 0.88], eps: [0.9, 1.1] },
+  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.6, 0.8], offer: [0.3, 0.7], expW: 2, eps: [0.9, 1.1] },
   flow: {
     arrive: { from: 495, peak: 570, to: 660 },
     half: { from: 690, peak: 720, to: 780 },
@@ -48,8 +48,9 @@ export const D = {
     wait: [5, 15]
   },
   power: { price: 0.24, base: 0.4, load: 0.6 },
-  maintPerLift: 350,
-  wear: { perHour: 0.3, base: 0.5 },
+  maintPerLift: 2000,
+  guestCost: 15,
+  wear: { perHour: 0.15, base: 0.5, night: 0.6, keep: 70 },
   fault: {
     base: 0.0015, ref: 20,
     types: [
@@ -63,7 +64,7 @@ export const D = {
   night: 960,
   pisteStart: { cond: 80, snow: 80 },
   logMax: 60,
-  admin: 1400, adminLift: 600,
+  admin: 1400, adminLift: 1600,
   tickets: {
     day: { label: 'Tageskarte Erw.', price: 62 },
     youth: { label: 'Jugend (15–18)', price: 47 },
@@ -77,21 +78,21 @@ export const D = {
   priceRange: [0, 300],
   mix: { adult: 0.62, youth: 0.13, child: 0.25, half: 0.15 },
   demand: {
-    early: { label: '1.–19. Dez', wd: 350, we: 750 },
-    xmas: { label: 'Weihnachtsferien', wd: 1900, we: 1900 },
-    jan: { label: 'Jänner', wd: 550, we: 1150 },
-    febHol: { label: 'Semesterferien', wd: 1700, we: 2000 },
-    feb: { label: 'Februar', wd: 750, we: 1250 },
-    mar: { label: 'März', wd: 800, we: 1300 },
-    easter: { label: 'Osterferien', wd: 1300, we: 1400 },
-    late: { label: 'nach Ostern', wd: 300, we: 550 }
+    early: { label: '1.–19. Dez', wd: 220, we: 490 },
+    xmas: { label: 'Weihnachtsferien', wd: 1230, we: 1230 },
+    jan: { label: 'Jänner', wd: 360, we: 750 },
+    febHol: { label: 'Semesterferien', wd: 1100, we: 1300 },
+    feb: { label: 'Februar', wd: 490, we: 810 },
+    mar: { label: 'März', wd: 520, we: 850 },
+    easter: { label: 'Osterferien', wd: 850, we: 910 },
+    late: { label: 'nach Ostern', wd: 200, we: 360 }
   },
   demandRef: { rep: 50 },
   febHolidays: [8, 28],
   easterHolidays: [-8, 1],
   seasonEnd: { month: 4, day: 6 },
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
-  groom: { price: 190000, perHour: 145, hoursPerKm: 1.3, start: 1 },
+  groom: { price: 190000, perHour: 190, hoursPerKm: 1.3, start: 1 },
   snow: { perM3: 4.2, price: 22000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 10, pistes: ['10'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
   groomNight: { shift: 8 },
   staff: {
@@ -108,7 +109,7 @@ export const D = {
     wage: [90, 120], wageStep: 5,
     morale: { start: 65, base: 70, wageK: 1.5, over: 60, rate: 0.2, cut: 1.5, fire: 0.5, sickBelow: 40, sick: [0.02, 0.12] },
     bonus: { perHead: 200, gain: 12 },
-    relief: 1.25, techPerLift: 1, techBase: 1, techRef: 4, techMin: 0.5, techRisk: 0.3,
+    relief: 1.25, techPerLift: 1, techBase: 1, techRef: 2, techMin: 0.5, techRisk: 0.3,
     patrolPer: 3, accident: 0.002, pupils: 8,
     cash: { rate: 4, online: 0.3, auto: 0.5, wait: [2, 20] },
     service: { cash: 0.35, morale: 0.3, gastro: 0.25, side: 0.1 },
@@ -191,36 +192,36 @@ export const D = {
       normal: { label: 'normal', price: 1, goods: 1, draw: 1, sat: 0 },
       upscale: { label: 'gehoben', price: 1.3, goods: 1.12, draw: 0.85, sat: -18 }
     },
-    spendEl: 0.8, priceK: 0.6, seatsPerStaff: 36, hutFix: 450, maxWait: 25, giveUp: 0.08, wait: [5, 30], miss: 100,
+    spendEl: 0.8, priceK: 0.6, seatsPerStaff: 36, hutFix: 700, maxWait: 25, giveUp: 0.08, wait: [5, 30], miss: 100,
     score: { lunch: 0.6, staff: 0.4 },
     areas: { tickets: { label: 'Tickets', color: '#5aa2ff' }, gastro: { label: 'Gastro', color: '#ffb14a' }, rental: { label: 'Verleih', color: '#7be07b' }, school: { label: 'Skischule', color: '#ff6b5a' }, parking: { label: 'Parkplatz', color: '#b48cff' } }
   },
   build: {
     projects: {
-      schareck: { label: 'Gondel Schareck', price: 4400000, days: 45, life: 20, lifts: ['schareck'], info: 'Rossbach → Schareck (2.556 m). Erschließt den Gipfelbereich – oben braucht es noch Pisten.' },
-      p4: { label: 'Piste 4 Schareckabfahrt', price: 420000, days: 14, life: 25, needs: ['schareck'], pistes: ['4'], info: 'rot · 2,3 km · Schareck → Rossbach' },
-      p5: { label: 'Piste 5 Kärntnerabfahrt', price: 480000, days: 16, life: 25, needs: ['schareck'], pistes: ['5'], info: 'blau · 2,9 km · Schareck → Rossbach, ideal für Familien' },
-      p5a: { label: 'Piste 5a Kärntnerabfahrt Variante', price: 520000, days: 16, life: 25, needs: ['schareck'], pistes: ['5a'], info: 'rot · 3,1 km · Schareck → Rossbach' },
-      p2: { label: 'Piste 2 Seppenalmabfahrt', price: 500000, days: 16, life: 25, needs: ['schareck'], pistes: ['2'], info: 'rot · 3,0 km · Schareck → Rossbach über die Seppenalm' },
-      panorama: { label: 'Panoramabahn', price: 3200000, days: 40, life: 20, needs: ['schareck'], lifts: ['panorama'], info: 'Fallbichl → Schareck. Sinnvoll erst mit Piste 1 Fallbichlabfahrt.' },
-      p1: { label: 'Piste 1 Fallbichlabfahrt', price: 300000, days: 12, life: 25, needs: ['panorama'], pistes: ['1'], info: 'schwarz · 1,4 km · Schareck → Fallbichl, für Sportliche' },
-      'new:schareck': { label: 'Panoramarestaurant Schareck', price: 1500000, days: 30, life: 25, needs: ['schareck'], hut: 'schareck', info: 'Restaurant an der Bergstation, 240 Plätze' },
-      'new:spatzl': { label: 'Spatzl Alm', price: 650000, days: 20, life: 25, needs: ['schareck'], hut: 'spatzl', info: 'Hütte im Schareck-Gebiet, 100 Plätze' },
-      tunnelbahn: { label: 'Tunnelbahn Fleißalm', price: 3200000, days: 40, life: 20, needs: ['schareck'], lifts: ['tunnelbahn'], info: 'Pendelbahn im Berg Rossbach ↔ Fleißalm, beide Richtungen. Erschließt das Fleißtal.' },
-      'new:fleiss': { label: 'Skihütte Fleißalm', price: 450000, days: 18, life: 25, needs: ['tunnelbahn'], hut: 'fleiss', info: 'Hütte an der Fleißalm, 80 Plätze' },
-      fleissbahn: { label: 'Fleißbahn (Gondel)', price: 4800000, days: 55, life: 20, needs: ['tunnelbahn'], lifts: ['fleissbahn'], info: 'Fleißalm → Fleißbahn Berg (2.470 m). Braucht Piste 11 oder 12.' },
-      p11: { label: 'Piste 11 Wiesenabfahrt', price: 430000, days: 14, life: 25, needs: ['fleissbahn'], pistes: ['11'], info: 'blau · 2,4 km · Fleißbahn Berg → Fleißalm' },
-      p12: { label: 'Piste 12 Muldenabfahrt', price: 400000, days: 14, life: 25, needs: ['fleissbahn'], pistes: ['12'], info: 'rot · 2,2 km · Fleißbahn Berg → Fleißalm' },
-      hochfleiss: { label: 'Sessellift Hochfleiß', price: 2400000, days: 35, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
-      p11a: { label: 'Piste 11a Gratabfahrt', price: 650000, days: 18, life: 25, needs: ['hochfleiss'], pistes: ['11a'], info: 'rot · 3,6 km · Hochfleiß → Fleißalm' },
-      rossbach10: { label: 'Gondel Rossbach 10er', price: 3600000, days: 30, life: 20, close: ['rossbach'], boost: { rossbach: 0.6 }, info: '+60 % Kapazität am Zubringer. Im Winter nur mit Sperre der Gondel Rossbach.' },
+      schareck: { label: 'Gondel Schareck', price: 1800000, days: 27, life: 20, lifts: ['schareck'], info: 'Rossbach → Schareck (2.556 m). Erschließt den Gipfelbereich – oben braucht es noch Pisten.' },
+      p4: { label: 'Piste 4 Schareckabfahrt', price: 210000, days: 9, life: 25, needs: ['schareck'], pistes: ['4'], info: 'rot · 2,3 km · Schareck → Rossbach' },
+      p5: { label: 'Piste 5 Kärntnerabfahrt', price: 240000, days: 10, life: 25, needs: ['schareck'], pistes: ['5'], info: 'blau · 2,9 km · Schareck → Rossbach, ideal für Familien' },
+      p5a: { label: 'Piste 5a Kärntnerabfahrt Variante', price: 260000, days: 10, life: 25, needs: ['schareck'], pistes: ['5a'], info: 'rot · 3,1 km · Schareck → Rossbach' },
+      p2: { label: 'Piste 2 Seppenalmabfahrt', price: 250000, days: 10, life: 25, needs: ['schareck'], pistes: ['2'], info: 'rot · 3,0 km · Schareck → Rossbach über die Seppenalm' },
+      panorama: { label: 'Panoramabahn', price: 1300000, days: 24, life: 20, needs: ['schareck'], lifts: ['panorama'], info: 'Fallbichl → Schareck. Sinnvoll erst mit Piste 1 Fallbichlabfahrt.' },
+      p1: { label: 'Piste 1 Fallbichlabfahrt', price: 150000, days: 8, life: 25, needs: ['panorama'], pistes: ['1'], info: 'schwarz · 1,4 km · Schareck → Fallbichl, für Sportliche' },
+      'new:schareck': { label: 'Panoramarestaurant Schareck', price: 600000, days: 20, life: 25, needs: ['schareck'], hut: 'schareck', info: 'Restaurant an der Bergstation, 240 Plätze' },
+      'new:spatzl': { label: 'Spatzl Alm', price: 320000, days: 13, life: 25, needs: ['schareck'], hut: 'spatzl', info: 'Hütte im Schareck-Gebiet, 100 Plätze' },
+      tunnelbahn: { label: 'Tunnelbahn Fleißalm', price: 1000000, days: 24, life: 20, needs: ['schareck'], lifts: ['tunnelbahn'], info: 'Pendelbahn im Berg Rossbach ↔ Fleißalm, beide Richtungen. Erschließt das Fleißtal.' },
+      'new:fleiss': { label: 'Skihütte Fleißalm', price: 220000, days: 12, life: 25, needs: ['tunnelbahn'], hut: 'fleiss', info: 'Hütte an der Fleißalm, 80 Plätze' },
+      fleissbahn: { label: 'Fleißbahn (Gondel)', price: 1500000, days: 33, life: 20, needs: ['tunnelbahn'], lifts: ['fleissbahn'], info: 'Fleißalm → Fleißbahn Berg (2.470 m). Braucht Piste 11 oder 12.' },
+      p11: { label: 'Piste 11 Wiesenabfahrt', price: 220000, days: 9, life: 25, needs: ['fleissbahn'], pistes: ['11'], info: 'blau · 2,4 km · Fleißbahn Berg → Fleißalm' },
+      p12: { label: 'Piste 12 Muldenabfahrt', price: 200000, days: 9, life: 25, needs: ['fleissbahn'], pistes: ['12'], info: 'rot · 2,2 km · Fleißbahn Berg → Fleißalm' },
+      hochfleiss: { label: 'Sessellift Hochfleiß', price: 1000000, days: 21, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
+      p11a: { label: 'Piste 11a Gratabfahrt', price: 320000, days: 12, life: 25, needs: ['hochfleiss'], pistes: ['11a'], info: 'rot · 3,6 km · Hochfleiß → Fleißalm' },
+      rossbach10: { label: 'Gondel Rossbach 10er', price: 1800000, days: 18, life: 20, close: ['rossbach'], boost: { rossbach: 0.6 }, info: '+60 % Kapazität am Zubringer. Im Winter nur mit Sperre der Gondel Rossbach.' },
       'hut:rossbach': { label: 'Ausbau Rossbach Alm', price: 350000, days: 20, life: 25, seats: { rossbach: 120 }, closeHut: 'rossbach', info: '+120 Sitzplätze' },
       'hut:schareck': { label: 'Ausbau Panoramarestaurant', price: 350000, days: 20, life: 25, needs: ['new:schareck'], seats: { schareck: 120 }, closeHut: 'schareck', info: '+120 Sitzplätze' },
       'hut:spatzl': { label: 'Ausbau Spatzl Alm', price: 350000, days: 20, life: 25, needs: ['new:spatzl'], seats: { spatzl: 120 }, closeHut: 'spatzl', info: '+120 Sitzplätze' },
       'hut:fleiss': { label: 'Ausbau Skihütte Fleißalm', price: 350000, days: 20, life: 25, needs: ['new:fleiss'], seats: { fleiss: 120 }, closeHut: 'fleiss', info: '+120 Sitzplätze' },
       garage: { label: 'Parkhaus', price: 900000, days: 45, life: 25, park: 500, info: '+500 Stellplätze' }
     },
-    pipe: 120000, pipeLife: 20, sell: 0.8, pisteKm: 180000
+    pipe: 120000, pipeLife: 20, sell: 0.8, pisteKm: 90000
   },
   fin: {
     days: 125, life: { groomer: 8, cannon: 10 }, step: [100000, 1000000], autoDraw: 50000, insolvDays: 7,
@@ -239,13 +240,15 @@ export const D = {
     labels: { wait: 'Wartezeit', offer: 'Pistenangebot', quality: 'Pistenqualität', price: 'Preis-Leistung', crowd: 'Gedränge', service: 'Service' },
     wait: [3, 30],
     crowd: [60, 160],
-    price: { ref: 62, base: 0.6, offer: 0.4, atFair: 100, perEur: 3 },
+    price: { ref: 62, base: 0.75, offer: 0.25, atFair: 85, perEur: 3, floor: -50 },
+    offerExp: 0.45,
     worst: 0.3,
     lostW: 0.6,
     ded: { rescue: 8, fault: 3, pisteClose: 2, accident: 5 },
     dedLabels: { rescue: 'Bergung', fault: 'Liftausfall im Betrieb', pisteClose: 'Pistensperre im Betrieb', accident: 'Unfall' },
     dedMax: 30,
     rep: 0.1,
+    repClosed: 0.03,
     liveTau: 20,
     word: { ref: 65, k: 0.6, clamp: [0.8, 1.1] },
     season: { ref: 50, k: 0.003, clamp: [0.03, 0.15] },
@@ -280,7 +283,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf', guest: 'Gästebetrieb (Tickets, Versicherung, Reinigung)' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal', build: 'Umbau' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

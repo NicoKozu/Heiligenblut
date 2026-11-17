@@ -44,6 +44,7 @@ export function buildTab(G, h) {
     let st;
     if (done) st = '<span class="biz-good">fertig</span>';
     else if (j) st = j.left == null ? '<span class="biz-warn">im Sommer</span>' : '<span class="biz-warn">im Bau · noch ' + j.left + ' Tage</span>' + '<div class="biz-bar"><i style="width:' + Math.round((1 - j.left / j.days) * 100) + '%;background:#ffd84a"></i></div>';
+    else if (why && !B.check(G, id, true)) st = '<span class="biz-warn">' + why + '</span><br><button class="btn" data-act="build:' + id + ':s">Im Sommer</button>';
     else if (why) st = '<span class="biz-bad">' + why + '</span>';
     else st = '<button class="btn primary" data-act="build:' + id + '">Bauen · ' + p.days + ' Tage</button> <button class="btn" data-act="build:' + id + ':s">Im Sommer</button>';
     return tr('<b>' + p.label + '</b><br><small style="opacity:.75">' + p.info + (p.close ? ' Sperre während Bau.' : '') + (p.closeHut ? ' Hütte während Bau zu.' : '') + '</small><br><small>' + use + (sat ? '<br>' + sat : '') + '</small>', eur(p.price) + '<br>' + st);

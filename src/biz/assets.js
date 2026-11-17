@@ -121,6 +121,7 @@ export function dayStart(G) {
 export function overnight(G) {
   for (const l of G.lifts) {
     l.insp = 0;
+    if (!l.broken && l.cond < D.wear.keep) l.cond = Math.min(D.wear.keep, l.cond + D.wear.night);
     if (l.broken && l.repairLeft > 0 && (l.repairLeft -= D.night) <= 0) fixed(G, l, null);
   }
 }
