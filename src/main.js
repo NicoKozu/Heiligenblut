@@ -100,15 +100,22 @@ async function start() {
   const peaks = createPeakLabels(pano);
   const audio = createAudio();
   const fps = document.getElementById('fps');
-  let pending = null, snap = false, fT = 0, fN = 0, slow = 0, good = 0, cap = maxRatio;
+  let pending = null, snap = false, fT = 0, fN = 0, slow = 0, good = 0, cap = maxRatio, biz = null;
+  const pause = () => { menu.show(); audio.pause(true); biz?.save(); };
 
   menu.onStart(c => { pending = c; audio.init(); audio.pause(false); });
   menu.onResume(() => { audio.init(); audio.pause(false); flush(); });
   menu.ready();
-  document.addEventListener('visibilitychange', () => { if (document.hidden && !menu.open) { menu.show(); audio.pause(true); } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !menu.open) pause(); });
+  addEventListener('pagehide', () => biz?.save());
 
-  function applyStart(c) {
+  async function applyStart(c) {
     player.setMode(c.mode);
+    if (c.game === 'free') biz?.end();
+    else {
+      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player });
+      biz.begin(c.game === 'new');
+    }
     if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
     else goTo(c.start);
   }
@@ -150,10 +157,11 @@ async function start() {
     if (consume('KeyC')) { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
     if (consume('KeyM')) { audio.init(); player.state.note = audio.toggle() ? 'Ton an' : 'Ton aus'; player.state.noteT = 1.2; }
     if (consume('KeyF')) fps.hidden = !fps.hidden;
-    if (consume('Escape')) { menu.show(); audio.pause(true); }
+    if (consume('Escape')) pause();
     if (consume('KeyP')) peaks.toggle();
-    if (pending) { lift.leave(player.state); applyStart(pending); pending = null; }
-    if (!lift.riding()) {
+    if (pending) { lift.leave(player.state); applyStart(pending).catch(e => fail('Manager: ' + e.message)); pending = null; }
+    const hold = biz?.hold;
+    if (!hold && !lift.riding()) {
       player.update(dt);
       pistes.collide(player.state);
       lift.collide(player.state);
@@ -162,8 +170,10 @@ async function start() {
       crowd.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
-    } else flush();
+    } else if (!hold) flush();
     lift.update(dt, player.state, player, goTo);
+    biz?.update(Math.min(raw, 1));
+    if (hold) flush();
     crowd.update(dt, cam.camera);
     player.object.visible = !lift.riding() && cam.mode !== 'ego';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
