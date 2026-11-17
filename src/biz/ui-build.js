@@ -50,7 +50,11 @@ export function buildTab(G, h) {
   };
   const c = cannons(G), dis = (x) => x ? ' disabled' : '';
   const money = G.cash + B.room(G);
-  return '<h2>Projekte</h2><table>' + B.PROJECTS.map(card).join('') + '</table>' +
+  const rank = id => B.job(G, id) ? 0 : B.done(G, id) ? 3 : /^erst /.test(B.check(G, id)) ? 2 : 1;
+  const ids = [...B.PROJECTS].sort((a, b) => rank(a) - rank(b));
+  const fin = ids.filter(id => rank(id) === 3).map(id => P[id].label);
+  return '<h2>Projekte</h2><p class="note">Du startest mit Gondel Rossbach und Talabfahrt. Alles andere wird hier gekauft und gebaut.</p><table>' + ids.filter(id => rank(id) < 3).map(card).join('') + '</table>' +
+    (fin.length ? '<p class="note">Fertig: ' + fin.join(', ') + '</p>' : '') +
     '<h2>Beschneiung</h2><table>' + pl(G).map(p => {
       const has = G.pipes.includes(p.id), n = c[p.id] || 0;
       return tr(p.id + ' ' + p.name, has ? n + ' Kanonen <button class="btn" data-act="can:' + p.id + ':-1"' + dis(!n) + '>−</button><button class="btn" data-act="can:' + p.id + ':1"' + dis(money < D.snow.price) + '>+ ' + eur(D.snow.price) + '</button>' : 'keine Leitung <button class="btn" data-act="pipe:' + p.id + '"' + dis(money < B.pipeCost(p)) + '>Leitung · ' + eur(B.pipeCost(p)) + '</button>');

@@ -47,7 +47,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     else if (a.startsWith('mkt:')) { const id = a.slice(4); if (M.act(G, id)) { save(); note(D.mkt.campaigns[id].label + (D.mkt.campaigns[id].kind === 'weekly' ? (G.mkt.on[id] ? ' gestartet' : ' gestoppt') : ' gebucht'), 2); } }
     else if (a === 'bonus') { if (P.bonus(G)) { save(); note('Prämie ausgezahlt', 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
-    else if (a.startsWith('build:')) { const [, id, w] = a.split(':'); if (B.order(G, id, w === 's')) { save(); note(D.build.projects[id].label + ' beauftragt', 2.5); } }
+    else if (a.startsWith('build:')) { const m = a.slice(6), w = m.endsWith(':s') ? 's' : '', id = w ? m.slice(0, -2) : m; if (B.order(G, id, w === 's')) { save(); note(D.build.projects[id].label + ' beauftragt', 2.5); } }
     else if (a.startsWith('loan:')) { const v = a.slice(5), n = v === 'all' ? -G.loan : Number(v), r = n > 0 ? B.borrow(G, n) : B.repay(G, -n); if (r) { save(); note(n > 0 ? 'Kredit aufgenommen' : 'Kredit getilgt', 1.5); } }
     else if (a.startsWith('mach:')) { if (B.groomer(G, Number(a.slice(5)))) save(); }
     else if (a.startsWith('can:')) { const [, id, d] = a.split(':'); if (B.cannon(G, id, Number(d))) save(); }
@@ -67,7 +67,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
   const PROJ = Object.fromEntries(D.pistes.filter(p => p.proj).map(p => [p.id, p.proj]));
   function sync() {
     for (const [pid, lid] of LIFTS) {
-      if (active && B.done(G, pid)) lift.addSection(lid);
+      if (active ? B.done(G, pid) : !lift.planned.some(s => s.id === lid)) lift.addSection(lid);
       else lift.removeSection(lid);
     }
     for (const id in D.build.projects) {
@@ -84,14 +84,16 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     }
     for (const p of pistes?.list || []) {
       const o = active && G.pistes[p.id];
-      pistes.setOpen(p.id, active && PROJ[p.id] && !o ? false : !o || o.open);
+      const nb = active && PROJ[p.id] && !o;
+      pistes.setOpen(p.id, nb ? false : !o || o.open);
+      pistes.setBuilt?.(p.id, !nb);
       if (!pistes.setSurface) continue;
-      if (!o) { pistes.setSurface(p.id, 1, 0, 0); continue; }
+      if (!o) { pistes.setSurface(p.id, nb ? -1 : 1, 0, 0); continue; }
       const lb = N.label(o), C = D.cover;
       pistes.setSurface(p.id, o.groomed && lb !== 'pulvrig' ? Math.min(1, Math.max(0, (o.cond - 40) / 45)) : 0, lb === 'pulvrig' ? 0 : Math.min(1, Math.max(0, (88 - o.cond) / 50)), Math.min(1, Math.max(0, (C.thin - o.snow) / (C.thin - C.minOpen + 6))));
     }
     env?.set(active ? G.weather?.today : null);
-    if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.phase !== 'closed'));
+    if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.side.huts[h.id].own && G.phase !== 'closed'));
   }
 
   function begin(fresh) {

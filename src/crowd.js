@@ -110,7 +110,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function choose(g, node, first) {
     const opts = [];
     for (const r of nodes[node].starts) if (!r.p.closed) opts.push({ r, w: (g.k.lv[r.p.level] ?? 1) * (first ? 1 : 0.5) + 0.02 });
-    for (const sec of nodes[node].lifts) if (!lift.stop.has(sec.name)) opts.push({ sec, w: first ? 0.8 : 1.5 });
+    for (const sec of nodes[node].lifts) if (secs.includes(sec) && !lift.stop.has(sec.name)) opts.push({ sec, w: first ? 0.8 : 1.5 });
     if (!opts.length) return null;
     let t = R() * opts.reduce((a, o) => a + o.w, 0);
     for (const o of opts) if ((t -= o.w) <= 0) return o;
@@ -132,7 +132,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
       segs.push({ s0, s1: len(), w: o.r.p.width / 2 - 3, p: o.r.p });
       cur = o.r.b;
     }
-    if (!sec) sec = nodes[cur].lifts[0] || secs[0];
+    if (!sec) sec = nodes[cur].lifts.find(x => secs.includes(x)) || secs[0];
     push(...sec.a);
     const cum = new Float32Array(pts.length), y = new Float32Array(pts.length);
     for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
@@ -289,6 +289,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   const A = { x: 0, z: 0 }, B = { x: 0, z: 0 }, M = { x: 0, z: 0 };
 
   function stepGroup(g, dt) {
+    if (g.state !== 'path' && !secs.includes(g.sec)) { buildLeg(g, g.sec.a[0], g.sec.a[1], g.sec.na); g.s = g.maxLag; g.v = 0; return; }
     if (g.state === 'path') {
       const sg = segOf(g.path, g.s);
       let target = WALK;

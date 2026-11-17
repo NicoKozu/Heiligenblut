@@ -119,6 +119,8 @@ export async function loadPistes(terrain) {
   const STEP = 40;
   for (const p of list) {
     const hw = p.width / 2;
+    p.poles = [poles.length, 0];
+    p.ftri = fenceTri.length;
     for (let i = 0; i < p.pts.length - 1; i++) {
       const [ax, az] = p.pts[i], [bx, bz] = p.pts[i + 1];
       const l = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / l, nz = (bx - ax) / l;
@@ -158,6 +160,8 @@ export async function loadPistes(terrain) {
         poles.push([px, terrain.heightAt(px, pz), pz, p.lv.color]);
       }
     }
+    p.poles[1] = poles.length;
+    p.ftri = [p.ftri, fenceTri.length];
   }
 
   function hwOff(hw) { return hw + FENCE_OUT; }
@@ -174,14 +178,17 @@ export async function loadPistes(terrain) {
   poleMesh.castShadow = capMesh.castShadow = true;
   group.add(poleMesh, capMesh);
 
-  if (fenceTri.length) {
+  const fenceMat = new THREE.MeshStandardMaterial({
+    color: 0xff6a00, emissive: 0x4a1800, transparent: true, opacity: 0.8, side: THREE.DoubleSide, roughness: 0.8, depthWrite: false
+  });
+  for (const p of list) {
+    const [a, b] = p.ftri;
+    if (b <= a) continue;
     const fg = new THREE.BufferGeometry();
-    fg.setAttribute('position', new THREE.Float32BufferAttribute(fenceTri, 3));
+    fg.setAttribute('position', new THREE.Float32BufferAttribute(fenceTri.slice(a, b), 3));
     fg.computeVertexNormals();
-    const fence = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({
-      color: 0xff6a00, emissive: 0x4a1800, transparent: true, opacity: 0.8, side: THREE.DoubleSide, roughness: 0.8, depthWrite: false
-    }));
-    group.add(fence);
+    p.fenceMesh = new THREE.Mesh(fg, fenceMat);
+    group.add(p.fenceMesh);
   }
 
   const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0);
@@ -212,6 +219,7 @@ export async function loadPistes(terrain) {
     g.rotation.y = Math.atan2(-tx, -tz);
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     group.add(g);
+    (p.signs ||= []).push(g);
   }
   for (const p of list) {
     sign(p, 45, false);
@@ -294,13 +302,29 @@ export async function loadPistes(terrain) {
     if (!p || !p.closed === open) return;
     p.closed = !open;
     if (!open && !p.barrier) p.barrier = barrier(p);
-    if (p.barrier) p.barrier.visible = !open;
+    if (p.barrier) p.barrier.visible = !open && !p.unbuilt;
+  }
+
+  const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  function setBuilt(id, on) {
+    const p = list.find(q => q.id === id);
+    if (!p || !p.unbuilt === on) return;
+    p.unbuilt = !on;
+    for (let k = p.poles[0]; k < p.poles[1]; k++) {
+      if (on) { const [x, y, z] = poles[k]; mtx.makeTranslation(x, y - 0.1, z); } else mtx.copy(zero);
+      poleMesh.setMatrixAt(k, mtx);
+      capMesh.setMatrixAt(k, mtx);
+    }
+    poleMesh.instanceMatrix.needsUpdate = capMesh.instanceMatrix.needsUpdate = true;
+    if (p.fenceMesh) p.fenceMesh.visible = on;
+    for (const g of p.signs || []) g.visible = on;
+    if (p.barrier) p.barrier.visible = on && p.closed;
   }
 
   let wasIn = false;
   function collide(state) {
     const q = nearest(state.pos.x, state.pos.z, 80);
-    if (!q) { wasIn = false; return; }
+    if (!q || q.p.unbuilt) { wasIn = false; return; }
     const lim = hwOff(q.p.width / 2) - 0.6, a = Math.abs(q.lat);
     if (a <= lim) { wasIn = true; return; }
     const side = q.lat >= 0 ? 0 : 1, f = q.p.fence[side];
@@ -325,21 +349,21 @@ export async function loadPistes(terrain) {
     if (cur) {
       tmp.d2 = Infinity;
       nearestOn(cur, pos.x, pos.z, tmp);
-      if (Math.sqrt(tmp.d2) <= cur.width / 2 + 4) return cur;
+      if (!cur.unbuilt && Math.sqrt(tmp.d2) <= cur.width / 2 + 4) return cur;
     }
     const q = nearest(pos.x, pos.z, 80);
-    cur = q && q.d <= q.p.width / 2 + 4 ? q.p : null;
+    cur = q && !q.p.unbuilt && q.d <= q.p.width / 2 + 4 ? q.p : null;
     return cur;
   }
 
   function startOf(k) {
     const p = list[k];
-    if (!p) return null;
+    if (!p || p.unbuilt) return null;
     cur = p;
     const [ax, az] = p.pts[0], [bx, bz] = p.pts[2];
     return { x: ax, z: az, heading: Math.atan2(bx - ax, bz - az), piste: p };
   }
 
   const setSurface = (id, cord, worn, aper) => terrain.surface(list.findIndex(p => p.id === id) + 1, cord, worn, aper);
-  return { group, list, at, collide, startOf, nearest, setOpen, setSurface };
+  return { group, list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt };
 }

@@ -212,34 +212,34 @@ export function createLift(terrain, pistes, exp) {
   }
 
   for (const sec of sections) { dress(sec); towers.push(...sec.tw); }
-  STATIONS.forEach((st, k) => { const r = hall(st, sections[st.s], base[k]); group.add(r.g); halls.push(r.h); });
+  const added = new Map(), all = [...sections];
+  STATIONS.forEach((st, k) => { const r = hall(st, sections[st.s], base[k]); group.add(r.g); halls.push(r.h); const id = SECTIONS[st.s].id; added.set(id, [...(added.get(id) || []), r]); });
 
-  const added = new Map();
   function addSection(id) {
-    const sec = planned.find(s => s.id === id);
+    const sec = all.find(s => s.id === id) || planned.find(s => s.id === id);
     if (!sec || sections.includes(sec)) return null;
     if (!added.has(id)) {
       dress(sec);
       const hs = [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a)), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b))];
       for (const r of hs) sec.mesh.add(r.g);
-      added.set(id, hs.map(r => r.h));
+      added.set(id, hs);
     }
     sec.mesh.visible = true;
     sections.push(sec);
     towers.push(...sec.tw);
-    halls.push(...added.get(id));
+    for (const r of added.get(id)) { r.g.visible = true; halls.push(r.h); }
     api.onAdd?.(sec);
     return sec;
   }
 
   function removeSection(id) {
     const sec = sections.find(s => s.id === id);
-    if (!sec || !planned.includes(sec)) return;
+    if (!sec || sec === sections[0]) return;
     if (ride && ride.sec === sec) leave(ride.state);
     sec.mesh.visible = false;
     sections.splice(sections.indexOf(sec), 1);
     for (const t of sec.tw) towers.splice(towers.indexOf(t), 1);
-    for (const h of added.get(id)) halls.splice(halls.indexOf(h), 1);
+    for (const r of added.get(id)) { if (!sec.mesh.children.includes(r.g)) r.g.visible = false; halls.splice(halls.indexOf(r.h), 1); }
   }
 
   const sites = new Map();
@@ -274,7 +274,7 @@ export function createLift(terrain, pistes, exp) {
   function site(id, on) {
     if (!on) { const g = sites.get(id); if (g) { group.remove(g); sites.delete(id); } return; }
     if (sites.has(id)) return;
-    const sec = planned.find(s => s.id === id) || sections.find(s => s.id === id);
+    const sec = planned.find(s => s.id === id) || all.find(s => s.id === id);
     if (!sec) return;
     const g = new THREE.Group();
     g.add(crane(sec.a[0] - sec.dx * 14, sec.a[1] - sec.dz * 14, sec.heading), crane(sec.b[0] + sec.dx * 14, sec.b[1] + sec.dz * 14, sec.heading + Math.PI));
@@ -290,7 +290,7 @@ export function createLift(terrain, pistes, exp) {
     let best = null, bd = 150;
     pistes.list.forEach((p, i) => {
       const d = Math.hypot(p.pts[0][0] - sec.b[0], p.pts[0][1] - sec.b[1]);
-      if (d < bd) { bd = d; best = i; }
+      if (d < bd && !p.unbuilt) { bd = d; best = i; }
     });
     return best;
   }

@@ -15,7 +15,8 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 
 export function initSide(G) {
   if (!G.side) G.side = { huts: {}, rental: { price: X.rental.price, cond: X.rental.start }, school: { price: X.school.price }, park: { price: X.parking.price, cap: X.parking.cap } };
-  for (const h of X.huts) if (!G.side.huts[h.id]) G.side.huts[h.id] = { open: true, level: 'normal', extra: 0 };
+  for (const h of X.huts) if (!G.side.huts[h.id]) G.side.huts[h.id] = { open: true, level: 'normal', extra: 0, own: h.id === 'rossbach' };
+  for (const id in G.side.huts) if (G.side.huts[id].own == null) G.side.huts[id].own = true;
   return G.side;
 }
 
@@ -30,7 +31,7 @@ export function sideFlow(f) {
 }
 
 export const seats = (G, id) => HUT[id].seats + (G.side.huts[id].extra || 0);
-export const hutOpen = (G, id) => G.side.huts[id].open;
+export const hutOpen = (G, id) => G.side.huts[id].open && G.side.huts[id].own;
 export const hutNeed = (G, id) => Math.ceil(seats(G, id) / X.seatsPerStaff);
 export const gastroNeed = G => HUTS.filter(id => hutOpen(G, id)).reduce((a, id) => a + hutNeed(G, id), 0);
 export const staffRatio = G => { const n = gastroNeed(G); return n ? Math.min(1, duty(G, 'gastro') / n) : 1; };
@@ -86,7 +87,7 @@ export function leave(G, f, n) {
 
 export function lunchRate(G, f, node) {
   const hs = X.huts.filter(h => h.node === node), q = sum(hs.map(h => f.hutQ[h.id])), w = q > 0 ? sum(hs.map(h => f.hutQ[h.id] * f.hutWait[h.id])) / q : 0;
-  return 0.8 * nodeSeats(node) / SEATMAX * Math.exp(-w / 20);
+  return 0.8 * sum(hs.filter(h => G.side.huts[h.id].own).map(h => h.seats)) / SEATMAX * Math.exp(-w / 20);
 }
 
 export function lunch(G, f, node, h) {
@@ -182,7 +183,7 @@ export function setLevel(G, id, lv) {
 export function toggleHut(G, id) {
   if (!HUT[id]) return false;
   const h = G.side.huts[id];
-  if (h.build) return false;
+  if (h.build || !h.own) return false;
   h.open = !h.open;
   log(G, HUT[id].name + (h.open ? ' geöffnet' : ' geschlossen'), h.open ? 'good' : '');
   return true;
