@@ -219,6 +219,8 @@ export function createLift(terrain, pistes) {
     state.vel.set(0, 0, 0);
   }
 
+  const shut = new Set();
+
   function update(dt, state, player, goTo) {
     state.hint = '';
     for (const sec of sections) {
@@ -239,7 +241,8 @@ export function createLift(terrain, pistes) {
       }
     } else if (state.crashed <= 0) {
       const sec = sections.find(s => Math.hypot(state.pos.x - s.a[0], state.pos.z - s.a[1]) < BOARD);
-      if (sec) {
+      if (sec && shut.has(sec.name)) state.hint = sec.name + ' geschlossen';
+      else if (sec) {
         state.hint = 'E: ' + sec.name + ' → ' + sec.to;
         if (consume('KeyE')) { board(sec, state); player.object.visible = false; }
       }
@@ -326,5 +329,5 @@ export function createLift(terrain, pistes) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  return { group, sections, update, collide, leave, clear, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
+  return { group, sections, update, collide, leave, clear, shut, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride };
 }
