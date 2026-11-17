@@ -2,6 +2,7 @@ import { D } from './data.js';
 import { running, pisteOpen } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
+import { ticketPrice, kidsFree } from './marketing.js';
 
 const F = D.flow;
 const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
@@ -21,12 +22,18 @@ function bell(c, t) {
 export const leaveShare = t => smooth((t - F.leave.from) / (F.leave.to - F.leave.from));
 export const capPerMin = l => LIFT[l.id].cap * (1 + (l.boost || 0)) / 60;
 export const runMinutes = p => Math.max(1, Math.round(p.km / F.speed[p.level] * 60 + F.pause[p.level]));
-export const levelWeight = lv => Object.entries(F.skill).reduce((a, [c, s]) => a + s * F.pref[c][lv], 0);
+export const levelWeight = (lv, skill = F.skill) => Object.entries(skill).reduce((a, [c, s]) => a + s * F.pref[c][lv], 0);
 
-export function newFlow(full, half) {
-  const zeros = n => new Array(n).fill(0);
+export function skillMix(seg) {
+  const t = Object.values(seg).reduce((a, b) => a + b, 0) || 1, o = { leicht: 0, mittel: 0, schwer: 0 };
+  for (const s in seg) for (const k in o) o[k] += seg[s] / t * D.segs[s].skill[k];
+  return o;
+}
+
+export function newFlow(full, half, seg) {
+  const zeros = n => new Array(n).fill(0), t = seg ? Object.values(seg).reduce((a, b) => a + b, 0) || 1 : 0;
   return {
-    plan: { full, half }, done: { full: 0, half: 0 },
+    plan: { full, half }, seg: seg ? Object.fromEntries(Object.entries(seg).map(([k, v]) => [k, v / t])) : null, skill: seg ? skillMix(seg) : null, done: { full: 0, half: 0 },
     queue: Object.fromEntries(D.lifts.map(l => [l.id, 0])),
     ride: Object.fromEntries(D.lifts.map(l => [l.id, zeros(l.ride)])),
     run: Object.fromEntries(D.pistes.map(p => [p.id, zeros(runMinutes(p))])),
@@ -50,10 +57,15 @@ function arrivals(G, f, t) {
   f.done.full = cf;
   f.done.half = ch;
   const add = (k, n) => { T.types[k] = (T.types[k] || 0) + n; };
-  const earn = (k, n) => { const v = n * G.prices[D.ticketOf[k]]; T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };
+  const earn = (k, n) => { const v = n * ticketPrice(G, D.ticketOf[k]); T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };
   add('season', (A + H) * s);
-  const tm = m.adult + m.youth + m.child;
-  for (const k of ['adult', 'youth', 'child']) { const n = A * (1 - s) * m[k] / tm; add(k, n); earn(k, n); }
+  const sh = f.seg || Object.fromEntries(Object.entries(D.segs).map(([k, v]) => [k, v.share]));
+  if (!T.seg) T.seg = {};
+  for (const sg in sh) {
+    const a = A * sh[sg], mx = D.segs[sg].mix, tm = mx.adult + mx.youth + mx.child;
+    T.seg[sg] = (T.seg[sg] || 0) + (A + H) * sh[sg];
+    for (const k of ['adult', 'youth', 'child']) { const n = a * (1 - s) * mx[k] / tm; add(k, n); earn(k, n); if (k === 'child' && kidsFree(G, G.date)) T.free = (T.free || 0) + n; }
+  }
   add('half', H * (1 - s));
   earn('half', H * (1 - s));
   T.guests += A + H;
@@ -77,7 +89,7 @@ function dispatch(G, f, node, X, t, d) {
   }
   for (const p of D.pistes) {
     if (p.from !== node || !pisteOpen(G, p.id)) continue;
-    opts.push({ p, w: levelWeight(p.level) * (1 + 2 * d) });
+    opts.push({ p, w: levelWeight(p.level, f.skill || F.skill) * (1 + 2 * d) });
   }
   if (!opts.length) { f.present -= X; G.today.lost = (G.today.lost || 0) + X; return; }
   const W = opts.reduce((a, o) => a + o.w, 0);
