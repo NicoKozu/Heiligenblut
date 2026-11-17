@@ -141,6 +141,33 @@ export const D = {
   },
   snowFactor: { steps: [[20, 0.3], [40, 0.7], [60, 0.9]], top: 1.05, powder: 15, powderAdd: 0.2 },
   aval: { decay: 0.6, wind: 40, windAdd: 12, levels: [10, 25, 45, 70], close: ['1', '12'], risk: 0.0006 },
+  segs: {
+    fam: { label: 'Familien', color: '#ffb14a', share: 0.35, el: 1.8, wx: 1, mix: { adult: 0.5, youth: 0.1, child: 0.4 }, skill: { leicht: 0.6, mittel: 0.35, schwer: 0.05 }, pref: { leicht: 1, mittel: 0.5, schwer: 0.1 }, fair: 0.85, w: { wait: 0.2, offer: 0.12, quality: 0.13, price: 0.25, crowd: 0.2, service: 0.1 }, info: 'preisbewusst, leichte Pisten, Gedränge stört' },
+    sport: { label: 'Sportliche', color: '#ff6b5a', share: 0.2, el: 1.0, wx: 0.9, mix: { adult: 0.8, youth: 0.17, child: 0.03 }, skill: { leicht: 0.1, mittel: 0.45, schwer: 0.45 }, pref: { leicht: 0.3, mittel: 0.8, schwer: 1 }, fair: 1.1, w: { wait: 0.2, offer: 0.25, quality: 0.3, price: 0.08, crowd: 0.07, service: 0.1 }, info: 'Präparierung und schwere Pisten zählen' },
+    day: { label: 'Tagesgäste', color: '#5aa2ff', share: 0.25, el: 1.4, wx: 1.4, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1, w: null, info: 'kommen spontan bei gutem Wetter' },
+    week: { label: 'Wochengäste', color: '#7be07b', share: 0.2, el: 1.2, wx: 0.5, mix: { adult: 0.62, youth: 0.13, child: 0.25 }, skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 }, pref: { leicht: 1, mittel: 1, schwer: 1 }, fair: 1.05, w: null, info: 'gebucht, wetterunabhängig (NL/DE)' }
+  },
+  mkt: {
+    campaigns: {
+      social: { label: 'Social Media', kind: 'weekly', cost: 2500, delay: 0, eff: 0.06, target: { sport: 1, day: 0.6, fam: 0.25, week: 0.25 }, info: 'jung/sportlich, sofort' },
+      radio: { label: 'Radio Kärnten', kind: 'weekly', cost: 9000, delay: 3, eff: 0.1, target: { day: 1, fam: 0.5, sport: 0.4, week: 0.1 }, info: 'Tagesgäste, ab 3 Tagen' },
+      travel: { label: 'Reisebüros NL/DE', kind: 'once', cost: 25000, delay: 14, dur: 28, eff: 0.12, target: { week: 1, fam: 0.3, sport: 0, day: 0 }, info: 'Wochengäste, ab 14 Tagen für 4 Wochen' },
+      poster: { label: 'Plakate Lienz/Spittal', kind: 'once', cost: 6000, delay: 5, dur: 14, eff: 0.05, target: { day: 1, fam: 1, sport: 0.5, week: 0 }, info: 'Region, ab 5 Tagen für 2 Wochen' },
+      family: { label: 'Kinder gratis am Samstag', kind: 'weekly', cost: 0, delay: 2, eff: 0.25, sat: true, noWear: true, target: { fam: 1, sport: 0, day: 0, week: 0 }, info: 'Familien +25 % am Samstag, Kinderkarten gratis' },
+      early: { label: 'Frühbucher-Saisonkarte', kind: 'pre', disc: 0.15, cards: 220, share: 0.02, eff: 0.03, info: 'nur vor Saisonstart: −15 %, mehr Stammgäste' }
+    },
+    spill: 0.25,
+    wear: { after: 21, f: 0.7, recover: 2 },
+    comp: {
+      list: [
+        { id: 'sonnkar', name: 'Sonnkar-Gletscher', price: 66, snow: 1.05 },
+        { id: 'iselberg', name: 'Skiwelt Iselberg', price: 57, snow: 0.95 },
+        { id: 'tauern', name: 'Tauernblick Bergbahnen', price: 63, snow: 1 }
+      ],
+      chance: 0.06, step: [2, 4], drift: 0.15, rho: 0.85, noise: 0.1, snowRange: [0.3, 1.05], newSnow: 0.06, warm: 0.06,
+      k: 0.5, snowK: 0.4, clamp: [0.85, 1.15]
+    }
+  },
   side: {
     gastro: { perGuest: 19, margin: 0.38 },
     rental: { share: 0.18, price: 36 },
@@ -203,7 +230,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Inspektionen', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };

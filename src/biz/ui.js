@@ -7,6 +7,7 @@ import { live, stars } from './satisfaction.js';
 import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
 import { GROUPS, duty, needs, wages, heads, dayCost, pendingOf, nextArrival, bonusCost, bonusDone } from './staff.js';
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
+import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
 #biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
@@ -57,6 +58,10 @@ const CSS = `
 .biz-dot.warn{background:#ffd84a}.biz-dot.bad{background:#ff6b5a}
 .biz-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
 .biz-bar i{display:block;height:100%}
+.biz-seg{display:flex;height:8px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.12);margin:3px 0 2px}
+.biz-seg i{display:block;height:100%}
+.biz-legend{display:flex;flex-wrap:wrap;gap:2px 9px;font-size:11px;opacity:.85}
+.biz-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
 .biz-sw{font:inherit;font-size:11px;font-weight:600;padding:1px 0;width:40px;border-radius:9px;cursor:pointer;color:#fff;border:1px solid rgba(255,255,255,.25);background:#2fae5e88}
 .biz-sw.off{background:#c0392b88}
 .biz-sw[disabled]{opacity:.4;cursor:default}
@@ -140,6 +145,9 @@ function weatherTable(G) {
     tr('Ø Schneehöhe Pisten', '<span class="' + stone(avgSnow(G)) + '">' + Math.round(avgSnow(G)) + ' cm</span>') + '</table>';
 }
 
+const segBar = o => { const t = SEGS.reduce((a, s) => a + (o[s] || 0), 0) || 1; return '<div class="biz-seg">' + SEGS.map(s => '<i style="width:' + ((o[s] || 0) / t * 100).toFixed(1) + '%;background:' + D.segs[s].color + '"></i>').join('') + '</div>'; };
+const segLegend = (o, f = v => num(v)) => '<div class="biz-legend">' + SEGS.map(s => '<span><i style="background:' + D.segs[s].color + '"></i>' + D.segs[s].label + ' ' + f(o[s] || 0) + '</span>').join('') + '</div>';
+const pct = f => (f >= 1 ? '+' : '−') + dec(Math.abs(f - 1) * 100) + ' %';
 export function createUI(h) {
   const style = document.createElement('style');
   style.textContent = CSS;
@@ -197,6 +205,7 @@ export function createUI(h) {
       row('Umsatz heute (Tickets)', eur(sumv(G.today.revenue))) +
       '<div class="sep"></div>' +
       row('Gäste jetzt / heute', num(G.flow?.present || 0) + ' / ' + num(G.today.guests)) +
+      (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) +
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
       (open && G.flow.cashWait >= 0.5 ? row('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
       '<div class="sep"></div>' +
@@ -216,7 +225,7 @@ export function createUI(h) {
     if (html !== last) { last = html; panel.innerHTML = html; }
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -290,6 +299,26 @@ export function createUI(h) {
       '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h, je Fahrer max. ' + D.groomNight.shift + ' h. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
   }
 
+  function mkt(G) {
+    const fc = forecast(G), C = D.mkt.campaigns, x = demandExtra(G, fc.date);
+    const btn = id => {
+      const c = C[id];
+      if (c.kind === 'weekly') return '<button class="btn' + (G.mkt.on[id] ? '' : ' primary') + '" data-act="mkt:' + id + '">' + (G.mkt.on[id] ? 'Stoppen' : 'Starten') + '</button>';
+      if (c.kind === 'once') return pending(G, id) ? '' : '<button class="btn primary" data-act="mkt:' + id + '"' + (G.cash < c.cost ? ' disabled' : '') + '>Buchen</button>';
+      return canEarly(G) ? '<button class="btn primary" data-act="mkt:' + id + '">Verkaufen</button>' : '';
+    };
+    const cost = id => { const c = C[id]; return c.kind === 'weekly' ? (c.cost ? eur(c.cost) + '/Woche' : 'Einnahmeverlust') : c.kind === 'once' ? eur(c.cost) + ' einmalig' : (q => q.n + ' × ' + eur(q.price) + ' = ' + eur(q.sum))(earlyQuote(G)); };
+    const st = id => { const t = mStatus(G, id, fc.date); return '<span class="' + (/aktiv/.test(t) ? (/abgenutzt/.test(t) ? 'biz-warn' : 'biz-good') : /wirkt/.test(t) ? 'biz-warn' : '') + '">' + t + '</span>'; };
+    const lsd = G.history[G.history.length - 1];
+    return '<h2>Kampagnen</h2><table>' + CAMPAIGNS.map(id => tr('<b>' + C[id].label + '</b><br><small style="opacity:.7">' + C[id].info + ' · ' + (C[id].kind === 'pre' ? '+' + Math.round(C[id].eff * 100) + ' % Nachfrage, +' + Math.round(C[id].share * 100) + ' Pp. Saisonkarten' : '+' + Math.round(C[id].eff * 100) + ' %') + '</small>', cost(id) + '<br>' + st(id) + ' ' + btn(id))).join('') + '</table>' +
+      '<h2>Budget</h2><table>' + tr('Ausgaben Saison', eur(G.mkt.spent)) + tr('Laufende Wochenkosten', eur(weeklyCost(G))) + tr('Abnutzung', 'nach ' + D.mkt.wear.after + ' Tagen Dauerschaltung ' + pct(D.mkt.wear.f) + ' Wirkung') + '</table>' +
+      '<h2>Geschätzte Wirkung ' + fmtDate(fc.date) + '</h2><table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(fc.seg[s]) + ' Gäste · Marketing ' + pct(mFactor(G, fc.date, s)) + ' · Konkurrenz ' + pct(kFactor(G, s, x.snow)))).join('') +
+      tr('Gesamt', num(fc.n) + ' (ohne Marketing ' + num(fc.base) + ', <span class="' + (fc.n >= fc.base ? 'biz-good' : 'biz-bad') + '">' + (fc.n >= fc.base ? '+' : '−') + num(Math.abs(fc.n - fc.base)) + '</span>)', 'sum') + '</table>' +
+      '<h2>Zielgruppen</h2><table>' + SEGS.map(s => tr(D.segs[s].label + '<br><small style="opacity:.7">' + D.segs[s].info + '</small>', 'Preisempfindlichkeit ' + dec(D.segs[s].el) + (lsd?.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(lsd.sat.seg[s]) + '">' + Math.round(lsd.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' +
+      '<h2>Konkurrenz</h2><table>' + G.comp.map(c => tr(D.mkt.comp.list.find(b => b.id === c.id).name, 'Tageskarte ' + eur(c.price) + ' · Schnee <span class="' + (c.snow >= 0.9 ? 'biz-good' : c.snow >= 0.6 ? 'biz-warn' : 'biz-bad') + '">' + (c.snow >= 0.9 ? 'gut' : c.snow >= 0.6 ? 'mäßig' : 'schlecht') + '</span>')).join('') + tr('Unsere Tageskarte', eur(G.prices.day) + ' · Schnee ×' + x.snow.toFixed(2)) + '</table>' +
+      '<p class="note">Kampagnen wirken je Zielgruppe (Hauptgruppe voll, andere ' + Math.round(D.mkt.spill * 100) + ' %). Wochenkosten werden täglich bei Betriebsbeginn gebucht. „Kinder gratis am Samstag“: Kinderkarten an Samstagen 0 €.</p>';
+  }
+
   function staffTab(G) {
     const st = G.staff, nd = needs(G, guestsN(G)), open = G.phase === 'open', SG = D.staff.groups;
     const pm = (act, dis) => '<button data-act="' + act + '"' + (dis ? ' disabled' : '') + '>' + (act.startsWith('fire') || act.endsWith('-' + D.staff.wageStep) ? '−' : '+') + '</button>';
@@ -322,7 +351,7 @@ export function createUI(h) {
       '</table>';
   }
 
-  const body = G => tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
+  const body = G => tab === 'mkt' ? mkt(G) : tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +
@@ -336,7 +365,8 @@ export function createUI(h) {
     const costs = Object.entries(r.costs).filter(([, v]) => v > 0).map(([k, v]) => tr(D.costLabels[k] || k, eur(-v))).join('');
     return '<h1>Tagesbericht</h1><p class="sub">' + fmtDate(r.date) + ' · Feierabend 16:30</p>' + tabs() +
       (body(G) || satReport(G, r) +
-        '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + '</table>' +
+        '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + tr('Umsatz je Gast (Tickets)', eur(sumv(r.revs) / Math.max(1, r.guests))) + (r.free >= 1 ? tr('Kinder gratis (Samstag)', num(r.free)) : '') + '</table>' +
+        (r.seg ? '<h2>Zielgruppen</h2>' + segBar(r.seg) + '<table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(r.seg[s] || 0) + (r.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(r.sat.seg[s]) + '">' + Math.round(r.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' : '') +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Einnahmen', eur(r.revenue), 'sum') + '</table>' +
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
         (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Im Dienst / benötigt', r.staff.duty + ' / ' + r.staff.need + (r.staff.sick ? ' · <span class="biz-bad">' + r.staff.sick + ' krank</span>' : '')) + tr('Moral', '<span class="' + tone(r.staff.morale, 60, 40) + '">' + Math.round(r.staff.morale) + '</span> · Überlastung ' + Math.round(r.staff.over * 100) + ' %') + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +

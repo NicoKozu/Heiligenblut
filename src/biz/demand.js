@@ -2,6 +2,7 @@ import { D } from './data.js';
 import { baseDemand } from './calendar.js';
 import { range } from './rng.js';
 import { running } from './assets.js';
+import { mFactor, kFactor, SEGS } from './marketing.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const M = D.demandModel;
@@ -15,7 +16,14 @@ export function avgPrice(p) {
 
 const REF = avgPrice(defaultPrices());
 
-export const priceFactor = p => clamp(Math.pow(REF / Math.max(1, avgPrice(p)), M.priceExp), M.priceClamp[0], M.priceClamp[1]);
+export function segPrice(p, sg, child = p.child) {
+  const m = D.segs[sg].mix, h = D.mix.half;
+  return (1 - h) * (m.adult * p.day + m.youth * p.youth + m.child * child) + h * p.half;
+}
+const SREF = Object.fromEntries(SEGS.map(s => [s, segPrice(defaultPrices(), s)]));
+export const segPriceFactor = (p, sg) => clamp(Math.pow(SREF[sg] / Math.max(1, segPrice(p, sg)), D.segs[sg].el), M.priceClamp[0], M.priceClamp[1]);
+export const segPriceEq = (p, sg, child) => D.sat.price.ref * segPrice(p, sg, child) / SREF[sg];
+export const priceFactor = p => SEGS.reduce((a, s) => a + D.segs[s].share * segPriceFactor(p, s), 0);
 export const repFactor = rep => M.rep[0] + M.rep[1] * rep / 100;
 
 export function openPistes(G) {
@@ -28,6 +36,9 @@ export function openPistes(G) {
 }
 
 const KM = D.pistes.reduce((a, p) => a + p.km, 0);
+const prefKm = (list, sg) => list.reduce((a, p) => a + p.km * D.segs[sg].pref[p.level], 0);
+const SKM = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes, s)]));
+export const segOffer = (G, sg, open = openPistes(G)) => prefKm(open, sg) / SKM[sg];
 export const openKm = G => openPistes(G).reduce((a, p) => a + p.km, 0);
 export const offerShare = G => openKm(G) / KM;
 export const offerFactor = G => M.offer[0] + M.offer[1] * offerShare(G);
@@ -38,25 +49,36 @@ export function wordFactor(G) {
   return z == null ? 1 : clamp(1 + W.k * (z - W.ref) / 100, W.clamp[0], W.clamp[1]);
 }
 
-export function factors(G, date, extra = {}) {
+export function segFactors(G, date, sg, extra = {}) {
+  const S = D.segs[sg], w = extra.weather ?? 1;
   return {
-    B: baseDemand(date),
-    P: priceFactor(G.prices),
+    B: baseDemand(date) * S.share,
+    P: segPriceFactor(G.prices, sg),
     R: repFactor(G.rep),
-    O: offerFactor(G),
-    weather: extra.weather ?? 1,
+    O: M.offer[0] + M.offer[1] * segOffer(G, sg),
+    weather: 1 + (w - 1) * S.wx,
     snow: extra.snow ?? 1,
-    marketing: extra.marketing ?? 1,
+    marketing: extra.noMkt ? 1 : mFactor(G, date, sg),
+    K: kFactor(G, sg, extra.snow ?? 1),
     word: wordFactor(G)
   };
 }
 
-export function expected(G, date, extra) {
-  const f = factors(G, date, extra);
-  return f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing * f.word;
+const prod = f => f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing * f.K * f.word;
+export const expectedSeg = (G, date, extra) => Object.fromEntries(SEGS.map(s => [s, prod(segFactors(G, date, s, extra))]));
+const tot = o => Object.values(o).reduce((a, b) => a + b, 0);
+
+export function factors(G, date, extra = {}) {
+  const seg = SEGS.map(s => [s, segFactors(G, date, s, extra)]), n = tot(Object.fromEntries(seg.map(([s, f]) => [s, prod(f)]))) || 1;
+  const o = { B: baseDemand(date) };
+  for (const k of ['P', 'R', 'O', 'weather', 'snow', 'marketing', 'K', 'word']) o[k] = seg.reduce((a, [, f]) => a + prod(f) / n * f[k], 0);
+  return o;
 }
 
+export const expected = (G, date, extra) => tot(expectedSeg(G, date, extra));
+
 export function demand(G, date, extra) {
-  const eps = range(G, M.eps[0], M.eps[1]);
-  return { n: expected(G, date, extra) * eps, eps };
+  const eps = range(G, M.eps[0], M.eps[1]), seg = expectedSeg(G, date, extra);
+  for (const s in seg) seg[s] *= eps;
+  return { n: tot(seg), eps, seg };
 }

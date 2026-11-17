@@ -4,6 +4,7 @@ import { D } from './data.js';
 import * as A from './assets.js';
 import * as N from './snow.js';
 import * as P from './staff.js';
+import * as M from './marketing.js';
 import { consume } from '../input.js';
 
 export function createBiz({ lift, player, crowd, pistes, env }) {
@@ -37,6 +38,7 @@ export function createBiz({ lift, player, crowd, pistes, env }) {
     else if (a.startsWith('hire:')) { if (P.hire(G, a.slice(5))) save(); }
     else if (a.startsWith('fire:')) { if (P.fire(G, a.slice(5))) save(); }
     else if (a.startsWith('wage:')) { if (P.setWage(G, Number(a.slice(5)))) save(); }
+    else if (a.startsWith('mkt:')) { const id = a.slice(4); if (M.act(G, id)) { save(); note(D.mkt.campaigns[id].label + (D.mkt.campaigns[id].kind === 'weekly' ? (G.mkt.on[id] ? ' gestartet' : ' gestoppt') : ' gebucht'), 2); } }
     else if (a === 'bonus') { if (P.bonus(G)) { save(); note('Prämie ausgezahlt', 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
     ui.render(G);

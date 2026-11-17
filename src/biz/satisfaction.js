@@ -1,7 +1,8 @@
 import { D } from './data.js';
 import { int, next as rand } from './rng.js';
 import { running } from './assets.js';
-import { openPistes, offerShare, priceEq } from './demand.js';
+import { openPistes, offerShare, priceEq, segOffer, segPriceEq } from './demand.js';
+import { SEGS, kidsFree } from './marketing.js';
 import { score } from './snow.js';
 import { service } from './staff.js';
 
@@ -11,8 +12,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lin = (v, a, b) => clamp((b - v) / (b - a), 0, 1) * 100;
 
 export const waitScore = w => lin(w, S.wait[0], S.wait[1]);
-export function combine(p) {
-  const m = K.reduce((a, k) => a + S.w[k] * (p[k] ?? 0), 0), lo = Math.min(...K.map(k => p[k] ?? 0));
+export function combine(p, w = S.w) {
+  const m = K.reduce((a, k) => a + w[k] * (p[k] ?? 0), 0), lo = Math.min(...K.map(k => p[k] ?? 0));
   return m - S.worst * Math.max(0, m - lo);
 }
 export const stars = z => clamp(z / 20, 0, 5);
@@ -42,6 +43,7 @@ export function instant(G) {
 function state(G) {
   const T = G.today;
   if (!T.sat) T.sat = { acc: Object.fromEntries(K.map(k => [k, 0])), wt: 0, wait: [0, 0], live: null };
+  if (!T.sat.seg) T.sat.seg = Object.fromEntries(SEGS.map(k => [k, 0]));
   if (!T.hits) T.hits = {};
   return T.sat;
 }
@@ -53,7 +55,29 @@ export function hit(G, k) {
 }
 
 export const lostShare = G => Math.min(1, (G.today.lost || 0) / Math.max(1, G.today.guests));
-const total = (G, p) => clamp(combine(p) * (1 - S.lostW * lostShare(G)) - deduction(G), 0, 100);
+const adjust = (G, z) => clamp(z * (1 - S.lostW * lostShare(G)) - deduction(G), 0, 100);
+
+export function segPrice(G, sg, share) {
+  const fair = S.price.ref * (S.price.base + S.price.offer * share) * D.segs[sg].fair;
+  return clamp(S.price.atFair - S.price.perEur * (segPriceEq(G.prices, sg, kidsFree(G, G.date) ? 0 : G.prices.child) - fair), 0, 100);
+}
+
+function segMix(G) {
+  const t = G.today.seg, n = t ? SEGS.reduce((a, s) => a + (t[s] || 0), 0) : 0;
+  return Object.fromEntries(SEGS.map(s => [s, n > 0 ? (t[s] || 0) / n : G.flow?.seg?.[s] ?? D.segs[s].share]));
+}
+
+function segZ(G, parts, offer, share) {
+  const mix = segMix(G), seg = {};
+  let z = 0;
+  for (const sg of SEGS) {
+    const p = { ...parts, offer: offer[sg], price: segPrice(G, sg, share) };
+    seg[sg] = adjust(G, combine(p, D.segs[sg].w || S.w));
+    z += mix[sg] * seg[sg];
+  }
+  return { z, seg, mix };
+}
+
 
 export function deduction(G) {
   const h = G.today.hits || {};
@@ -62,7 +86,12 @@ export function deduction(G) {
 
 export function minute(G) {
   const s = state(G), f = G.flow, p = instant(G), wt = f.present;
-  if (wt > 0) { for (const k of K) if (k !== 'wait') s.acc[k] += p[k] * wt; s.wt += wt; }
+  if (wt > 0) {
+    for (const k of K) if (k !== 'wait') s.acc[k] += p[k] * wt;
+    const open = openPistes(G);
+    for (const sg of SEGS) s.seg[sg] += segOffer(G, sg, open) * 100 * wt;
+    s.wt += wt;
+  }
   for (const l of G.lifts) {
     const b = f.board?.[l.id] || 0;
     if (b > 0) { s.wait[0] += b * waitScore(f.wait[l.id] || 0); s.wait[1] += b; }
@@ -78,12 +107,14 @@ export function dayParts(G) {
   return o;
 }
 
+const offerNow = G => { const open = openPistes(G); return Object.fromEntries(SEGS.map(sg => [sg, segOffer(G, sg, open) * 100])); };
+
 export function live(G) {
   if (G.phase === 'open') {
-    const s = state(G), parts = s.live || instant(G);
-    return { z: total(G, parts), parts, ded: deduction(G), lost: G.today.lost || 0 };
+    const s = state(G), parts = s.live || instant(G), r = segZ(G, parts, offerNow(G), offerShare(G));
+    return { z: r.z, seg: r.seg, parts, ded: deduction(G), lost: G.today.lost || 0 };
   }
-  return G.sat ? { z: G.sat.z, parts: G.sat.parts, ded: G.sat.ded, lost: G.sat.lost || 0 } : null;
+  return G.sat ? { z: G.sat.z, seg: G.sat.seg, parts: G.sat.parts, ded: G.sat.ded, lost: G.sat.lost || 0 } : null;
 }
 
 const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
@@ -117,13 +148,14 @@ function voices(G, parts, z) {
 }
 
 export function endDay(G) {
-  const parts = dayParts(G), ded = deduction(G);
-  const z = total(G, parts), lost = G.today.lost || 0;
+  const parts = dayParts(G), ded = deduction(G), st = state(G);
+  const offer = st.wt ? Object.fromEntries(SEGS.map(sg => [sg, st.seg[sg] / st.wt])) : offerNow(G);
+  const r = segZ(G, parts, offer, parts.offer / 100), z = r.z, seg = r.seg, lost = G.today.lost || 0;
   const quotes = voices(G, parts, z);
   const rep0 = G.rep;
   G.rep = clamp((1 - S.rep) * G.rep + S.rep * z, 0, 100);
-  G.sat = { z, parts, ded, lost, date: G.today.date };
-  return { z, parts, ded, lost, rep0, hits: { ...(G.today.hits || {}) }, quotes };
+  G.sat = { z, seg, parts, ded, lost, date: G.today.date };
+  return { z, seg, mix: r.mix, parts, ded, lost, rep0, hits: { ...(G.today.hits || {}) }, quotes };
 }
 
 export const seasonShare = rep => clamp(D.flow.seasonShare + S.season.k * (rep - S.season.ref), S.season.clamp[0], S.season.clamp[1]);

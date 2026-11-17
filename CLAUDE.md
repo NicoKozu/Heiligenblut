@@ -72,6 +72,8 @@
 - Simtest Etappe 16 (Saison, Präparierung alle, Beschneiung 10 h wenn kalt und < 70 cm): ~144k Skitage, Ø-Z ~60, Ruf 55→60; ohne Präparierung Ø-Z 47, Ruf 42; zusätzlich Preis ×1,5 Ruf 33. Warmphase (Föhn +8 °C) ohne Beschneiung: Talabfahrt nach ~4 Tagen aper. Skitage weiter über Ziel → Etappe 23.
 - Simtest Etappe 15 (Saison, Inspektion < 72 %, Rossbach Express): vernünftig Ø-Z ~61, Ruf 55→56; Preis ×1,5 Ruf →37. Rossbach-Sperre Sa 10–12 Uhr: Z 85→34, Prognose Folgetag −30 %.
 - Simtest Saison: ~144k Skitage (über Ziel 90–130k, liegt an Tabelle B; Wetter/Schnee in Etappe 16 senken), Preis Erw. 90 € → −30 % Gäste, Weihnachten Rossbach Spitze ~50 min, Jänner-Werktag ~0.
+- Etappe 18: fertig. Zielgruppen `D.segs` (Familien 35 %/Sportliche 20 %/Tagesgäste 25 %/Wochengäste 20 %) je mit Preisempfindlichkeit (`el` 1,8/1,0/1,4/1,2), Ticketmix, Fahrkönnen (→ `flow.skill`), Pistenvorliebe (Angebot je Gruppe), Wetterempfindlichkeit `wx`, Fairpreis-Faktor und eigenen Zufriedenheitsgewichten; Nachfrage und Z je Gruppe, Gesamt-Z = Gästemix-Mittel. `biz/marketing.js`: Kampagnen (`D.mkt.campaigns`: weekly/once/pre), Wirkung `M` je Gruppe (Nebengruppen 25 %), Abnutzung −30 % nach 21 Tagen, Kosten täglich bei Tagesstart (Posten Marketing), „Kinder gratis am Samstag“ (Kinderkarten 0 €), Frühbucher nur am 1. Saisontag in Vorbereitung (Erlös + Saisonkarten-Anteil + 3 % Nachfrage). Konkurrenz `G.comp` (3 fiktive Gebiete, Preis-/Schnee-Drift nachts) → Faktor `K`. Tab Marketing, Panel-Balken nach Zielgruppe, Tagesbericht Zielgruppen + Umsatz/Gast. Fix: Kosten/Erlöse aus der Vorbereitung bleiben im Tagesbericht (vorher von `resetToday` gelöscht).
+- Simtest Etappe 18 (Saison, 5 Seeds): Standard ~138k Skitage, Ø-Z 60; Social+Radio dauerhaft +12 % Gäste (209 k€); Reisebüro: Wochengäste Tag 15–42 +11 %; Familienaktion Samstage: Umsatz/Gast 47,5 → 40,7 €, Familien +25 %, Familien-Z 46,8 → 49,0. Simtest repariert Defekte sofort (Rossbach Express) und inspiziert < 72 %.
 - Tests: `simtest.mjs` (Scratchpad, Node) und Playwright-Smoke; jsdelivr ist in der Session gesperrt → Three per `npm pack three@0.170.0` lokal und `page.route` umleiten. SwiftShader rendert ~1 FPS, Sim holt Frames bis 1 s nach.
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
@@ -104,7 +106,7 @@
 - `src/config.js` – Gebietsdaten, `get(url, type)` (fetch mit Statusprüfung), `image(url)`, `texture(url)` (sRGB, flipY aus)
 - `public/` – eigene Assets (Fotos etc.)
 - `MANAGER.md` – Spezifikation Manager-Modus (Etappen 12–23), `src/biz/` – Simulation (ab Etappe 12)
-- `src/biz/demand.js` – `defaultPrices, avgPrice, priceFactor, factors, expected, demand`
+- `src/biz/demand.js` – `defaultPrices, avgPrice, priceFactor, segPrice, segPriceFactor, segOffer, segFactors, expectedSeg, factors, expected, demand` (→ `{n, eps, seg}`)
 - `src/biz/flow.js` – `newFlow, step(G, t), endFlow`, `G.flow` (queue, ride, run, hut, wait, present, avgWait)
 - `src/biz/bridge.js` – `createBiz({ lift, player, crowd })` → `{ begin(fresh), end(), update(dt), save(), hold, active }`; `lift.shut` (Set gesperrter Liftnamen)
 - `src/biz/assets.js` – `pay, log, running, status, liftMinute, dayStart, overnight, repair(G,id,express), repairQuote, inspect, setOpen(G,kind,id,open)`
@@ -113,6 +115,7 @@
 - `src/biz/snow.js` – `initSnow, night, newSeason, wear, score, label, avgSnow, snowFactor, demandExtra, groomPlan, gunPlan, nightTotals, setGroom, setGun`; `G.night` (Bericht), `G.groom`, `G.cannons`
 - `src/weatherfx.js` – `createWeatherFx(world, pano, renderer)` → `{ object, set(day), update(dt, cam, canvasH) }`
 - `src/biz/staff.js` – `initStaff, needs(G, gäste), duty, wages, assign, canOpen, morning, evening, hire, fire, setWage, bonus, seasonEnd, techFactor, riskFactor, patrolShort, cashCap, capacity, service`; `G.staff` {n, pending, sick, wage, morale, over, bonus}
+- `src/biz/marketing.js` – `SEGS, CAMPAIGNS, initMkt, act(G,id), day, mFactor(G,date,seg), kFactor(G,seg,snow), ticketPrice, kidsFree, status, weeklyCost, canEarly, earlyQuote, compDay, newSeason`; `G.mkt` {on{id:Datum}, orders[{id,from,to}], run, spent, early}, `G.comp`
 - `src/biz/sim.js` – Spielstand `G` (date ISO, phase, min, factor, cash, loan, rep, prices, pistes{id:{open,cond,snow,groomed}}, flow, log[], lifts[{id,name,open,cond,run,util,broken,repairLeft,insp,inspPlan}], today{costs,revenue,guests,demand,expected,types,rides,peak}, history[])
 
 ## Gebietsdaten
