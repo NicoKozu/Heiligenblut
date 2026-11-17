@@ -10,6 +10,7 @@ import { initWeather, applyWind } from './weather.js';
 import { initStaff, morning, evening, wages, minute as staffMinute, seasonEnd } from './staff.js';
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
+import { snapshot, fixed } from './season.js';
 import { initSide, sideFlow, dayStart as sideStart, evening as sideEvening } from './side.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
@@ -46,6 +47,9 @@ function migrate(G) {
   if (!G.weather) { initWeather(G); applyWind(G); }
   if (G.seasonShare == null) G.seasonShare = D.flow.seasonShare;
   if (G.sat === undefined) G.sat = null;
+  if (!G.seasons) G.seasons = [];
+  if (!G.ev) G.ev = [];
+  if (G.summer === undefined) G.summer = null;
   if (G.today && !G.today.hits) G.today.hits = {};
   if (!G.today || !G.today.types) resetToday(G);
   return G;
@@ -140,24 +144,62 @@ export function setPrice(G, k, v) {
 }
 
 export function nextDay(G) {
-  if (G.phase !== 'closed' || G.fin.over) return false;
+  if (G.phase !== 'closed' || G.fin.over || G.summer) return false;
   solvency(G);
   if (G.fin.over) return true;
-  const d = nextDate(G);
+  const d = nextDate(G), ns = seasonOf(d) !== G.season;
   overnight(G);
+  if (ns) return endSeason(G, d);
   night(G, d);
   compDay(G);
-  if (seasonOf(d) !== G.season) { G.seasonShare = seasonShare(G.rep); newSeason(G); seasonEnd(G); }
-  buildDay(G, seasonOf(d) !== G.season);
+  buildDay(G, false);
   G.date = d;
-  const ns = seasonOf(d) !== G.season;
-  G.season = seasonOf(d);
-  if (ns) mktSeason(G);
   G.day++;
   G.phase = 'prep';
   G.min = D.time.open;
   resetToday(G);
   morning(G);
+  return true;
+}
+
+function endSeason(G, d) {
+  const sy = G.season, s = snapshot(G, sy);
+  G.summer = { sy, next: d, stage: 'report', costs: {}, rev: {} };
+  if (s) G.seasons.push(s);
+  if (G.seasons.length > D.summer.keep) G.seasons.shift();
+  seasonEnd(G);
+  return true;
+}
+
+export function summerStage(G, stage) {
+  if (!G.summer || !['report', 'plan'].includes(stage)) return false;
+  G.summer.stage = stage;
+  return true;
+}
+
+export function startSeason(G) {
+  const S = G.summer;
+  if (!S || G.fin.over) return false;
+  const f = fixed(G);
+  for (const k in f) { G.cash -= f[k]; S.costs[k] = (S.costs[k] || 0) + f[k]; }
+  const rec = G.seasons.find(x => x.sy === S.sy);
+  if (rec) { rec.sumCosts = { ...S.costs }; rec.sumCost = sum(S.costs); }
+  const d = S.next;
+  night(G, d);
+  compDay(G);
+  G.seasonShare = seasonShare(G.rep);
+  newSeason(G);
+  buildDay(G, true);
+  G.summer = null;
+  G.date = d;
+  G.season = seasonOf(d);
+  mktSeason(G);
+  G.day++;
+  G.phase = 'prep';
+  G.min = D.time.open;
+  resetToday(G);
+  morning(G);
+  solvency(G);
   return true;
 }
 

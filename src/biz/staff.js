@@ -2,7 +2,7 @@ import { D } from './data.js';
 import { pl } from './area.js';
 import { next as rand } from './rng.js';
 import { addDays } from './calendar.js';
-import { pay, log } from './assets.js';
+import { pay, log, ev } from './assets.js';
 import { hit } from './satisfaction.js';
 import { gastroNeed, gastroScore, sideScore } from './side.js';
 
@@ -105,9 +105,10 @@ export function evening(G) {
 export function hire(G, k, n = 1) {
   const st = G.staff;
   if (!S.groups[k] || st.n[k] + pendingOf(G, k) + n > S.max) return false;
-  const date = addDays(G.date, S.delay);
+  const date = G.summer ? G.summer.next : addDays(G.date, S.delay);
   const p = st.pending.find(x => x.k === k && x.date === date);
   if (p) p.n += n; else st.pending.push({ k, n, date });
+  ev(G, 'hire', k, n);
   log(G, n + ' × ' + S.groups[k].label + ' eingestellt – Dienstbeginn ' + short(date));
   return true;
 }
@@ -120,6 +121,7 @@ export function fire(G, k, n = 1) {
     const p = st.pending[i];
     p.n -= n;
     if (p.n <= 0) st.pending.splice(i, 1);
+    ev(G, 'hire', k, -n);
     log(G, 'Einstellung ' + S.groups[k].label + ' storniert');
     return true;
   }
@@ -128,6 +130,7 @@ export function fire(G, k, n = 1) {
   st.n[k] -= n;
   if (st.sick[k]) st.sick[k] = Math.min(st.sick[k], st.n[k]);
   st.morale = clamp(st.morale - S.morale.fire * n, 0, 100);
+  ev(G, 'fire', k, n);
   log(G, n + ' × ' + S.groups[k].label + ' gekündigt (' + S.fireDays + ' Tageslöhne)');
   if (k === 'lift') assign(G);
   return true;
@@ -165,6 +168,7 @@ export function seasonEnd(G) {
   }
   st.pending = [];
   st.sick = {};
+  ev(G, 'left', 'all', gone);
   log(G, 'Saisonende: ' + gone + ' Saisonkräfte verabschiedet, ' + Math.round(r * 100) + ' % kommen wieder');
 }
 

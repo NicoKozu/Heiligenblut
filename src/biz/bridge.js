@@ -7,6 +7,7 @@ import * as P from './staff.js';
 import * as M from './marketing.js';
 import * as X from './side.js';
 import * as B from './build.js';
+import * as V from './season.js';
 import { consume } from '../input.js';
 
 export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
@@ -29,6 +30,10 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
   function action(a) {
     if (a === 'start' && S.startDay(G)) { ui.close(); save(); note('Lifte offen', 2); }
     else if (a === 'next' && S.nextDay(G)) { ui.open('prep'); save(); }
+    else if (a === 'splan' && S.summerStage(G, 'plan')) save();
+    else if (a === 'srep' && S.summerStage(G, 'report')) save();
+    else if (a === 'sstart' && S.startSeason(G)) { ui.open('prep'); save(); note('Neue Saison ' + G.season + '/' + String(G.season + 1).slice(2), 3); }
+    else if (a.startsWith('rev:')) { if (V.revise(G, a.slice(4))) { save(); note('Revision durchgeführt', 2); } }
     else if (a === 'close') ui.close();
     else if (a.startsWith('price:') && G.phase !== 'open') { const [, k, d] = a.split(':'); S.setPrice(G, k, G.prices[k] + Number(d)); save(); }
     else if (a.startsWith('tog:hut:')) { if (X.toggleHut(G, a.slice(8))) save(); }
@@ -136,7 +141,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
       if (ui.view === 'office') ui.close();
       else if (!ui.view) ui.open('office');
     }
-    if ((consume('Enter') || consume('NumpadEnter')) && (ui.view === 'prep' || ui.view === 'daily')) action(ui.view === 'prep' ? 'start' : 'next');
+    if ((consume('Enter') || consume('NumpadEnter')) && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) action({ prep: 'start', daily: 'next', season: 'splan', summer: 'sstart' }[ui.view]);
 
     for (const e of clk(G, dt)) {
       if (e === 'warn') note('Lifte schließen in 15 min', 3);
@@ -154,7 +159,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     else if (hold) player.state.reset = false;
     hold = want;
     if (hold) {
-      const v = G.fin?.over ? 'over' : G.phase === 'prep' ? 'prep' : 'daily';
+      const v = G.fin?.over ? 'over' : G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily';
       if (ui.view !== v) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';

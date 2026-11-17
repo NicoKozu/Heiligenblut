@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { D } from '../src/biz/data.js';
-import { newGame, startDay, tick, nextDay, setPrice, forecast, report, nextDate } from '../src/biz/sim.js';
+import { newGame, startSeason, startDay, tick, nextDay, setPrice, forecast, report, nextDate } from '../src/biz/sim.js';
 import { repair, inspect } from '../src/biz/assets.js';
 import { setGroom, setGun, nightTemp, groomPlan } from '../src/biz/snow.js';
 import { hire, fire, setWage, needs, pendingOf, GROUPS } from '../src/biz/staff.js';
@@ -9,6 +9,7 @@ import { setLevel, setSidePrice, HUTS } from '../src/biz/side.js';
 import { check, order, borrow, repay, seasonPL, groomer } from '../src/biz/build.js';
 import { seasonOf } from '../src/biz/calendar.js';
 import { pl } from '../src/biz/area.js';
+import { revise } from '../src/biz/season.js';
 
 const argv = process.argv.slice(2);
 const opt = k => { const i = argv.indexOf('--' + k); return i < 0 ? null : argv[i + 1]; };
@@ -99,6 +100,7 @@ function sensible(cfg = {}) {
     if (c.repayFrom ? si >= c.repayFrom : !x.queue.length) if (G.cash > c.repayAbove) repay(G, G.cash - c.repayAbove);
     if (lastDay(G) && c.plan[si + 1]) c.si = si + 1, x.queue = tryBuild(G, c, [...x.queue, ...c.plan[si + 1]], true), x.planned = si + 1;
   };
+  s.summer = G => { for (const l of G.lifts) revise(G, l.id); };
   return s;
 }
 
@@ -190,6 +192,7 @@ function run(name, seed, seasons, maxDays, daily) {
       if (maxDays && n >= maxDays) { if (!last) finish(); break; }
       if (out.length >= seasons) break;
       nextDay(G);
+      if (G.summer) { s.summer?.(G); startSeason(G); }
       if (G.fin.over) { cur.insolvent = true; finish(); break; }
       if (last) { cur = begin(); }
     }
