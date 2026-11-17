@@ -71,6 +71,8 @@ function arrivals(G, f, t) {
   const add = (k, n) => { T.types[k] = (T.types[k] || 0) + n; };
   const earn = (k, n) => { const v = n * ticketPrice(G, D.ticketOf[k]); T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };
   add('season', (A + H) * s);
+  const paid = Math.max(0, s - (G.mkt?.early === G.season ? D.mkt.campaigns.early.share : 0)) * (A + H);
+  if (paid > 0) { const v = paid * G.prices.season / F.cardVisits; T.revenue.season = (T.revenue.season || 0) + v; G.cash += v; }
   const sh = f.seg || Object.fromEntries(Object.entries(D.segs).map(([k, v]) => [k, v.share]));
   if (!T.seg) T.seg = {};
   for (const sg in sh) {

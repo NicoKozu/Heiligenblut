@@ -20,6 +20,8 @@ export function revise(G, id) {
   if (q.pts <= 0 || G.cash < q.cost) return false;
   G.cash -= q.cost;
   s.costs.revision = (s.costs.revision || 0) + q.cost;
+  const rec = G.seasons.find(x => x.sy === s.sy);
+  if (rec) { rec.sumCost = (rec.sumCost || 0) + q.cost; rec.year = rec.result - rec.sumCost; }
   s.rev[id] = 1;
   l.cond = SM.revTarget;
   return true;

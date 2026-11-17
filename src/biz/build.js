@@ -29,11 +29,19 @@ export const done = (G, id) => G.build.done.includes(id);
 export const job = (G, id) => G.build.jobs.find(j => j.id === id);
 export const room = G => Math.max(0, D.start.credit - G.loan);
 
-export function invest(G, v) {
-  G.cash -= v;
-  G.today.invest = (G.today.invest || 0) + v;
+export function post(G, k, v) {
+  G.cash += k === 'invest' ? -v : v;
+  G.today[k] = (G.today[k] || 0) + v;
   const h = G.history[G.history.length - 1];
-  if (G.phase === 'closed' && h && h.date === G.today.date) { h.invest = (h.invest || 0) + v; h.cash = G.cash; }
+  if (G.phase === 'closed' && h && h.date === G.today.date) { h[k] = (h[k] || 0) + v; h.cash = G.cash; }
+}
+
+export const invest = (G, v) => post(G, 'invest', v);
+
+function writeoff(G, v) {
+  G.today.depr = (G.today.depr || 0) + v;
+  const h = G.history[G.history.length - 1];
+  if (G.phase === 'closed' && h && h.date === G.today.date) h.depr = (h.depr || 0) + v;
 }
 
 function asset(G, id, label, cost, life, n) {
@@ -47,7 +55,7 @@ export function check(G, id, summer) {
   if (!p) return 'unbekannt';
   if (done(G, id)) return 'fertig';
   if (job(G, id)) return 'im Bau';
-  const miss = (p.needs || []).filter(n => !done(G, n) && !(summer && job(G, n)?.left === null));
+  const miss = (p.needs || []).filter(n => !done(G, n) && !job(G, n));
   if (miss.length) return 'erst ' + miss.map(n => P[n].label).join(', ');
   if (G.cash + room(G) < p.price) return 'zu wenig Geld/Kredit';
   return '';
@@ -95,10 +103,14 @@ function complete(G, j) {
   log(G, p.label + ' fertiggestellt' + (staff ? ' – braucht ' + staff + ' Liftpersonal mehr' : ''), 'good');
 }
 
+export const ready = (G, id) => (P[id].needs || []).every(n => done(G, n));
+export const waitFor = (G, id) => (P[id].needs || []).filter(n => !done(G, n)).map(n => P[n].label);
+
 export function buildDay(G, newSeason) {
-  for (const j of [...G.build.jobs]) {
-    if (newSeason) complete(G, j);
-    else if (j.left != null && --j.left <= 0) complete(G, j);
+  if (!newSeason) for (const j of G.build.jobs) if (j.left > 0) j.left--;
+  for (let go = true; go;) {
+    go = false;
+    for (const j of [...G.build.jobs]) if ((newSeason || j.left === 0) && ready(G, j.id)) { complete(G, j); go = true; }
   }
 }
 
@@ -108,8 +120,7 @@ export function borrow(G, v) {
   const a = Math.min(room(G), Math.max(0, v));
   if (a <= 0) return 0;
   G.loan += a;
-  G.cash += a;
-  G.today.loan = (G.today.loan || 0) + a;
+  post(G, 'loan', a);
   return a;
 }
 
@@ -117,8 +128,7 @@ export function repay(G, v) {
   const a = Math.min(G.loan, Math.max(0, G.cash), Math.max(0, v));
   if (a <= 0) return 0;
   G.loan -= a;
-  G.cash -= a;
-  G.today.loan = (G.today.loan || 0) - a;
+  post(G, 'loan', -a);
   return a;
 }
 
@@ -127,7 +137,7 @@ export const deprDay = G => G.fin.items.reduce((a, x) => a + Math.min(x.val, x.c
 export function depreciate(G) {
   let t = 0;
   for (const x of G.fin.items) { const v = Math.min(x.val, x.cost / x.life / FN.days); x.val -= v; t += v; }
-  G.today.depr = t;
+  G.today.depr = (G.today.depr || 0) + t;
   return t;
 }
 
@@ -150,8 +160,8 @@ function machine(G, k, price, life, label, d) {
   if (d > 0) { if (G.cash + room(G) < price) return false; if (G.cash < price) borrow(G, Math.ceil((price - G.cash) / FN.autoDraw) * FN.autoDraw); invest(G, price); o.cost += price; o.val += price; o.n = (o.n || 0) + 1; return true; }
   const n = Math.max(1, o.n || 1), v = o.val / n;
   o.cost -= o.cost / n; o.val -= v; o.n = Math.max(0, (o.n || 1) - 1);
-  G.cash += v * B.sell;
-  G.today.sale = (G.today.sale || 0) + v * B.sell;
+  post(G, 'sale', v * B.sell);
+  writeoff(G, v * (1 - B.sell));
   return true;
 }
 
@@ -195,7 +205,7 @@ export function seasonPL(G, sy = G.season) {
   const add = (o, s) => { for (const k in s || {}) o[k] = (o[k] || 0) + s[k]; };
   for (const h of H) { add(rev, h.revs); add(cost, h.costs); depr += h.depr || 0; inv += h.invest || 0; days++; guests += h.guests; }
   const t = G.today, open = G.phase !== 'closed' && t && sy === G.season;
-  if (open) { add(rev, t.revenue); add(cost, t.costs); inv += t.invest || 0; }
+  if (open) { add(rev, t.revenue); add(cost, t.costs); inv += t.invest || 0; depr += t.depr || 0; }
   const R = sum(rev), C = sum(cost);
   return { rev, cost, R, C, depr, ebitda: R - C, result: R - C - depr, invest: inv, days, guests };
 }

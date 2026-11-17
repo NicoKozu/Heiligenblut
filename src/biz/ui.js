@@ -296,7 +296,7 @@ export function createUI(h) {
       tr('Preisfaktor Nachfrage', '×' + priceFactor(G.prices).toFixed(2)) +
       (x => tr('Wetter · Schnee ' + fmtDate(fc.date).slice(0, 9), '×' + x.weather.toFixed(2) + ' · ×' + x.snow.toFixed(2)))(demandExtra(G, fc.date)) +
       tr('Erwartete Gäste ' + fmtDate(fc.date), '<span class="fc">' + num(fc.n) + '</span>') + '</table>' +
-      (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' % der Gäste fahren mit Saisonkarte (nächste Saison abhängig vom Ruf).</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
+      (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' % der Gäste fahren mit Saisonkarte (nächste Saison abhängig vom Ruf). Der Erlös wird je Besuch verbucht (Preis ÷ ' + D.flow.cardVisits + ' Skitage).</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
   }
 
   function snow(G) {

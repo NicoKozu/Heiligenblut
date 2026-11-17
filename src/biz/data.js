@@ -25,7 +25,7 @@ export const D = {
     { id: '12', name: 'Muldenabfahrt', level: 'mittel', km: 2.15, from: 'fleisstop', to: 'fleissalm', proj: 'p12', exp: true },
     { id: '11a', name: 'Gratabfahrt', level: 'mittel', km: 3.58, from: 'hochfleiss', to: 'fleissalm', proj: 'p11a', exp: true }
   ],
-  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.6, 0.8], offer: [0.3, 0.7], expW: 2, eps: [0.9, 1.1] },
+  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.6, 0.8], offer: [0.3, 0.7], expW: 1.7, eps: [0.9, 1.1] },
   flow: {
     arrive: { from: 495, peak: 570, to: 660 },
     half: { from: 690, peak: 720, to: 780 },
@@ -43,13 +43,14 @@ export const D = {
     liftW: 1,
     queueTau: 12,
     seasonShare: 0.08,
+    cardVisits: 14,
     densityRef: 2500,
     pulkWait: 5,
     wait: [5, 15]
   },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 2000,
-  guestCost: 15,
+  guestCost: 9,
   wear: { perHour: 0.15, base: 0.5, night: 0.6, keep: 70 },
   fault: {
     base: 0.0015, ref: 20,
@@ -65,7 +66,7 @@ export const D = {
   summer: { adminDays: 20, interestDays: 240, revTarget: 95, revPerKw: 4, evMax: 400, keep: 12 },
   pisteStart: { cond: 80, snow: 80 },
   logMax: 60,
-  admin: 1400, adminLift: 1600,
+  admin: 2500, adminLift: 1200,
   tickets: {
     day: { label: 'Tageskarte Erw.', price: 62 },
     youth: { label: 'Jugend (15–18)', price: 47 },

@@ -17,7 +17,7 @@ export function seasonView(G, h) {
   const { eur, tr, num, dec } = h, s = G.seasons[G.seasons.length - 1];
   if (!s) return '<h1>Saisonende</h1><p class="sub">Keine Betriebstage in dieser Saison.</p><div class="go"><button class="primary" data-act="splan">Zur Sommerplanung ⏎</button></div>';
   const o = G.seasons.find(x => x.sy === s.sy - 1), pc = v => dec(v, 0) + ' %';
-  const z = Math.round(s.sat), res = s.result;
+  const z = Math.round(s.sat), res = s.year ?? s.result, ores = o ? o.year ?? o.result : null;
   const rev = Object.entries(s.rev).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const cost = Object.entries(s.cost).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const lb = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
@@ -27,7 +27,7 @@ export function seasonView(G, h) {
   const seg = Object.entries(s.seg).filter(([, v]) => v > 0);
   const segT = sum(s.seg);
   return '<h1>Saisonbilanz ' + label(s.sy) + '</h1><p class="sub">' + fmtDate(s.from) + ' – ' + fmtDate(s.to) + ' · ' + s.days + ' Betriebstage</p>' +
-    '<div class="satbig"><b class="' + (res >= 0 ? 'biz-good' : 'biz-bad') + '" style="font-size:34px">' + eur(res) + '</b><div>Ergebnis nach Abschreibung' + dl(res, o?.result, eur) + '<br><span style="opacity:.75">Vorsaison: ' + (o ? eur(o.result) : '–') + '</span></div></div>' +
+    '<div class="satbig"><b class="' + (res >= 0 ? 'biz-good' : 'biz-bad') + '" style="font-size:34px">' + eur(res) + '</b><div>Jahresergebnis inkl. Sommer' + dl(res, ores, eur) + '<br><span style="opacity:.75">Vorjahr: ' + (o ? eur(ores) : '–') + '</span></div></div>' +
     '<h2>Kennzahlen</h2><table>' +
     tr('Skitage (Gäste gesamt)', num(s.guests) + dl(s.guests, o?.guests, num)) +
     tr('Ø Gäste je Betriebstag', num(s.avgGuests) + dl(s.avgGuests, o?.avgGuests, num)) +
@@ -35,6 +35,8 @@ export function seasonView(G, h) {
     tr('Kosten', eur(-s.C) + dl(s.C, o?.C, eur, false)) +
     tr('Betriebsergebnis vor Abschreibung', '<span class="' + (s.ebitda >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(s.ebitda) + '</span>' + dl(s.ebitda, o?.ebitda, eur)) +
     tr('Abschreibungen', eur(-s.depr)) +
+    tr('Ergebnis Winterbetrieb', '<span class="' + (s.result >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(s.result) + '</span>' + dl(s.result, o?.result, eur)) +
+    tr('Sommer: Verwaltung, Zinsen' + (s.sumCosts ? ', Revisionen' : ' (geplant)'), eur(-(s.sumCost || 0))) +
     tr('Umsatz je Gast', eur(s.perGuest) + dl(s.perGuest, o?.perGuest, eur)) +
     tr('Ø Zufriedenheit', '<span class="' + ztone(z) + '">' + z + '</span>' + dl(s.sat, o?.sat, v => dec(v, 0))) +
     tr('Ruf Saisonstart → Saisonende', dec(s.rep0) + ' → <b>' + dec(s.rep1) + '</b>' + dl(s.rep1, o?.rep1, v => dec(v))) +

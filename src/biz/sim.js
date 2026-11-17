@@ -66,7 +66,7 @@ export function startDay(G) {
   if (G.phase !== 'prep' || G.fin.over) return false;
   const o = G.today;
   resetToday(G);
-  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue }, invest: o.invest || 0, loan: o.loan || 0 });
+  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue }, invest: o.invest || 0, loan: o.loan || 0, sale: o.sale || 0, depr: o.depr || 0 });
   G.phase = 'open';
   G.min = D.time.open;
   const dm = demand(G, G.date, demandExtra(G, G.date));
@@ -118,7 +118,7 @@ function close(G) {
   depreciate(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
-    date: t.date, guests: t.guests, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
+    date: t.date, guests: t.guests, expected: t.expected || 0, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
     weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, sale: t.sale || 0, debt: G.loan
   });
@@ -165,7 +165,7 @@ export function nextDay(G) {
 function endSeason(G, d) {
   const sy = G.season, s = snapshot(G, sy);
   G.summer = { sy, next: d, stage: 'report', costs: {}, rev: {} };
-  if (s) G.seasons.push(s);
+  if (s) { const f = fixed(G); s.sumCost = f.admin + f.interest; s.year = s.result - s.sumCost; G.seasons.push(s); }
   if (G.seasons.length > D.summer.keep) G.seasons.shift();
   seasonEnd(G);
   return true;
@@ -183,7 +183,7 @@ export function startSeason(G) {
   const f = fixed(G);
   for (const k in f) { G.cash -= f[k]; S.costs[k] = (S.costs[k] || 0) + f[k]; }
   const rec = G.seasons.find(x => x.sy === S.sy);
-  if (rec) { rec.sumCosts = { ...S.costs }; rec.sumCost = sum(S.costs); }
+  if (rec) { rec.sumCosts = { ...S.costs }; rec.sumCost = sum(S.costs); rec.year = rec.result - rec.sumCost; }
   const d = S.next;
   night(G, d);
   compDay(G);

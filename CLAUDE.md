@@ -11,19 +11,21 @@
 - Genau eine Etappe pro Durchgang. Danach Branch `etappe-XX`, Commit, Push, PR nach `main`, selbst mergen. Stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
 - Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
-- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~85 s, alle Ziele OK). Zum Probieren `--seeds 1,2`. Kein Playwright (Nutzerwunsch).
+- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~100 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Kein Playwright (Nutzerwunsch).
 - Spiel muss nach jeder Etappe lauffähig bleiben; Freies Fahren lädt keinen `biz`-Code; alte Spielstände laden (`migrate()` in `sim.js`).
 - Pro Etappe neuen Chat starten (spart Tokens).
 
 ## Offene Etappen (Reihenfolge)
-22 Ereignisse und Entscheidungen · 23 Dashboard, Tutorial, Feinbalancing, Performance · 24 Manager in 3D: Kamera (V), Objekte anklicken/Objektkarte, Status-Symbole, Pisten-Overlay · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
+22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 24 Manager in 3D: Kamera (V), Objekte anklicken/Objektkarte, Status-Symbole, Pisten-Overlay · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
 
-## Stand (Etappen 1–21 fertig, Details `HISTORY.md`)
+## Stand (Etappen 1–21 und 23 fertig, Details `HISTORY.md`)
 - 3D: echtes DEM (15-m-Gelände, Satellitenbild Sentinel-2, Panorama bis 56 km), Fahrphysik Ski/Board, Pisten/Lifte/Hütten aus OSM, Bäume/Gebäude/Felsen, Gäste 1:1 als Figuren (Manager), Flugmodus (F), Menü, Audio.
 - Manager-Sim (`src/biz/`, rein, headless testbar): Zeit/Phasen, Nachfrage je Zielgruppe, Flussmodell, Anlagen/Defekte, Zufriedenheit/Ruf, Wetter/Schnee, Personal, Marketing/Konkurrenz, Nebengeschäfte, Bau/Kredit/AfA. Start nur mit Gondel Rossbach + Piste 10 + Rossbach Alm (Kasse 1,5 Mio, Kredit bis 6 Mio), Rest sind Bauprojekte.
 - Etappe 20b: `tools/simtest.mjs` + Balancing. Werte in `data.js` (nicht MANAGER.md B) maßgeblich: Bauprojekte ~50 %, Nachfrage ×0,65, Lift-Wartung je Lift `maint`, Gästebetrieb 15 €/Gast, Preis-Note bis −50, Grundwartung nachts bis 70 %. Ohne offene Piste keine Nachfrage; Folgeprojekte im Sommer vorbestellbar.
 - Simtest 20b (5 Seeds): vernünftig S1 58k/+0,16 Mio/Ruf 64 · S2 119k/+0,80 · S3 125k/+0,85/Z 73; abwarten S1 Ruf 41 · S2 −0,70; gierig/geizig Ruf < 35, Verlust; investor S3 +0,48, Kredit 5,3 → 4,0. Knapp: vern S3 Skitage (≥120k), abwarten Ruf (≥40), investor S3.
 - Etappe 21: Saisonende → `G.summer` {sy, next, stage report/plan} statt Tageswechsel; `season.js` `snapshot` (Saisonbilanz in `G.seasons`), `revise` (Revision auf 95 %), `fixed` (Sommer-Verwaltung 20 Tage + Zinsen); `sim.js` `endSeason/startSeason/summerStage`; `ui-season.js` Saisonbilanz + Sommerplanung; Events `G.ev` (Bau/Personal). Keine Szenarien/Slots (Nutzerwunsch). Simtest alle OK (vern S3 Skitage 121k knapp).
+- Etappe 23 (Feinbalancing): Buchhaltung lückenlos (Kassenabgleich je Tag, `build.js` `post`/`writeoff`), Saisonkarten-Erlös je Besuch (`flow.cardVisits`), Jahresergebnis inkl. Sommerkosten (`s.year`), abhängige Bauprojekte vorab bestellbar (`ready`). `guestCost` 9, `admin` 2500, `adminLift` 1200, `expW` 1,7. Ziele in MANAGER.md B (5 Saisonen).
+- Simtest 23: vernünftig S1 +0,37 · S2 +1,55 · S3 +1,80 · S4 +2,02 · S5 185k/+2,58 Mio; investor schneller, S5 schuldenfrei; abwarten/gierig/geizig verlieren. `--check` ~100 s.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
