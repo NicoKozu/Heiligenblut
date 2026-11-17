@@ -2,12 +2,13 @@ import { D } from './data.js';
 import * as B from './build.js';
 import { cannons } from './snow.js';
 import { pl } from './area.js';
+import { fixed } from './season.js';
 
 const P = D.build.projects;
 const cache = new Map();
 
 export function finTab(G, h) {
-  const { eur, tr, dec } = h, pl_ = B.seasonPL(G), bv = B.bookValue(G), rate = D.start.rate;
+  const { eur, tr, dec } = h, pl_ = B.seasonPL(G), bv = B.bookValue(G), rate = D.start.rate, f = fixed(G), sf = f.admin + f.interest;
   const rev = Object.entries(pl_.rev).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const cost = Object.entries(pl_.cost).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const lb = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
@@ -23,7 +24,9 @@ export function finTab(G, h) {
     rev.map(([k, v]) => tr(lb(k), eur(v))).join('') + tr('<b>Erlöse</b>', '<b>' + eur(pl_.R) + '</b>', 'sum') +
     cost.map(([k, v]) => tr(D.costLabels[k] || k, eur(-v))).join('') + tr('<b>Betriebsaufwand</b>', '<b>' + eur(-pl_.C) + '</b>', 'sum') +
     tr('Betriebsergebnis vor Abschreibung', eur(pl_.ebitda)) + tr('Abschreibungen', eur(-pl_.depr)) +
-    tr('<b>Ergebnis</b>', '<b class="' + (pl_.result >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(pl_.result) + '</b>', 'sum') +
+    tr('<b>Ergebnis Winterbetrieb</b>', '<b class="' + (pl_.result >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(pl_.result) + '</b>', 'sum') +
+    tr('Sommer: Verwaltung + Zinsen (geschätzt, fällig zum Saisonstart)', eur(-sf)) +
+    tr('<b>Jahresergebnis (Stand heute)</b>', '<b class="' + (pl_.result - sf >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(pl_.result - sf) + '</b>', 'sum') +
     tr('Investitionen (nicht im Ergebnis)', eur(pl_.invest)) + tr('Betriebstage · Gäste', pl_.days + ' · ' + h.num(pl_.guests)) + '</table>' +
     '<h2>Anlagenspiegel</h2><table>' + G.fin.items.map(x => tr(x.label + (x.n != null ? ' (' + x.n + ')' : ''), 'Buchwert ' + eur(x.val) + ' · Anschaffung ' + eur(x.cost) + ' · ' + x.life + ' J.')).join('') + '</table>' +
     '<p class="note">Abschreibung linear (Lifte ' + P.tunnelbahn.life + ' Jahre), je Betriebstag 1/' + D.fin.days + ' des Jahresbetrags. Kasse unter 0 → Kredit wird automatisch erhöht, bis der Rahmen ausgeschöpft ist.</p>';
@@ -43,6 +46,7 @@ export function buildTab(G, h) {
     const sat = b.km ? 'Zufriedenheit: mehr Angebot, weniger Gedränge' : b.cap ? 'Zufriedenheit: kürzere Wartezeiten' : b.seats ? 'Zufriedenheit: Service (Hütte)' : b.park ? 'weniger umkehrende Gäste' : '';
     let st;
     if (done) st = '<span class="biz-good">fertig</span>';
+    else if (j && j.left === 0) st = '<span class="biz-warn">fertig, wartet auf ' + B.waitFor(G, id).join(', ') + '</span>';
     else if (j) st = j.left == null ? '<span class="biz-warn">im Sommer</span>' : '<span class="biz-warn">im Bau · noch ' + j.left + ' Tage</span>' + '<div class="biz-bar"><i style="width:' + Math.round((1 - j.left / j.days) * 100) + '%;background:#ffd84a"></i></div>';
     else if (G.summer && !why) st = '<button class="btn primary" data-act="build:' + id + ':s">Bis Saisonstart bauen</button>';
     else if (why && !B.check(G, id, true)) st = '<span class="biz-warn">' + why + '</span><br><button class="btn" data-act="build:' + id + ':s">Im Sommer</button>';

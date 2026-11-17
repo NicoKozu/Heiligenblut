@@ -21,8 +21,8 @@ const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
 const SHORT = { schareck: 'SCH', panorama: 'PAN', tunnelbahn: 'TUN', fleissbahn: 'FLB', hochfleiss: 'HFL', rossbach10: 'R10', garage: 'PKH', 'new:schareck': 'hSCH', 'new:spatzl': 'hSPA', 'new:fleiss': 'hFLE' };
 const short = id => SHORT[id] || (id.startsWith('p') ? 'P' + id.slice(1) : id.startsWith('hut:') ? '+' + id.slice(4, 7) : id);
 
-const ALL = ['schareck', 'p4', 'p5', 'new:schareck', 'panorama', 'p5a', 'p2', 'p1', ['tunnelbahn', 'fleissbahn', 'p11', 'p12'], 'hochfleiss', 'p11a', 'new:spatzl', 'new:fleiss'];
-const SENSIBLE = [['schareck', 'p4', 'p5', 'new:schareck'], ['panorama', 'p5a', 'p2', 'p1'], [['tunnelbahn', 'fleissbahn', 'p11', 'p12']]];
+const ALL = ['schareck', 'p4', 'p5', 'new:schareck', 'panorama', 'p5a', 'p2', 'p1', ['tunnelbahn', 'fleissbahn', 'p11', 'p12'], 'hochfleiss', 'p11a', 'new:spatzl', 'new:fleiss', 'rossbach10'];
+const SENSIBLE = [['schareck', 'p4', 'p5', 'new:schareck'], ['panorama', 'p5a', 'p2', 'p1'], [['tunnelbahn', 'fleissbahn', 'p11', 'p12'], 'new:fleiss'], ['rossbach10', 'hochfleiss', 'p11a', 'new:spatzl'], ['garage', 'hut:rossbach', 'hut:schareck']];
 
 function ctx(G, s) { return s.ctx || (s.ctx = { season0: G.season, queue: [], done: new Set() }); }
 const sIdx = (G, s) => G.season - ctx(G, s).season0;
@@ -41,8 +41,9 @@ function tryBuild(G, c, ids, summer) {
   let stop = false, held = 0;
   for (const it of ids) {
     if (stop) { left.push(it); continue; }
-    const set = [].concat(it), why = check(G, set[0], summer && !c.now);
+    const set = [].concat(it), why = !summer && P[set[0]].close ? 'Sommer' : check(G, set[0], summer && !c.now);
     if (why === 'fertig' || why === 'im Bau') { if (set.length > 1) { const r = set.slice(1); r.rest = true; left.push(r); } continue; }
+    if (why === 'Sommer') { left.push(it); continue; }
     if (why.startsWith('erst')) { left.push(it); if ((P[set[0]].needs || []).every(n => G.build.done.includes(n) || G.build.jobs.some(j => j.id === n))) held += cost(set); continue; }
     if (!afford(G, cost(set) + held, c)) { left.push(it); stop = true; continue; }
     if (!order(G, set[0], summer && !c.now)) { left.push(it); continue; }
@@ -157,8 +158,12 @@ function run(name, seed, seasons, maxDays, daily) {
   cur = begin();
   const doneSeen = new Set(G.build.done);
   const finish = () => {
-    const pl = seasonPL(G, cur.season);
-    Object.assign(cur, { R: pl.R, C: pl.C, result: pl.result, depr: pl.depr, costs: pl.cost, revs: pl.rev, cash: G.cash, loan: G.loan, rep: G.rep, avgZ: cur.z.length ? cur.z.reduce((a, b) => a + b, 0) / cur.z.length : 0, days: cur.day });
+    const rec = G.seasons.find(x => x.sy === cur.season);
+    const pl = seasonPL(G, cur.season), H = G.history.filter(h => seasonOf(h.date) === cur.season);
+    const flowSum = H.reduce((a, h) => a + h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.sale || 0), 0);
+    cur.gap = H.length ? (H[H.length - 1].cash - H[0].cashStart) - flowSum : 0;
+    if (process.env.GAP) for (const h of H) { const d = h.cash - h.cashStart - (h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.sale || 0)); if (Math.abs(d) > 1) console.log(name, seed, h.date, Math.round(d)); }
+    Object.assign(cur, { R: pl.R, C: pl.C, result: rec?.year ?? pl.result, winter: pl.result, sumCost: rec?.sumCost || 0, depr: pl.depr, costs: pl.cost, revs: pl.rev, cash: G.cash, loan: G.loan, rep: G.rep, avgZ: cur.z.length ? cur.z.reduce((a, b) => a + b, 0) / cur.z.length : 0, days: cur.day });
     for (const q in cur.parts) cur.parts[q] /= Math.max(1, cur.z.length);
     delete cur.z;
     out.push(cur);
@@ -177,6 +182,7 @@ function run(name, seed, seasons, maxDays, daily) {
       const h = report(G);
       cur.day++;
       cur.guests += h.guests;
+      cur.exp = (cur.exp || 0) + (h.expected || 0);
       if (h.sat) { cur.z.push(h.sat.z); for (const q in h.sat.parts) cur.parts[q] = (cur.parts[q] || 0) + h.sat.parts[q]; }
       cur.peak = Math.max(cur.peak, ...Object.values(h.peak || {}), 0);
       cur.wait = Math.max(cur.wait, h.avgWait || 0);
@@ -188,13 +194,13 @@ function run(name, seed, seasons, maxDays, daily) {
       if (cur.day > 200) throw new Error('Saison > 200 Tage ' + name + ' Seed ' + seed);
       n++;
       const last = lastDay(G);
-      if (last) finish();
-      if (maxDays && n >= maxDays) { if (!last) finish(); break; }
-      if (out.length >= seasons) break;
+      if (maxDays && n >= maxDays && !last) { finish(); break; }
       nextDay(G);
       if (G.summer) { s.summer?.(G); startSeason(G); }
-      if (G.fin.over) { cur.insolvent = true; finish(); break; }
-      if (last) { cur = begin(); }
+      if (G.fin.over) cur.insolvent = true;
+      if (last || G.fin.over) finish();
+      if (G.fin.over || out.length >= seasons || (maxDays && n >= maxDays)) break;
+      if (last) cur = begin();
     }
   }
   return { name, seed, seasons: out, days, over: !!G.fin.over };
@@ -211,7 +217,7 @@ function agg(runs, i) {
   if (!S.length) return null;
   const f = key => { const v = S.map(s => s[key]); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
   const o = {};
-  for (const key of ['guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
+  for (const key of ['exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
   o.insolv = runs.filter(r => r.seasons[i]?.insolvent).length;
   o.n = S.length;
   o.built = S[0].built.join(' ');
@@ -220,7 +226,7 @@ function agg(runs, i) {
 
 const strats = list('strat', Object.keys(STRATS)).map(s => s === 'vernuenftig' ? 'vernünftig' : s);
 for (const s of strats) if (!STRATS[s]) { console.error('Unbekannte Strategie: ' + s); process.exit(2); }
-const seasons = Number(opt('seasons') || 3), seeds = list('seeds', ['1', '2', '3', '4', '5']).map(Number), maxDays = Number(opt('days') || 0), daily = flag('daily');
+const seasons = Number(opt('seasons') || (flag('check') ? 5 : 3)), seeds = list('seeds', ['1', '2', '3', '4', '5']).map(Number), maxDays = Number(opt('days') || 0), daily = flag('daily');
 const t0 = Date.now(), res = {};
 for (const s of strats) res[s] = seeds.map(seed => run(s, seed, seasons, maxDays, daily));
 
@@ -259,9 +265,12 @@ if (flag('check')) {
   add(V, 0, 'Ø-Z 52–65', 'avgZ', rg(52, 65), N);
   add(V, 0, 'Ruf Ende ≥ 48', 'rep', ge(48), N);
   add(V, 1, 'Skitage 90–125k', 'guests', rg(90e3, 125e3), K);
-  add(V, 1, 'Ergebnis 0…+1,0 Mio', 'result', rg(0, 1e6), M);
-  add(V, 2, 'Skitage 120–160k', 'guests', rg(120e3, 160e3), K);
-  add(V, 2, 'Ergebnis +0,5…+2,0 Mio', 'result', rg(5e5, 2e6), M);
+  add(V, 1, 'Ergebnis +0,5…+2,0 Mio', 'result', rg(5e5, 2e6), M);
+  add(V, 2, 'Skitage 120–170k', 'guests', rg(120e3, 170e3), K);
+  add(V, 2, 'Ergebnis +1,0…+2,5 Mio', 'result', rg(1e6, 2.5e6), M);
+  if (A[V]?.[3]) rows.push([V, 4, 'Ergebnis steigt ggü. Saison 3', M(g(V, 3, 'result')) + ' / ' + M(g(V, 2, 'result')), g(V, 3, 'result') > g(V, 2, 'result')]);
+  add(V, 4, 'Skitage 160–210k', 'guests', rg(160e3, 210e3), K);
+  add(V, 4, 'Ergebnis +2,0…+4,0 Mio', 'result', rg(2e6, 4e6), M);
   add(V, 2, 'Ø-Z 60–75', 'avgZ', rg(60, 75), N);
   for (let i = 0; i < seasons; i++) add(V, i, 'max. Ø-Wartezeit ≤ 45 min', 'wait', le(45), N);
   const W = 'abwarten';
@@ -280,7 +289,7 @@ if (flag('check')) {
   for (let i = 0; i < seasons; i++) if (A[I]?.[i]) rows.push([I, i + 1, 'keine Insolvenz', A[I][i].insolv, A[I][i].insolv === 0]);
   if (A[I]?.[2] && A[V]?.[2]) rows.push([I, 3, 'Ergebnis > vernünftig − 0,5 Mio', M(g(I, 2, 'result')) + ' / ' + M(g(V, 2, 'result')), g(I, 2, 'result') > g(V, 2, 'result') - 5e5]);
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
-  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 3 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 3e6]);
+  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 4 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 4e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;
   for (const [s, i, l, v, ok] of rows) { if (!ok) bad++; console.log(padR(s, 11) + pad(i, 2) + '  ' + padR(l, 34) + padR(v, 26) + (ok ? 'OK' : 'FAIL')); }
