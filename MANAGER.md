@@ -1,10 +1,10 @@
-# Manager-Modus – Spezifikation (Etappen 12–23)
+# Manager-Modus – Spezifikation (Etappen 12–27)
 
 Bei „Etappe XX“: nur **Abschnitt A (Grundregeln)**, **Abschnitt B (Referenzwerte)** und den Abschnitt der Etappe lesen, dazu nur die dort genannten Quelldateien. Am Ende Abnahme-Liste prüfen, dann Stand in `CLAUDE.md` eintragen (2–4 Zeilen) und Workflow aus `CLAUDE.md` (Branch `etappe-XX`, PR, merge).
 
 ---
 
-## A. Grundregeln (gelten für alle Etappen 12–23)
+## A. Grundregeln (gelten für alle Etappen 12–27)
 
 **Vision.** Der Spieler ist Betreiber des Skigebiets Heiligenblut. Jeder Tag läuft in drei Phasen ab: **Vorbereitung** (morgens, Zeit steht) → **Betrieb** 08:30–16:30 (Zeit läuft, Spieler kann selbst fahren, Kennzahlen live) → **Feierabend** (Tagesbericht, Planung, Nacht-Aufträge) → „Nächster Tag“. Hauptindikator ist die **Gästezufriedenheit**; sie treibt den **Ruf**, der Ruf treibt die Nachfrage. Alles kostet Geld, Einnahmen kommen über Tickets und Nebengeschäfte.
 
@@ -31,10 +31,24 @@ Bei „Etappe XX“: nur **Abschnitt A (Grundregeln)**, **Abschnitt B (Referenzw
 - Planungs- und Feierabend-Ansichten sind große Overlays (Tabs: Übersicht, Anlagen, Preise, Personal, Marketing, Schnee, Finanzen, Bau). Jede Etappe ergänzt ihren Tab.
 - Neue Tasten: `+`/`-` Zeitfaktor, `Tab` Panel, `B` Büro (Planungs-Overlay jederzeit öffnen; im Betrieb läuft die Zeit weiter, außer bei ×1 pausiert sie nicht automatisch). Bestehende Tasten nicht umbelegen.
 
+**Rahmen (Nutzerentscheidung, gilt für alle offenen Etappen).**
+- **Nur Desktop** (Maus + Tastatur). Keine Handy-/Touch-Anpassungen bauen (der bestehende Mobile-Hinweis aus Etappe 10 bleibt einfach stehen).
+- **Reines Einzelspieler-Spiel, offline.** Keine Ranglisten, kein Online-Vergleich, kein Multiplayer, keine Server. Die fiktiven Konkurrenzgebiete aus Etappe 18 (`G.comp`, Faktor `K`) sind nur ein Teil des Nachfragemodells und bleiben unverändert; es kommen keine neuen Konkurrenz-Features dazu.
+
+**Ablauf jeder Etappe (Schritt für Schritt, immer gleich).**
+1. `CLAUDE.md` ist schon geladen. Aus `MANAGER.md` nur Abschnitt A, B und den Abschnitt der Etappe lesen.
+2. Nur die im Etappen-Abschnitt genannten Quelldateien lesen (bei Bedarf gezielt per `grep` nach Funktionsnamen suchen statt ganze Dateien zu lesen).
+3. Branch `etappe-XX` von aktuellem `main` anlegen.
+4. Umsetzen. Regeln: keine Kommentare im Code, alle Zahlen in `biz/data.js`, Sim bleibt rein (kein DOM/three.js in `sim.js`, `data.js` und den anderen Sim-Modulen), Spielstand bleibt JSON, neue Felder alter Spielstände über `migrate()` in `sim.js` ergänzen.
+5. Prüfen: `node --check` für jede geänderte `.js`-Datei; `node tools/simtest.mjs` (ab Etappe 20b im Repo, Aufruf siehe Etappe 20b) mit `--check`, alle Ziele OK. Playwright-Smoke-Test entfällt (Nutzerwunsch).
+6. Abnahme-Liste der Etappe Punkt für Punkt durchgehen und im Chat abhaken.
+7. In `CLAUDE.md` unter „Stand“ 2–4 Zeilen zur Etappe eintragen (Dateien, Funktionen, wichtigste Zahlen aus dem Simtest), bei neuen Dateien auch „Struktur“ ergänzen.
+8. Commit, Push, Pull Request nach `main`, PR selbst mergen. Danach stoppen: 3–5 Zeilen Zusammenfassung + was der Nutzer im Spiel testen soll.
+
 **Abnahme jeder Etappe (Pflicht).**
-1. Headless-Test der Sim im Scratchpad: Skript `node simtest.mjs` simuliert mindestens 30 Tage mit Standardentscheidungen, gibt Tabelle (Datum, Gäste, Umsatz, Kosten, Kasse, Zufriedenheit, Ruf) aus. Werte plausibel nach Abschnitt B.
-2. Playwright-Smoke-Test: Seite laden, Manager starten, ×20, einen Tag durchlaufen, Feierabend erscheint, keine Konsolenfehler. Screenshot ansehen.
-3. „Freies Fahren“ funktioniert unverändert.
+1. `node tools/simtest.mjs --check` läuft ohne Fehler, alle Balancing-Ziele aus Abschnitt B sind OK (oder die Abweichung ist im Chat begründet).
+2. „Freies Fahren“ funktioniert unverändert (kein `biz`-Code wird geladen).
+3. Alter Spielstand lädt ohne Absturz.
 
 ---
 
@@ -74,7 +88,18 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 **Nebengeschäft je Gast:** Gastro 19 € Umsatz (Marge 38 %), Verleih 18 % der Gäste × 36 €, Skischule 6 % × 75 €, Parkplatz 55 % × 6 €.
 **Investitionen (Spielpreise):** Fleißbahn (Gondel) 4,8 Mio €, Tunnelbahn 3,2 Mio €, Sessellift Hochfleiß 2,4 Mio €, Upgrade Gondel Rossbach auf 10er (+60 % Kapazität) 3,6 Mio €, neue Piste 180.000 €/km, Hütte ausbauen 350.000 €, Parkhaus 900.000 €.
 
-**Balancing-Ziele (prüfen mit `simtest.mjs`):** Saison 1 mit vernünftigem Spiel: 90.000–130.000 Skier-Tage, Umsatz 5–7 Mio €, Gewinn 0,4–1,2 Mio €. Schlechtes Spiel (Preise ×1,5, keine Präparierung) → Verlust und Ruf < 35. Zufriedenheit typisch 60–80.
+**Hinweis Ausbau-Start (nach Etappe 20):** Das Spiel startet nur mit Gondel Rossbach, Piste 10 und Rossbach Alm (Kasse 1,5 Mio €, Personal 19, 1 Pistengerät, 10 Kanonen). Alles Weitere wird gebaut. Die alten Ziele (90–130k Skitage in Saison 1) galten für das voll ausgebaute Gebiet und sind ersetzt.
+
+**Balancing-Ziele (prüfen mit `node tools/simtest.mjs --check`, je 5 Seeds, Mittelwert):**
+| Strategie | Saison 1 | Saison 2 | Saison 3 |
+|---|---|---|---|
+| vernünftig | 55–80k Skitage, Ergebnis nach AfA −0,3 bis +0,5 Mio €, Ø-Z 52–65, Ruf Ende ≥ 48 | 90–125k Skitage, Ergebnis 0 bis +1,0 Mio € | 120–160k Skitage, Ergebnis +0,5 bis +2,0 Mio €, Ø-Z 60–75 |
+| abwarten | Ruf Ende 40–52, Ø-Z ≥ 45, Verlust höchstens −0,6 Mio € | Ergebnis −0,8 bis +0,2 Mio € | keine Insolvenz |
+| gierig | Ruf Ende < 40 | Ruf < 35, Ergebnis < 0 | – |
+| geizig | Ruf Ende < 40 | Ruf < 35, Ergebnis < 0 | – |
+| investor | Kredit ≥ 3 Mio €, keine Insolvenz | – | Ergebnis Saison 3 > vernünftig Saison 3 − 0,5 Mio €, Kredit sinkt ggü. Saison 2 |
+
+Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 3 Mio € Gewinn.
 
 ---
 
@@ -246,6 +271,51 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 
 ---
 
+## Etappe 20b – Testskript ins Repo + Balancing des Spielverlaufs
+
+**Ziel:** Ein dauerhaftes Testskript im Repo, mit dem jede spätere Etappe das Balancing über mehrere Saisonen nachweist. Danach den Spielverlauf so einstellen, dass die erste Saison machbar ist (keine Abwärtsspirale) und das voll ausgebaute Gebiet nicht zu leicht wird (bisher ~6 Mio € Gewinn).
+
+**Ausgangslage:** Das alte `simtest.mjs` lag nur im Scratchpad früherer Sessions und ist verloren. Es muss neu geschrieben werden. Die Sim ist rein (keine DOM-/three.js-Abhängigkeit) und läuft direkt in Node.
+
+**Dateien lesen (nur diese, gezielt):** `src/biz/sim.js` (Exporte `newGame, startDay, tick, nextDay, setPrice, forecast, report`), `src/biz/data.js` (Werte, Projekte `D.build.projects`, Startwerte `D.start`), Signaturen per `grep -n "^export"` in `assets.js` (`repair, inspect, setOpen`), `snow.js` (`setGroom, setGun, groomPlan, gunPlan`), `staff.js` (`hire, fire, setWage, bonus, needs`), `marketing.js` (`act`), `side.js` (`setLevel, toggleHut, setSidePrice`), `build.js` (`check, order, borrow, repay, seasonPL`). Funktionsrümpfe nur lesen, wenn die Signatur nicht reicht.
+
+**Umsetzen:**
+1. **`tools/simtest.mjs` anlegen** (neuer Ordner `tools/`, reines Node-ES-Modul, keine Abhängigkeiten, importiert `../src/biz/*.js`). Keine Kommentare. Es darf `localStorage` nicht benutzen (`save/load` nicht aufrufen).
+2. **Aufruf und Optionen:**
+   - `node tools/simtest.mjs` → alle Strategien, 3 Saisonen, Seeds 1–5, nur Zusammenfassung.
+   - `--strat vernünftig,gierig` Auswahl, `--seasons 2`, `--seeds 1,2,3`, `--days 30` (bricht nach N Spieltagen ab, für schnelle Tests), `--daily` (Tagestabelle zusätzlich), `--check` (Ziele aus Abschnitt B prüfen, Exitcode 1 bei Fehler), `--json datei` (Rohdaten schreiben, z. B. in den Scratchpad).
+3. **Tagesschleife (exakt so):**
+   ```
+   G = newGame(seed)
+   solange Saisonzähler < seasons und nicht G.fin.over:
+     phase 'prep'   → strat.morning(G), startDay(G)
+     phase 'open'   → ev = tick(G, 30); strat.live(G, ev) (z. B. defekte Lifte reparieren)
+     phase 'closed' → strat.evening(G, report(G)), nextDay(G)
+   ```
+   Saisonwechsel erkennen über `G.season`. Schutz gegen Endlosschleifen (max. 200 Tage pro Saison, sonst Fehler). Insolvenz (`G.fin.over`) wird als Ergebnis gemeldet, nicht als Absturz.
+4. **Strategien** (jeweils Objekt mit `morning/live/evening`, Entscheidungen nur über die Exporte der Sim, nie direkt Felder in `G` schreiben außer wo es keine Funktion gibt):
+   - **vernünftig:** Startpreise; baut in Saison 1 sobald bezahlbar (Kasse ≥ Preis + 300 k€ Reserve, sonst Kredit bis 2 Mio): Gondel Schareck → Piste 4 → Piste 5 → Panoramarestaurant Schareck; im Sommer nach Saison 1 Panoramabahn + Piste 1 + 5a + 2, nach Saison 2 Tunnelbahn + Fleißbahn + Pisten 11/12; Defekte sofort reparieren (Express bei Rossbach), Inspektion bei Zustand < 72 %; Präparierung aller offenen Pisten; Beschneiung 10 h wenn Nacht ≤ −4 °C und Schnee < 70 cm; Personal nach `needs` (fehlende Köpfe einstellen, Überhang am Saisonende abbauen); Marketing Social + Radio ab Saison 2; Hütten Preisniveau normal; Kredit tilgen, wenn Kasse > 1,5 Mio.
+   - **abwarten:** Startpreise, baut nichts, repariert normal, präpariert, Personal nach Bedarf, kein Marketing.
+   - **gierig:** wie vernünftig, aber alle Ticketpreise ×1,5, Hütten gehoben, Parkgebühr ×2.
+   - **geizig:** Startpreise, keine Präparierung, keine Beschneiung, keine Inspektion, Reparatur nur normal, Personal am Saisonbeginn auf Mindestbesetzung (Liftpersonal 9, Rettung 1, Technik 1), Lohn 90 %.
+   - **investor:** wie vernünftig, aber baut alles so früh wie möglich mit Kredit (Rahmen voll ausnutzen, auch „sofort“ statt „Im Sommer“), tilgt ab Saison 3.
+5. **Ausgabe:** je Strategie und Saison eine Zeile (Mittel über Seeds, dahinter Min–Max): Skitage, Umsatz, Kosten, Ergebnis nach AfA (`seasonPL`), Kasse, Kredit, Ø-Z, Ruf Ende, Defekte, Unfälle, max. Spitzenwartezeit, Insolvenzen, gebaute Projekte (Kürzel + Saisontag). Bei `--daily`: Datum, Gäste, Umsatz, Kosten, Kasse, Z, Ruf, Wartezeit. Bei `--check`: Tabelle Ziel / Ist / OK|FAIL.
+6. **Laufzeit:** 5 Strategien × 5 Seeds × 3 Saisonen müssen in < 3 min durchlaufen. Wenn zu langsam: Seeds-Standard auf 3 senken, nicht die Sim verfälschen.
+7. **Balancing** gegen die Ziele in Abschnitt B (neue Tabelle): Werte **nur in `biz/data.js`** ändern. Nur wenn ein Ziel mit Werten allein nicht erreichbar ist, Formel minimal im betroffenen Sim-Modul anpassen und im Chat begründen. Erst messen, dann je Durchgang höchstens 2–3 Stellschrauben ändern, erneut messen. Typische Hebel:
+   - Saison 1 zu hart (Ruf fällt, Z ~42): Untergrenze Angebots-Faktor (bisher 0,12) und Angebots-Teilnote (100·Anteil^0,45) für das kleine Startgebiet, Startnachfrage, Startpreise.
+   - Spätes Spiel zu leicht (~6 Mio Gewinn): Betriebskosten der großen Lifte (Wartung/Personal/Strom je Lift), Verwaltung je Lift, Hütten-Betriebskosten/Marge, Nebengeschäfts-Kosten, Abschreibungsdauer, Nachfrage-Faktor > 1 bei Angebot über Basis.
+   - „gierig“/„geizig“ müssen sichtbar scheitern.
+8. **Dokumentation:** In `CLAUDE.md` unter „Tests“ eintragen, dass das Skript jetzt in `tools/simtest.mjs` liegt (alte Hinweise auf Scratchpad ersetzen), Aufruf und Optionen in einer Zeile, Ergebnis-Tabelle (vernünftig/abwarten/gierig/geizig/investor, Saison 1–3) knapp unter „Stand“.
+
+**Abnahme:**
+- `node --check tools/simtest.mjs` und alle geänderten Dateien ok.
+- `node tools/simtest.mjs --days 30 --strat vernünftig --daily` läuft und zeigt plausible Tage.
+- `node tools/simtest.mjs --check` (alle Strategien, 3 Saisonen) → alle Ziele OK.
+- Saisonwechsel wird 2× ohne Fehler durchlaufen (Werte wie Ruf, Kasse, Kredit, Bauprojekte werden übernommen).
+- Im Browser: Manager startet, ein Tag ×20 läuft (manuell durch den Nutzer, kein Playwright).
+
+---
+
 ## Etappe 21 – Saisonzyklus, Sommer-Skip, Jahre, Ziele
 
 **Ziel:** Langzeitspiel über mehrere Saisonen.
@@ -282,8 +352,74 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 1. Dashboard-Tab **Übersicht**: Liniendiagramme (Canvas, keine Bibliothek) für Gäste, Umsatz/Kosten, Zufriedenheit, Ruf über die Saison. KPI-Kacheln (Umsatz pro Gast, Kosten pro Skier-Tag, Auslastung, Gewinn bis heute vs. Vorjahr).
 2. Panel überarbeiten: konfigurierbar (Kennzahlen an/aus), kompakte Ansicht.
 3. Tutorial für den ersten Tag (Schritt-für-Schritt-Hinweise: Preise, Lifte öffnen, Panel lesen, Feierabend, Schnee-Tab), überspringbar.
-4. Balancing mit `simtest.mjs`: Strategien „vernünftig“, „gierig“ (Preise hoch), „geizig“ (keine Präparierung, kein Personal), „Investor“ (viel Kredit) über 3 Saisonen; Ziele aus Abschnitt B erreichen, Werte in `data.js` anpassen.
-5. Performance: Sim bei ×20 < 1 ms pro Frame. Mobile: Panel einklappbar, Buttons ≥ 40 px.
+4. Feinbalancing mit `tools/simtest.mjs` (Grundlage aus Etappe 20b) inkl. der neuen Systeme aus 21/22 (Ereignisse, Szenarien): Ziele aus Abschnitt B weiter erreichen, Szenarien „Sanierung“ und „Expansion“ als eigene Simtest-Läufe.
+5. Performance (nur Desktop): Sim bei ×20 < 1 ms pro Frame; 3D bei ×20 mit allen Gästen als Figuren (Weihnachten, ~1.900 Gäste) ≥ 45 FPS auf Mittelklasse-PC, sonst Figuren fern stärker zusammenfassen. Panel einklappbar bleibt (`Tab`), keine Touch-Anpassung.
 6. Fehlerprüfung: alter Spielstand mit fehlenden Feldern lädt ohne Absturz (Migration über `version`).
 
 **Abnahme:** Neuer Spieler versteht die erste Saison ohne Anleitung von außen. Alle drei Szenarien sind schaffbar, „gierig“ und „geizig“ scheitern.
+
+---
+
+## Etappe 24 – Manager in 3D: Anklicken, Status-Symbole, Vogelperspektive
+
+**Ziel:** Das Gebiet wird in der 3D-Welt gemanagt, nicht nur im Panel.
+
+**Dateien:** `src/biz/bridge.js`, `src/biz/ui.js`, `src/camera.js` (Flugmodus `startFly/endFly`), `src/lift.js`, `src/pistes.js`, `src/scenery.js` (Hütten), `src/main.js` (Eingabe/Loop). Nur Exporte und betroffene Funktionen lesen.
+
+**Umsetzen:**
+1. **Manager-Kamera** (Taste `V`, nur Manager): Vogelperspektive über dem Gebiet, baut auf dem Flugmodus auf. Steuerung: WASD/Bildschirmrand verschieben, Mausrad Höhe (300–4.000 m), rechte Maus drehen, Doppelklick auf Objekt = hinfliegen. `V` erneut = zurück zum Fahrer. Fahrer steht derweil still (Physik pausiert, Sim läuft weiter).
+2. **Anklicken** (Raycast, in Manager-Kamera und beim Fahren mit gehaltener Taste `Alt`): Lift (Station, Seil, Kabine), Piste (Gelände in der Pistenmaske oder Schild), Hütte. Öffnet eine kleine **Objektkarte** am Mausort: Name, Status, Zustand, Wartezeit/Auslastung bzw. Schnee/Qualität bzw. Plätze/Wartezeit, Knöpfe (Öffnen/Schließen, Reparieren, Inspektion, Präparieren, Beschneien, Preisniveau). Aktionen nur über die vorhandenen Sim-Funktionen.
+3. **Status-Symbole** über Stationen und Hütten (Sprites, immer lesbar, Größe nach Entfernung begrenzt): Wartezeit in Minuten mit Farbe grün/gelb/rot, Werkzeug-Symbol bei Defekt, Schloss bei gesperrt, Kran bei Baustelle, Wind-Symbol bei Sturm. In Fahrer-Ansicht nur im Umkreis 1,5 km, in Manager-Kamera alle. Taste `H` blendet Symbole aus.
+4. **Pisten-Overlay** in Manager-Kamera (Taste `O` wechselt): aus / Zustand (grün→rot nach `cond`) / Schneehöhe / Gedränge (Gäste je km). Umsetzung über die vorhandene Terrain-Uniform `pSurf` bzw. eine zusätzliche Farbe je Pistenindex, kein neues Mesh.
+5. Bauprojekte: Klick auf geplante Trasse/Baustelle zeigt Projektkarte (Kosten, Dauer, Nutzen, „Bauen“ / „Im Sommer“).
+
+**Abnahme:** In der Manager-Kamera lassen sich ein Lift reparieren, eine Piste sperren und eine Hütte auf „gehoben“ stellen, ohne das Büro (`B`) zu öffnen. Symbole stimmen mit dem Panel überein. Freies Fahren unverändert (Taste `V` dort ohne Wirkung).
+
+---
+
+## Etappe 25 – Tageslicht und Atmosphäre
+
+**Ziel:** Man sieht, wie der Tag vergeht und wann Nacht ist.
+
+**Dateien:** `src/world.js` (`SUN`, Licht, Himmel), `src/weatherfx.js`, `src/panorama.js` (nur Schnittstelle `shade`/gebackene Schatten), `src/biz/bridge.js`, `src/scenery.js`, `src/lift.js`.
+
+**Umsetzen:**
+1. **Licht nach Uhrzeit** (Manager: Sim-Uhr; Freies Fahren: unverändert Mittag): Farbe und Stärke von Sonne, Hemisphäre und Himmel/Dunst über eine Kurve 08:30 → 12:30 → 16:30 (morgens kühl-bläulich, mittags neutral, ab 15:30 warm-golden, 16:30 Dämmerung). Der Sonnenstand bleibt fest, weil die Bergschatten gebacken sind; nur Farbe/Intensität und Himmelsfarbe ändern. Zusammenspiel mit dem Wetter aus `weatherfx` (Wetter dämpft, Uhrzeit färbt). Werte in einer Tabelle in `world.js` oder `data.js`.
+2. **Feierabend-Stimmung:** in Phase `closed` Dämmerlicht, Fenster der Hütten und Stationen leuchten, Lichterketten an offenen Hütten.
+3. **Nachtszene beim Tageswechsel** (überspringbar mit Leertaste/Klick, Option im Menü „Nachtszene an/aus“): 6–8 s Dunkelheit mit Mondlicht, Pistengeräte mit Scheinwerfern fahren auf den präparierten Pisten (Anzahl = eingesetzte Geräte), Schneekanonen mit Sprühnebel an beschneiten Pisten, danach Morgengrauen → Vorbereitung. Pistengeräte als einfaches Modell (Kasten + Schild + Fräse), Pfad entlang der Pistenpunkte.
+4. **Besondere Tage:** 24.12. Lichter/Christbaum an der Talstation, 31.12. Feuerwerk über dem Ort bei Feierabend (Partikel), Ostern kleiner Hinweis im Panel. Rein optisch.
+
+**Abnahme:** Ein Tag bei ×20 zeigt sichtbar Morgen-, Mittags- und Abendlicht; die Nachtszene erscheint mit der richtigen Anzahl Pistengeräte und lässt sich überspringen; FPS bleibt im Rahmen von Etappe 23.
+
+---
+
+## Etappe 26 – Berater, Rückmeldung, Meilensteine
+
+**Ziel:** Der Spieler versteht jederzeit, warum etwas passiert und was er tun kann.
+
+**Dateien:** `src/biz/satisfaction.js`, `src/biz/ui.js`, neue `src/biz/advisor.js` (rein, ohne DOM), `src/biz/data.js`, `src/biz/sim.js` (nur Aufruf und Spielstand-Felder).
+
+**Umsetzen:**
+1. **`biz/advisor.js`:** Regeln (in `data.js`: Bedingung, Text-Vorlage, Vorschlag, Priorität, Abklingzeit), ausgewertet stündlich und bei Feierabend. Beispiele: Wartezeit Rossbach > 20 min → „Gäste stehen lange an der Gondel Rossbach. Kassa ist schnell genug, Engpass ist der Lift: Express-Wartung vermeiden, 10er-Ausbau prüfen.“; Teilnote Qualität < 50 → Präparierung/Beschneiung; Moral < 50 → Lohn/Prämie; Kasse reicht < 10 Tage; Lawinenstufe ≥ 4 und Rettung knapp; Projekt mit bestem Nutzen/Kosten verfügbar. Jede Meldung mit Knopf, der direkt den passenden Tab/die Objektkarte öffnet.
+2. **„Warum?“ im Panel:** Neben Zufriedenheit und Gästen ein kleines Fragezeichen → zeigt die 2 stärksten Ursachen (größte Abweichung der Teilnoten bzw. Nachfragefaktoren ggü. Vortag) in einem Satz.
+3. **Meilensteine** (Liste in `data.js`, gespeichert in `G.goals`): z. B. erster Gewinn-Tag, 1.000 Gäste an einem Tag, Ruf 70, Gondel Schareck gebaut, Fleißtal erschlossen, Saison ohne Unfall, 3 Saisonen ohne Verlust. Einblendung als Toast mit kleinem Sound, Übersicht im Tab Übersicht. Nur Einzelspieler, keine Ranglisten.
+4. **Saisonziele:** zu Saisonbeginn 3 Ziele passend zum Stand (z. B. „Ø-Zufriedenheit ≥ 65“, „Piste 5 bauen“, „Kredit unter 2 Mio“), Belohnung kleiner Ruf-/Kassenbonus. Fortschritt im Panel.
+5. `tools/simtest.mjs`: Anzahl Beratermeldungen je Saison und erreichte Meilensteine je Strategie mit ausgeben (soll bei „geizig“ deutlich mehr Warnungen zeigen).
+
+**Abnahme:** Bei künstlich erzeugtem Engpass (Rossbach-Defekt im Simtest bzw. im Spiel) erscheint innerhalb einer Spielstunde ein passender Hinweis mit funktionierendem Knopf. Meilensteine werden gespeichert und nach Neuladen nicht doppelt vergeben.
+
+---
+
+## Etappe 27 – Sound und Rückmeldung
+
+**Ziel:** Das Spiel klingt lebendig, wichtige Ereignisse hört man.
+
+**Dateien:** `src/audio.js`, `src/biz/bridge.js`, `src/biz/ui.js`.
+
+**Umsetzen:**
+1. Alle Klänge per WebAudio synthetisch erzeugen (keine Audiodateien nötig): Kasse/Münzen (Ertrag bei Feierabend, Kauf), Störung (Warnton), Meldung (sanftes Pling), Meilenstein (kurze Fanfare), Tagesbeginn (Glocke), Feierabend (Glocke tiefer), Klick auf Knöpfe.
+2. Umgebung abhängig von der Kameraposition: Stimmengewirr an Talstation/Hütten nach Anzahl Gäste in der Nähe, Liftmotor an Stationen, leise Hüttenmusik (einfache synthetische Melodie) nahe offener Hütten, Wind nach Wetter (`G.weather`), Pistengeräte in der Nachtszene.
+3. Lautstärke-Regler im Menü: Gesamt, Effekte, Umgebung; Speicherung in localStorage. `M` schaltet weiterhin alles stumm.
+4. Bei hohem Zeitfaktor (×10/×20) Meldungsklänge zusammenfassen (max. 1 pro Sekunde).
+
+**Abnahme:** Jeder genannte Klang ist auslösbar, Regler wirken und bleiben nach Neuladen erhalten, kein Knacken/Übersteuern bei ×20.

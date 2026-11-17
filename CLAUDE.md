@@ -1,6 +1,6 @@
 # Heiligenblut Ski – Projektregeln
 
-3D-Ski-/Snowboard-Spiel im Skigebiet Heiligenblut am Großglockner (Kärnten), im Browser spielbar.
+3D-Ski-/Snowboard-Spiel im Skigebiet Heiligenblut am Großglockner (Kärnten), im Browser spielbar. **Nur Desktop** (Maus + Tastatur, keine Handy-/Touch-Anpassungen) und **reines Einzelspieler-Spiel offline** (keine Ranglisten, kein Online, kein Multiplayer).
 
 ## Technik
 - Kein Node, kein Vite, kein Build. Reine ES-Module in `src/`, Three.js per importmap (CDN jsdelivr, Version 0.170.0) in `index.html`.
@@ -11,8 +11,8 @@
 ## Arbeitsweise
 - Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`, PR selbst direkt mergen. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
 - Nächste Etappe erst nach "weiter" bzw. "Etappe XX". Vorher diese Datei aktualisieren.
-- Playwright-Smoke-Test entfällt immer (Nutzerwunsch, dauert zu lange); nur `node --check` + `simtest.mjs`.
-- Bei "Etappe XX" (ab 12): `MANAGER.md` lesen – nur Abschnitt A (Grundregeln), B (Referenzwerte) und den Abschnitt der Etappe. Genau das umsetzen, Abnahme-Liste dort prüfen, dann Stand hier eintragen.
+- Playwright-Smoke-Test entfällt immer (Nutzerwunsch, dauert zu lange); nur `node --check` + `node tools/simtest.mjs --check` (Skript ab Etappe 20b im Repo; bis dahin existiert es nicht).
+- Bei "Etappe XX" (ab 12, auch "20b"): `MANAGER.md` lesen – nur Abschnitt A (Grundregeln + „Ablauf jeder Etappe“), B (Referenzwerte + Balancing-Ziele) und den Abschnitt der Etappe. Genau das umsetzen, Abnahme-Liste dort prüfen, dann Stand hier eintragen. Branch heißt `etappe-XX` (z. B. `etappe-20b`).
 - Nach jeder Etappe muss das Spiel lauffähig bleiben.
 
 ## Etappen
@@ -38,9 +38,16 @@
 18. Marketing, Zielgruppen, Konkurrenz.
 19. Nebengeschäfte: Hütten, Verleih, Skischule, Parkplatz.
 20. Investitionen, Kredite, Ausbau (Fleißtal-Lifte).
+20b. Testskript `tools/simtest.mjs` ins Repo (Strategien, mehrere Saisonen, `--check`) + Balancing des Spielverlaufs (Saison 1 machbar, Endausbau nicht zu leicht).
 21. Saisonzyklus (1. Dez bis Ostermontag/6. Apr), Sommer-Skip, mehrere Jahre, Szenarien.
 22. Ereignisse und Entscheidungen.
-23. Dashboard, Tutorial, Balancing.
+23. Dashboard, Tutorial, Feinbalancing, Performance (nur Desktop).
+24. Manager in 3D: Manager-Kamera (V), Objekte anklicken mit Objektkarte, Status-Symbole über Anlagen, Pisten-Overlay.
+25. Tageslicht nach Uhrzeit, Feierabend-Stimmung, Nachtszene mit Pistengeräten/Beschneiung, besondere Tage.
+26. Berater mit Ursachen und Vorschlägen, „Warum?“ im Panel, Meilensteine, Saisonziele (nur Einzelspieler).
+27. Sound: synthetische Effekte, Umgebungsklang nach Kameraposition, Lautstärke-Regler.
+
+Reihenfolge: 20b → 21 → 22 → 23 → 24 → 25 → 26 → 27.
 
 ## Stand
 - Etappe 1: fertig, gemergt (PR #1).
@@ -82,7 +89,7 @@
 - Ausbau-Start (nach Etappe 20, Nutzerwunsch): Manager startet nur mit Gondel Rossbach + Piste 10 Talabfahrt + Rossbach Alm (Personal 19, 1 Pistengerät, 10 Kanonen auf 10, Startkasse 1,5 Mio). Alles andere sind Bauprojekte in `D.build.projects`: Lifte `schareck`, `panorama`, `tunnelbahn`, `fleissbahn`, `hochfleiss`; Pisten `p4/p5/p5a/p2/p1/p11/p12/p11a` (je `needs` Lift); Hütten `new:schareck/new:spatzl/new:fleiss` (`hut`, `G.side.huts[id].own`). Alte Spielstände: `build.v` 2, `legacy()` hakt Vorhandenes ab. Nachfrage-/Angebotsreferenz = Basis ohne Fleißtal (`exp`), Angebots-Faktor [0,12; 0,88], Angebots-Teilnote 100·Anteil^0,45. Lift ohne Ausgang am Ziel wird im Flow nicht genutzt; Lift an Talstation vorübergehend zu → Gäste warten (`f.hold`, 0,8 %/min geben auf). Verwaltung 1.400 € + 600 €/Lift. 3D: `lift.removeSection` auch für Basis-Sektionen (Stationen ausgeblendet), `pistes.setBuilt(id, on)` blendet Stangen/Netze/Schilder/Kollision aus, Terrain-Pistenmaske aus bei `pSurf.x < −0,5`. Bau-Tab sortiert (im Bau, verfügbar, gesperrt, fertig). Fix: `build:hut:…`-Aktion wurde falsch geparst. Simtest Start (Preis −20 %): ~32–38k Skitage, Ergebnis 0,2–0,7 Mio, Z ~42, Ruf → 25–44; mit Schareck + Pisten 4/5 + Restaurant: Saison 1 ~70k, Saison 2 ~100–110k Skitage.
 - Gäste 1:1 (Nutzerwunsch): Jede Person der Sim ist eine Figur in 3D. `biz/people.js`: `out(f,key,v)` zählt je Abteil (Kassa, Warten, Liftschlange, Kabinenfahrt, Piste, Hüttenschlange, Hütte) die FIFO-Abgänge in `f.out`; `each(f, cb)` liefert ganze Personen mit fester Ordnungszahl (Identität, Kleidung per Hash), Minuten-Bucket und Lage im Bucket; `count(f)` = Panel „Gäste jetzt“ (= Figuren). `crowd.setSource(fn)` (Bridge im Manager): Pisten-Fahrer laufen nach Sim-Fortschritt (+ Bruchteil der Minute `clock().frac`), Schlangen-Raster an der Talstation/Portal, Kassa seitlich, Kabinen-Fahrgäste in nächster Kabine, Hütte: Schlange seitlich + Plätze auf Terrasse; Tunnel unsichtbar. Freies Fahren behält die alten Gruppen. Lifte: `lift.pace` (Spielminuten/s) → Kabinentempo = Länge/Fahrzeit der Sim (×Zeitfaktor), Kabinenabstand so, dass ≤ 6 Personen/Kabine (`ride·cap/360` Kabinen bergauf).
 - Flugmodus (Admin): F = fliegen/landen (Landung auf Gelände unter Kamera, Blickrichtung = Fahrtrichtung, wird neuer R-Startpunkt). Flug: WASD, Leertaste/E hoch, Shift/Q runter, Strg ×4, Mausrad Tempo 5–400 m/s, Linksklick + Maus = Blick. In `camera.js` (`startFly/endFly`, `mode` 'fly'). FPS-Anzeige jetzt Taste I.
-- Tests: `simtest.mjs` (Scratchpad, Node) und Playwright-Smoke; jsdelivr ist in der Session gesperrt → Three per `npm pack three@0.170.0` lokal und `page.route` umleiten. SwiftShader rendert ~1 FPS, Sim holt Frames bis 1 s nach.
+- Tests: altes `simtest.mjs` lag nur im Scratchpad und ist verloren → wird in Etappe 20b als `tools/simtest.mjs` neu angelegt. Playwright entfällt (Nutzerwunsch).
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
