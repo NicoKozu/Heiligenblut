@@ -10,7 +10,8 @@
 
 ## Arbeitsweise
 - Genau eine Etappe pro Durchgang. Danach: Branch `etappe-N`, Commit, Push, Pull Request nach `main`, PR selbst direkt mergen. Dann stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
-- Nächste Etappe erst nach "weiter". Vorher diese Datei aktualisieren.
+- Nächste Etappe erst nach "weiter" bzw. "Etappe XX". Vorher diese Datei aktualisieren.
+- Bei "Etappe XX" (ab 12): `MANAGER.md` lesen – nur Abschnitt A (Grundregeln), B (Referenzwerte) und den Abschnitt der Etappe. Genau das umsetzen, Abnahme-Liste dort prüfen, dann Stand hier eintragen.
 - Nach jeder Etappe muss das Spiel lauffähig bleiben.
 
 ## Etappen
@@ -24,6 +25,21 @@
 8. Welt: Bäume (Lärchen/Fichten), Hütten (Rossbach Klause, Schareck, Fleißalm), Liftmasten, Spurrillen, Schneestaub.
 9. Panorama: Großglockner als Skybox (Fotos aus `public/` falls vorhanden, sonst prozedural).
 10. Feinschliff: Startmenü (Ski/Snowboard, Piste), Ego-Kamera, Sound optional, ~60 FPS, Mobile-Hinweis, Fehlerprüfung.
+11. Freie Kamera (fertig).
+
+### Manager-Modus (Details in `MANAGER.md`)
+12. Spielkern: Zeit (Tag 08:30–16:30 = 60 min bei ×1, Faktor ×1/2/5/10/20), Tagesphasen Vorbereitung → Betrieb → Feierabend, Spielstand, rechtes Manager-Panel.
+13. Gäste, Tickets, Lift-Warteschlangen.
+14. Anlagen: Zustand, Defekte, Öffnen/Schließen, Reparatur (auch in 3D sichtbar).
+15. Zufriedenheit und Ruf (Hauptindikator).
+16. Schnee, Wetter, Präparierung, Beschneiung.
+17. Personal.
+18. Marketing, Zielgruppen, Konkurrenz.
+19. Nebengeschäfte: Hütten, Verleih, Skischule, Parkplatz.
+20. Investitionen, Kredite, Ausbau (Fleißtal-Lifte).
+21. Saisonzyklus (1. Dez bis Ostermontag/6. Apr), Sommer-Skip, mehrere Jahre, Szenarien.
+22. Ereignisse und Entscheidungen.
+23. Dashboard, Tutorial, Balancing.
 
 ## Stand
 - Etappe 1: fertig, gemergt (PR #1).
@@ -45,7 +61,7 @@
 - 3D-Modelle: `src/assets.js` lädt `public/models/spruce.glb` (4 Fichten aus Quaternius „Ultimate Stylized Nature“, CC0, via GitHub-Kopie walterpalladino/godot-quaternius-ultimate-stylized-nature; FBX→GLB im Scratchpad `conv/trees.mjs`, Höhe 1, Nadelkarten `spruce_leaves.png`) und `figure.glb` (three.js-Beispiel Xbot, Mixamo-Rig, Animationen entfernt). Bäume: Detailstufe im Umkreis `DET` 170 m als dynamische InstancedMesh-Pools (Fichte grün + Schnee nach Normalen, Lärche braun/licht), Kegelbäume dort per Shader (`hider`, auch Schattenpass) ausgeblendet. Fahrer: Skelett per Richtungs-Aim je Knochen (`rig().aim`) aus tuck/brake/ctrl gepost, Kleidung per Shader nach Bind-Pose-Höhe, Ski/Stöcke bzw. Board separat. Gutschrift im Menü.
 - Welt-Details aus OSM (API 0.6, Abruf 16.11.2026; Skript `gen_osm.py` im Scratchpad): `public/osm.json` (Gebäude [Typ, Höhe, Grundriss], Fels-/Geröllflächen, Felswände, Latschenflächen, Zäune/Schneezäune); OSM-Waldflächen in `forest.png` eingerechnet. `src/props.js`: ~1.240 Gebäude als Instanzen (Grundriss → OBB, Steinsockel bis Hang, weiß/Holz-Obergeschoss, Satteldach mit Schnee per Normalen-Shader, Fenster, Balkone, Kamine; Stadel aus Holz; Kirche St. Vinzenz mit Turm + Spitzhelm, Kapellen mit Dachreiter), ~66k Felsen (Felswände, Geröll, Steilhänge, Hochlagen), Latschenfelder 1.650–2.450 m, Zäune. Chunks 600 m mit Ebenen body/big/detail/small (Sichtweite 6 km/3,5 km/0,9 km/1,1 km). Kollision Gebäude + Felsen > 1,1 m (Sturz ab 7 m/s). Bäume: Raster 10 m, Waldgrenze bis 2.320 m, vereinzelte Bäume auch außerhalb der Waldmaske, nicht in Gebäuden (`props.blocked`).
 - Leben auf der Piste: `src/crowd.js` – ~45 Gruppen (~100 Personen): Familien (Kinder klein, Schneepflug), Skischulen (Lehrer rot + Kinder orange im Gänsemarsch), Paare, Carver, Racer (Hocke), Snowboard-Crews/-Solo. Gebietsgraph aus Liftstationen (Knoten) + Pisten mit Start/Ende an Knoten (4, 5, 5a, 1, 2, 10; nicht 8/11/12). Gruppe fährt eine „Etappe“: Ausstieg → Piste(n) (Kurven als Sinus quer zur Linie, Tempo nach Gefälle/Typ, Pausen) → Talstation → wartet auf freie Kabine → fährt sichtbar in der Gondel → Ausstieg oben. Nah (120 m) geriggte Figuren (Pool 10 Ski/5 Board, `dress()` in `models.js`), fern Instanz-Figuren bis 2,6 km. Kollision mit Spieler (Sturz ab 6 m/s rel.). `lift.js` liefert `cabinAt, cabinU, rideCabin`.
-- Etappen 1–10 fertig. Ideen danach: Touch-Steuerung, Zeitrennen/Bestzeiten, weitere Pisten/Lifte (Fleißbahn, Tunnelbahn), Tageszeit.
+- Etappen 1–11 fertig. Als Nächstes: Manager-Modus, Etappe 12 (siehe `MANAGER.md`).
 - Empfehlung: pro Etappe neuen Chat starten (spart Tokens).
 
 ## Struktur
@@ -76,6 +92,7 @@
 - `src/audio.js` – `createAudio()` → `{ init, update(state, ctrl, paused), toggle, pause }`
 - `src/config.js` – Gebietsdaten, `get(url, type)` (fetch mit Statusprüfung), `image(url)`, `texture(url)` (sRGB, flipY aus)
 - `public/` – eigene Assets (Fotos etc.)
+- `MANAGER.md` – Spezifikation Manager-Modus (Etappen 12–23), `src/biz/` – Simulation (ab Etappe 12)
 
 ## Gebietsdaten
 Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoehen.de, Skiclub-Pistenplan (PDF), Skimagazin Heiligenblut 2025/26. skiresort.info und bergfex waren aus der Session nicht direkt abrufbar.
