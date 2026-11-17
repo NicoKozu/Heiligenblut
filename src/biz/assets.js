@@ -19,6 +19,12 @@ export function pay(G, k, v) {
   }
 }
 
+export function ev(G, t, id, n) {
+  if (!G.ev) G.ev = [];
+  G.ev.push({ s: G.summer ? G.summer.sy : G.season, t, id, n });
+  if (G.ev.length > D.summer.evMax) G.ev.shift();
+}
+
 export function log(G, text, lvl = 'info') {
   G.log.push({ date: G.date, min: G.min, text, lvl });
   if (G.log.length > D.logMax) G.log.shift();

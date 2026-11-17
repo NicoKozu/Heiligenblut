@@ -11,6 +11,7 @@ import { GROUPS, duty, needs, wages, heads, dayCost, pendingOf, nextArrival, bon
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
 import * as X from './side.js';
 import { finTab, buildTab, overView } from './ui-build.js';
+import { seasonView, summerView, drawSeason } from './ui-season.js';
 import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
@@ -34,6 +35,8 @@ const CSS = `
 #biz-over .card{width:min(680px,100%);max-height:100%;overflow:auto;box-sizing:border-box;padding:20px 24px;background:rgba(12,32,54,.9);border:1px solid rgba(255,255,255,.15);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
 #biz-over h1{margin:0;font-size:26px}
 #biz-over h2{margin:16px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.65;font-weight:600}
+#biz-over .cap{font-size:12px;opacity:.7;margin:8px 0 2px}
+#biz-over canvas[data-sc]{width:100%;height:120px;display:block}
 #biz-over .sub{opacity:.75;margin:2px 0 0}
 #biz-over .tabs{display:flex;gap:4px;margin:14px 0 4px;flex-wrap:wrap}
 #biz-over .tabs button{font:inherit;font-size:13px;color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 10px;cursor:pointer}
@@ -451,6 +454,7 @@ export function createUI(h) {
   }
 
   function chart(G) {
+    for (const cv of over.querySelectorAll('canvas[data-sc]')) { const sn = G.seasons?.find(x => x.sy === +cv.dataset.sy); if (sn) drawSeason(cv, sn); }
     const pc = over.querySelector('canvas[data-chart="pie"]');
     if (pc) pie(pc);
     const cv = over.querySelector('canvas[data-chart="rep"]');
@@ -489,7 +493,7 @@ export function createUI(h) {
       (body(G) || overview(G)) + '<div class="go"><button data-act="close">Schließen (B)</button></div>';
   }
 
-  const views = { prep, daily, office, over: G => overView(G, H()) };
+  const views = { prep, daily, office, over: G => overView(G, H()), season: G => seasonView(G, H()), summer: G => summerView(G, H(), tabs(), body(G)) };
 
   return {
     render(G) {

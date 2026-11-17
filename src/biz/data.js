@@ -62,6 +62,7 @@ export const D = {
   express: { cost: 1.8, time: 0.5 },
   inspect: { cost: 4000, gain: 8, min: 120 },
   night: 960,
+  summer: { adminDays: 20, interestDays: 240, revTarget: 95, revPerKw: 4, evMax: 400, keep: 12 },
   pisteStart: { cond: 80, snow: 80 },
   logMax: 60,
   admin: 1400, adminLift: 1600,

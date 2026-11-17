@@ -1,5 +1,5 @@
 import { D } from './data.js';
-import { log, initAssets } from './assets.js';
+import { log, ev, initAssets } from './assets.js';
 import { ensureKeys } from './flow.js';
 import { initSnow, startSnow, cannons } from './snow.js';
 import { seasonOf } from './calendar.js';
@@ -81,6 +81,7 @@ function complete(G, j) {
   const id = j.id, p = P[id];
   G.build.jobs = G.build.jobs.filter(x => x !== j);
   G.build.done.push(id);
+  ev(G, 'build', id, 1);
   if (j.left != null) closures(G, id, false);
   applyDone(G, id);
   initAssets(G);

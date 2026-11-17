@@ -326,8 +326,9 @@ Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenhe
 1. Saisonende (Ostermontag bzw. spätestens 6. April): Saisonbilanz-Bildschirm (Skier-Tage, Umsatz, Gewinn, Ø-Zufriedenheit, Ruf, Vergleich zur Vorsaison, beste/schlechteste Tage).
 2. **Sommer-Planung** (ein Bildschirm statt Tage): Revision der Lifte (Kosten nach Zustand, setzt auf 95 %), Bauprojekte laufen durch, Personal für die nächste Saison planen, Preise festlegen, Frühbucher-Saisonkarten verkaufen (Menge = f(Ruf, Preis)), Sommer-Fixkosten (Verwaltung, Zinsen) pauschal verbuchen. Button „Saison 20XX/YY starten“ → 1. Dezember.
 3. Vorsaison: Saisonstart erst, wenn genug Schnee (natürlich oder Grundbeschneiung ab November als Kostenblock planbar).
-4. Ziele/Szenarien beim neuen Spiel: „Freies Spiel“, „Sanierung“ (Startkasse 300.000 €, Ruf 35, Zustand 55 %, Ziel: 3 Saisons ohne Verlust), „Expansion“ (Ziel: Fleißtal-Lifte in 2 Saisons). Schwierigkeit Leicht/Normal/Schwer (Nachfrage ±15 %, Defektrate ±40 %).
-5. Mehrere Spielstände (3 Slots).
+4. Entfällt (Nutzerentscheidung): keine Szenarien, keine Schwierigkeit, keine Slots.
+
+**Umgesetzt (Etappe 21):** Saisonbilanz mit Verlauf, Bau/Personal/Finanzen, Sommerplanung (Revision, Bau, Personal, Preise), Fixkosten pauschal beim Saisonstart. Vorsaison-Schnee (Punkt 3) nicht umgesetzt.
 
 **Abnahme:** Kompletter Zyklus Dez → Apr → Sommer → Dez ohne Fehler, Werte werden korrekt übernommen. `simtest.mjs` simuliert 2 volle Saisonen.
 
