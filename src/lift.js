@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { consume, down } from './input.js';
+import { D } from './biz/data.js';
+
+const RIDE = Object.fromEntries(D.lifts.map(l => [l.id, l]));
 
 const GAUGE = 3;
 const ROPE = 5.4;
@@ -104,7 +107,7 @@ function buildSection(sec, terrain, base, avoid) {
   }
 
   const towers = tw.slice(1, -1).map(t => ({ x: ax + dx * t.s, z: az + dz * t.s, y: t.y, g: terrain.heightAt(ax + dx * t.s, az + dz * t.s) }));
-  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: sec.tunnel ? 0 : Math.floor(L / SPACING), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
+  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: sec.tunnel ? 0 : Math.floor(L / Math.min(SPACING, RIDE[sec.id] ? cum[upEnd] / Math.ceil(RIDE[sec.id].ride * RIDE[sec.id].cap / 360) : SPACING)), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
 }
 
 export function createLift(terrain, pistes, exp) {
@@ -318,13 +321,14 @@ export function createLift(terrain, pistes, exp) {
   function update(dt, state, player, goTo) {
     state.hint = '';
     for (const sec of sections) {
-      const want = stop.has(sec.name) ? 0 : ride && ride.sec === sec && down('KeyW', 'ArrowUp') ? SPEED * FAST : SPEED;
-      sec.speed = want >= sec.speed || want > 0 ? want : Math.max(0, sec.speed - 1.2 * dt);
+      const r = api.pace && RIDE[sec.id], base = r ? (sec.tunnel ? sec.len : sec.upLen) / r.ride * api.pace : SPEED;
+      const want = stop.has(sec.name) ? 0 : ride && ride.sec === sec && down('KeyW', 'ArrowUp') ? base * FAST : base;
+      sec.speed = want >= sec.speed || want > 0 ? want : Math.max(0, sec.speed - Math.max(1.2, sec.speed * 1.5) * dt);
       sec.phase += sec.speed * dt;
     }
     if (ride && ride.tunnel) {
       const sec = ride.sec, why = stop.get(sec.name), fast = down('KeyW', 'ArrowUp');
-      ride.u += sec.speed / SPEED * TUN * (fast ? FAST : 1) * dt;
+      ride.u += (api.pace ? sec.speed : sec.speed / SPEED * TUN * (fast ? FAST : 1)) * dt;
       state.hint = sec.name + ' → ' + (ride.rev ? sec.from : sec.to) + (why ? ' steht (' + why + ')' : ' · ' + Math.min(99, Math.round(ride.u / sec.len * 100)) + ' % · W Zeitraffer');
       if (ride.u >= sec.len) {
         const rev = ride.rev;
@@ -393,7 +397,7 @@ export function createLift(terrain, pistes, exp) {
       state.dir.set(ride.sec.dx, 0, ride.sec.dz);
       state.look.set(ride.sec.dx - ride.sec.px * 0.6, 0, ride.sec.dz - ride.sec.pz * 0.6).normalize();
       state.heading = ride.sec.heading;
-      state.speed = SPEED;
+      state.speed = ride.sec.speed;
       state.grounded = true;
     }
   }
@@ -454,6 +458,6 @@ export function createLift(terrain, pistes, exp) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  const api = { group, sections, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null };
+  const api = { group, sections, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
   return api;
 }

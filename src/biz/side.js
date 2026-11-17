@@ -1,6 +1,7 @@
 import { D } from './data.js';
 import { pay, log } from './assets.js';
 import { duty } from './staff.js';
+import { out } from './people.js';
 
 const X = D.side;
 export const HUTS = X.huts.map(h => h.id);
@@ -103,11 +104,12 @@ export function hutsOut(G, f, at) {
   for (const id of HUTS) {
     const a = f.hut[id], o = a.shift();
     a.push(0);
+    out(f, 'h:' + id, o);
     at[HUT[id].node] += o;
     const q = f.hutQ[id];
     if (q <= 0) continue;
     const g = seatsEff(G, id) <= 0 ? q : f.hutWait[id] > X.maxWait ? q * X.giveUp : 0;
-    if (g > 0) { f.hutQ[id] -= g; at[HUT[id].node] += g; bump(G, 'lunchMiss', g); }
+    if (g > 0) { f.hutQ[id] -= g; out(f, 'hq:' + id, g); at[HUT[id].node] += g; bump(G, 'lunchMiss', g); }
   }
 }
 
@@ -120,6 +122,7 @@ export function hutsIn(G, f) {
     if (adm > 0) {
       a[dur - 1] += adm;
       f.hutQ[id] -= adm;
+      out(f, 'hq:' + id, adm);
       const v = adm * spend(G, id);
       earn(G, 'gastro', v);
       pay(G, 'goods', v * goodsShare(G, id));
