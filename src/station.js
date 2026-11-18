@@ -9,13 +9,19 @@ const BOX = (x, y, z) => new THREE.BoxGeometry(x, y, z);
 const CYL = (r, h, n = 10) => new THREE.CylinderGeometry(r, r, h, n);
 const LQ = 13;
 const ROWS = [22.6, 24.2, 25.8, 27.4];
-export function queueSpot(r) {
+function deckSpot(r) {
   if (r < 30) return [16.7 + Math.floor(r / 5) * 0.85, (r % 5 - 2) * 1.9, -1, 0];
   r -= 30;
   if (r < 48) { const row = Math.floor(r / 12), dir = row % 2 ? -1 : 1; return [ROWS[row], dir * (-4.1 + (r % 12) * 0.745), 0, -dir]; }
   r -= 48;
   return [29.6 + Math.floor(r / 2) * 0.8, -4.25 + (r % 2) * 0.75, -1, 0];
 }
+function snowSpot(r, S) {
+  if (r < 14) return [16.7 + Math.floor(r / 2) * 0.85, S * (6.55 + (r % 2) * 1.9), -1, 0];
+  r -= 14;
+  return [23.1 + Math.floor(r / 2) * 0.8, S * (7.1 + (r % 2) * 0.8), -1, 0];
+}
+export const queueSpot = (r, S = 1) => r % 2 ? snowSpot(r >> 1, S) : deckSpot(r >> 1);
 
 function kit() {
   const parts = new Map();
@@ -215,9 +221,11 @@ export function createStationKit(terrain) {
     K.add(BOX(0.4, 0.05, 0.2), M.green, T(kx, y + 1.2, kz, F.R, -0.3));
   }
 
-  function gates(K, F, al) {
-    for (let i = 0; i < 6; i++) {
-      const sd = -4.75 + i * 1.9, [x, z] = F.P(al, sd), gy = F.gh(al, sd);
+  function gates(K, F, al, S) {
+    const i0 = S < 0 ? -3 : 0, i1 = S < 0 ? 5 : 8;
+    for (let i = i0; i <= i1; i++) {
+      const sd = i > 5 ? 5.6 + (i - 6) * 1.9 : i < 0 ? -5.6 + (i + 1) * 1.9 : -4.75 + i * 1.9, [x, z] = F.P(al, sd), gy = F.gh(al, sd);
+      if (i === 6 && S > 0 || i === -1 && S < 0) { const [ex, ez] = F.P(al, S * 5.18); K.bar(M.chrome, x, gy + 0.9, z, ex, gy + 0.9, ez, 0.03); }
       K.add(BOX(0.3, 1.0, 1.2), M.steel, T(x, gy + 0.5, z, F.R));
       K.add(BOX(0.34, 0.06, 1.26), M.dark, T(x, gy + 1.03, z, F.R));
       K.add(BOX(0.31, 0.12, 0.5), M.yellow, T(x, gy + 0.8, z, F.R));
@@ -225,7 +233,7 @@ export function createStationKit(terrain) {
       K.add(BOX(0.3, 0.36, 0.12), M.dark, T(rx, gy + 1.2, rz, F.R, -0.35));
       K.add(BOX(0.22, 0.14, 0.02), M.green, T(lx, gy + 1.23, lz, F.R, -0.35));
       K.add(BOX(0.12, 0.05, 0.12), M.green, T(ox, gy + 1.08, oz, F.R));
-      if (i < 5) for (let k = 0; k < 3; k++) {
+      if (i !== 5 && i !== i1 && i !== -1) for (let k = 0; k < 3; k++) {
         const a = (k - 1) * 1.05, [hx, hz] = F.P(al, sd + 0.16), [ax, az] = F.P(al + Math.sin(a) * 0.5, sd + 0.16 + Math.cos(a) * 0.5);
         K.bar(M.chrome, hx, gy + 0.82, hz, ax, gy + 0.82 + (k === 1 ? 0 : -0.22), az, 0.022);
       }
@@ -245,7 +253,8 @@ export function createStationKit(terrain) {
     }
   }
 
-  function maze(K, F) {
+  function maze(K, F, S) {
+    for (const sd of [5.6, 7.5, 9.4]) belt(K, F, 16.3, S * sd, 22.5, S * sd);
     for (const sd of [-2.85, -0.95, 0.95, 2.85]) belt(K, F, 16.3, sd, 21.7, sd);
     ROWS.slice(0, -1).forEach((r, i) => i % 2 ? belt(K, F, r + 0.8, -3.45, r + 0.8, 4.75) : belt(K, F, r + 0.8, -4.75, r + 0.8, 3.45));
     belt(K, F, 28.6, -3.3, 28.6, 4.75);
@@ -302,8 +311,8 @@ export function createStationKit(terrain) {
     }
     const [rx, rz] = F.P(cm, 0);
     K.add(BOX(0.25, 0.25, cl + 1.4), M.plankDark, T(rx, H + 1.8, rz, F.R));
-    gates(K, F, al0 - 0.35);
-    maze(K, F);
+    gates(K, F, al0 - 0.35, s);
+    maze(K, F, s);
     const lane = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.9), signMat(sec.name, 'Skipass bereithalten · kontaktlos scannen'));
     const [gx, gz] = F.P(al0 - 0.15, 0);
     lane.position.set(gx, H - 0.45, gz);
@@ -397,6 +406,7 @@ export function createStationKit(terrain) {
       }
       if (isA || sec.tunnel) {
         flatten(F, fy - 0.05);
+        (sec.qside ||= {})[end] = s;
         const hA = sec.pts[0].y - 5.4, hB = sec.ropeB - 5.4;
         waiting(K, F, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s);
         put('gate', 17.1, -s * 5.6, undefined, s * -Math.PI / 2);
