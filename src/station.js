@@ -264,9 +264,9 @@ export function createStationKit(terrain) {
     const sm = t => t * t * (3 - 2 * t), o = [F.lz, -F.lx];
     terrain.groom((x, z, h) => {
       const dx = x - F.E[0], dz = z - F.E[1], al = dx * o[0] + dz * o[1], sd = dx * F.lx + dz * F.lz;
-      const e = Math.max(12 - al, al - 16.1 - LQ - 8, Math.abs(sd) - 9.5);
-      if (e > 14) return null;
-      const k = sm(Math.min(1, 1 - e / 14));
+      const e = Math.max(12 - al, al - 16.1 - LQ - 2, Math.abs(sd) - 9.8);
+      if (e > 10) return null;
+      const k = sm(Math.min(1, 1 - e / 10));
       return [h + (y - h) * k, k * 0.6];
     });
   }

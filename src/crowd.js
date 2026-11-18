@@ -250,12 +250,11 @@ export function createCrowd(terrain, pistes, lift, assets) {
   const sec0 = secs[0];
   const pulk = [];
   for (let i = 0; i < QMAX; i++) {
-    const row = Math.floor(i / 10), col = i % 10;
-    const back = 16.5 + row * 0.8 + R() * 0.3, side = (col - 4.5) * 0.7 + (R() - 0.5) * 0.35;
-    const x = sec0.a[0] - sec0.dx * back + sec0.px * side, z = sec0.a[1] - sec0.dz * back + sec0.pz * side;
+    const [al, sd, fa, fs] = queueSpot(i, sec0.qside?.a ?? 1), ox = -sec0.dx, oz = -sec0.dz, a = al + (R() - 0.5) * 0.15, d = sd + (R() - 0.5) * 0.2;
+    const x = sec0.a[0] + ox * a - oz * d, z = sec0.a[1] + oz * a + ox * d;
     const p = person(R() < 0.2 ? 'board' : 'ski', R() < 0.2);
     p.pos.set(x, terrain.heightAt(x, z), z);
-    p.heading = sec0.heading + (R() - 0.5) * 0.8;
+    p.heading = Math.atan2(ox * fa - oz * fs, oz * fa + ox * fs) + (R() - 0.5) * 0.4;
     pulk.push(p);
   }
   let queued = 0;
