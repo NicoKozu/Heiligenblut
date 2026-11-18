@@ -25,6 +25,7 @@ const CAP = 4;
 const APEX = 4.7;
 const RIDE0 = 40;
 const GCAP = 8;
+const GMAX = 160;
 const QMAX = 140;
 const SEATS = [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
 
@@ -531,7 +532,8 @@ export function createCrowd(terrain, pistes, lift, assets) {
   const folk = new Map(), paths = new Map(), tally = new Map(), qn = {};
   let source = null, frame = 0, fdt = 0;
   const ghosts = [], seats = new Map(), qo = {}, qb = {};
-  let qk = 1, qfrac = 0;
+  const lines2 = new Map();
+  let gk = 1, pace = 0, fresh = false;
   const secById = id => secs.find(s => s.id === id);
   function hash(str) {
     let h = 2166136261;
@@ -595,22 +597,6 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function ground(m, x, z, y) { m.pos.set(x, y ?? terrain.heightAt(x, z), z); }
   function local(m, h, lx, lz, y) { ground(m, h.x + h.dz * lx + h.dx * lz, h.z - h.dx * lx + h.dz * lz, y); }
   function queueAt(m, sec, rev, rank) {
-    if (!rev && sec.qbig) {
-      const eff = rank - qfrac * (qb[sec.id] || 0), t = eff > 0 ? rowD(eff / 2) : 0, sd = rank & 1 ? 1 : -1;
-      if (m.qf !== frame - 1 || m.qd == null) { m.qd = frame > 3 && qk < 4 ? Math.max(t, LANE_IN) : t; m.ql = sd; m.qv = 0; }
-      m.qf = frame;
-      m.qsec = sec;
-      if (eff < 0 && ghosts.length < 64 && !lift.stop.has(sec.name)) { m.gs = 1; m.gt = 0; ghosts.push(m); return; }
-      const gap = m.qd - t;
-      m.qv = gap > 0.05 ? Math.min(Math.max(1.3 * qk + (qk - 1) * gap * 0.6, gap * 0.25, 0.4 + gap * 0.22), 8 * qk, m.qv + fdt * 1.5 * qk) : 0;
-      m.qd = Math.max(t, m.qd - m.qv * fdt);
-      m.ql += (sd - m.ql) * Math.min(1, fdt * 2);
-      const p = lanePt(sec, m.qd, m.ql, B);
-      ground(m, p[0], p[1]);
-      stand(m, B.h + m.lane * 0.15, true);
-      m.speed = m.qv;
-      return;
-    }
     const [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1, !rev && sec.qbig), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
     const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
     ground(m, bx + ox * a - oz * d, bz + oz * a + ox * d);
@@ -641,9 +627,9 @@ export function createCrowd(terrain, pistes, lift, assets) {
       const sec = secById(kind === 'hold' ? 'rossbach' : id.replace('~', ''));
       if (!sec) return false;
       if (kind === 'q') qn[id] = rank + 1;
-      if (m.gs) return false;
+      if (sec.qbig && !id.endsWith('~')) { if (!m.inl) join(sec, m); return false; }
       queueAt(m, sec, id.endsWith('~'), kind === 'hold' ? rank + (qn.rossbach || 0) : rank);
-      return !m.gs;
+      return true;
     }
     if (kind === 'cash') {
       const sec = secById('rossbach');
@@ -682,13 +668,13 @@ export function createCrowd(terrain, pistes, lift, assets) {
     frame++;
     tally.clear();
     for (const k in qn) qn[k] = 0;
-    qfrac = src.frac || 0;
+    fresh = folk.size === 0;
+    pace = src.pace || 0;
     for (const id in src.f.queue || {}) {
       const o = src.f.out?.['q:' + id] || 0;
       if (qo[id] != null && o > qo[id]) qb[id] = o - qo[id];
       qo[id] = o;
     }
-    qk = Math.min(6, Math.max(1, (qb.rossbach || 0) * (src.pace || 0) * 0.6));
     each(src.f, (kind, id, k, j, u, len, rank) => {
       const key = kind + id + '#' + k;
       let m = folk.get(key);
@@ -697,14 +683,64 @@ export function createCrowd(terrain, pistes, lift, assets) {
       m.show = place(m, kind, id, k, j, u, len, rank, src);
       if (m.show) act.push(m);
     });
-    for (const [key, m] of folk) if (m.seen !== frame) {
-      folk.delete(key);
-      if (m.qsec && !m.gs && m.qf === frame - 1 && ghosts.length < 64 && !lift.stop.has(m.qsec.name)) { m.gs = 1; m.gt = 0; m.qv = 0; ghosts.push(m); }
-    }
+    for (const [key, m] of folk) if (m.seen !== frame) { folk.delete(key); if (m.inl) m.gone = true; }
+    for (const [sec, vl] of lines2) stepLine(sec, vl);
     for (let i = ghosts.length - 1; i >= 0; i--) {
       const m = ghosts[i];
-      if (stepGhost(m, qk)) act.push(m);
+      if (stepGhost(m, gk)) act.push(m);
       else { if (m.gc != null) seats.set(key(m.qsec, m.gc), (seats.get(key(m.qsec, m.gc)) || 1) - 1); m.gs = -1; m.gc = null; m.qsec = null; ghosts.splice(i, 1); }
+    }
+  }
+  function join(sec, m) {
+    if (!lines2.has(sec)) lines2.set(sec, []);
+    const vl = lines2.get(sec), last = vl[vl.length - 1], back = last ? last.qd + 0.6 : 0;
+    m.qd = fresh ? back : Math.max(LANE_IN + 3, back);
+    m.ql = last ? -last.ql : 1;
+    m.qv = last && !fresh ? last.qv : 0;
+    m.gw = 0;
+    m.inl = sec;
+    m.board = m.gone = false;
+    m.qnew = true;
+    vl.push(m);
+  }
+  function stepLine(sec, vl) {
+    const out = m => { m.inl = null; };
+    if (!secs.includes(sec)) { vl.forEach(out); vl.length = 0; return; }
+    let ok = !lift.stop.has(sec.name), backlog = 0;
+    for (let i = 0; i < vl.length; i++) {
+      const m = vl[i];
+      if (m.gone && !m.board) { if (ok) m.board = true; else { out(m); vl.splice(i--, 1); continue; } }
+      if (m.board) backlog++; else ok = false;
+    }
+    while (backlog > 80) { out(vl.splice(--backlog, 1)[0]); }
+    const W = Math.min(80, Math.max(1.3, (qb[sec.id] || 0) * pace * 0.9) * (1 + backlog / 25));
+    gk = W / 1.3;
+    let lim = 0, pv = 0;
+    for (let i = 0; i < vl.length; i++) {
+      const m = vl[i];
+      m.qv = m.qd - lim > 0.02 ? Math.min(W, m.qv + fdt * 2 * gk) : pv;
+      m.qd = Math.max(lim, m.qd - m.qv * fdt);
+      if (i === 0 && m.board && m.qd <= Math.max(0.02, W * fdt - 0.6) && (gk > 3 || (m.gw += fdt) > 0.4 / gk) && ghosts.length < GMAX) {
+        vl.shift();
+        out(m);
+        m.gs = 1;
+        m.gt = 0;
+        m.qv = 0;
+        m.qsec = sec;
+        ghosts.push(m);
+        i--;
+        lim = 0;
+        pv = 0;
+        continue;
+      }
+      lim = m.qd + 0.6;
+      pv = m.qv;
+      const p = lanePt(sec, m.qd, m.ql, B), ex = p[0] - m.pos.x, ez = p[1] - m.pos.z, e = Math.hypot(ex, ez) < 2 && !m.qnew ? Math.min(1, fdt * 12) : 1;
+      m.qnew = false;
+      ground(m, m.pos.x + ex * e, m.pos.z + ez * e);
+      stand(m, B.h + m.lane * 0.15, true);
+      m.speed = m.qv;
+      act.push(m);
     }
   }
   function stepGhost(m, k) {
