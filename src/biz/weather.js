@@ -53,14 +53,14 @@ function fill(G) {
   const w = G.weather;
   while (w.ahead.length < W.acc.length) {
     const last = w.ahead[w.ahead.length - 1] || w.today;
-    w.ahead.push(roll(G, last.type, addDays(last.date, 1)));
+    w.ahead.push(roll(G, last.type, addDays(last.date, D.dayStep)));
   }
   w.ahead.forEach((d, i) => { d.fc = forecastOf(G, d, i + 1); });
 }
 
 export function advance(G, date) {
   const w = G.weather;
-  if (!w || !w.today || addDays(w.today.date, 1) !== date) {
+  if (!w || !w.today || addDays(w.today.date, D.dayStep) !== date) {
     const s = w ? w.score : 0;
     initWeather(G, date);
     G.weather.score = s * D.aval.decay;

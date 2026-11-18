@@ -269,7 +269,7 @@ export function createUI(h) {
       return '<button class="btn primary" data-act="repair:' + l.id + '">Reparieren · ' + eur(a.cost) + ' · ' + fmtDur(a.min) + '</button><button class="btn" data-act="repair:' + l.id + ':x">Express · ' + eur(b.cost) + ' · ' + fmtDur(b.min) + '</button>';
     }
     if (st === 'repair') return '<span class="biz-warn">Reparatur läuft · noch ' + fmtDur(l.repairLeft) + '</span>';
-    const ins = l.inspPlan ? '<span class="biz-warn">Inspektion geplant (' + (G.phase === 'prep' ? 'heute' : 'morgen') + ' 08:30–10:30)</span>' : st === 'insp' ? '<span class="biz-warn">Inspektion läuft · noch ' + fmtDur(l.insp) + '</span>' : '<button class="btn" data-act="insp:' + l.id + '">Inspektion · ' + eur(D.inspect.cost) + ' · +' + D.inspect.gain + ' %</button>';
+    const ins = l.inspPlan ? '<span class="biz-warn">Inspektion heute Nacht</span>' : st === 'insp' ? '<span class="biz-warn">Inspektion läuft · noch ' + fmtDur(l.insp) + '</span>' : '<button class="btn" data-act="insp:' + l.id + '">Inspektion · ' + eur(D.inspect.cost) + ' · +' + D.inspect.gain + ' %</button>';
     return ins;
   }
 

@@ -47,7 +47,7 @@ export function snapshot(G, sy) {
   }
   const t0 = H[0].date;
   for (const h of H) {
-    const i = Math.floor(diff(t0, h.date) / 7), w = wk[i] || (wk[i] = { date: h.date, n: 0, guests: 0, revenue: 0, cost: 0, sat: 0, ns: 0, rep: 0, snow: 0 });
+    const i = Math.floor(diff(t0, h.date) / D.dayStep), w = wk[i] || (wk[i] = { date: h.date, n: 0, guests: 0, revenue: 0, cost: 0, sat: 0, ns: 0, rep: 0, snow: 0 });
     w.n++; w.guests += h.guests; w.revenue += h.revenue; w.cost += h.cost; w.rep = h.rep; w.snow += h.snow || 0;
     if (h.sat) { w.sat += h.sat.z; w.ns++; }
   }

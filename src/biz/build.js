@@ -12,6 +12,9 @@ const item = (G, id) => G.fin.items.find(x => x.id === id);
 export function initBuild(G) {
   if (!G.build) G.build = { done: [], jobs: [] };
   if (G.build.v !== 2) legacy(G);
+  for (const j of G.build.jobs) if (j.left > 1) j.left = 1;
+  for (const l of G.lifts) delete l.build;
+  for (const h of Object.values(G.side?.huts || {})) if (h.build) { h.open = h.was !== false; delete h.build; delete h.was; }
   if (!G.pipes) G.pipes = [...D.snow.pistes];
   if (!G.fin) G.fin = { items: FN.start.map(x => ({ ...x })), insolv: 0, over: null };
   for (const id of G.build.done) applyDone(G, id);
@@ -61,20 +64,13 @@ export function check(G, id, summer) {
   return '';
 }
 
-function closures(G, id, on) {
-  const p = P[id];
-  for (const lid of p.close || []) { const l = G.lifts.find(x => x.id === lid); if (l) l.build = on; }
-  if (p.closeHut) { const h = G.side.huts[p.closeHut]; if (on) { h.was = h.open; h.open = false; h.build = true; } else { h.open = h.was !== false; h.build = false; delete h.was; } }
-}
-
 export function order(G, id, summer) {
   if (check(G, id, summer)) return false;
   const p = P[id];
   if (G.cash < p.price) borrow(G, Math.ceil((p.price - G.cash) / FN.autoDraw) * FN.autoDraw);
   invest(G, p.price);
-  G.build.jobs.push({ id, left: summer ? null : p.days, days: p.days, from: G.date, season: G.season });
-  if (!summer) closures(G, id, true);
-  log(G, 'Bauauftrag: ' + p.label + (summer ? ' (im Sommer)' : ' – fertig in ' + p.days + ' Tagen'), 'info');
+  G.build.jobs.push({ id, left: summer ? null : 1, from: G.date, season: G.season });
+  log(G, 'Bauauftrag: ' + p.label + (summer ? ' (im Sommer)' : ' – fertig über Nacht'), 'info');
   return true;
 }
 
@@ -90,7 +86,6 @@ function complete(G, j) {
   G.build.jobs = G.build.jobs.filter(x => x !== j);
   G.build.done.push(id);
   ev(G, 'build', id, 1);
-  if (j.left != null) closures(G, id, false);
   applyDone(G, id);
   initAssets(G);
   for (const pid of p.pistes || []) Object.assign(G.pistes[pid], { snow: startSnow(G, D.pistes.find(x => x.id === pid)), cond: D.pisteStart.cond });
@@ -114,7 +109,7 @@ export function buildDay(G, newSeason) {
   }
 }
 
-export function cancelInfo(G, id) { const j = job(G, id); return j ? (j.left == null ? 'Sommer' : j.left + ' Tage') : ''; }
+export function cancelInfo(G, id) { const j = job(G, id); return j ? (j.left == null ? 'Sommer' : 'über Nacht') : ''; }
 
 export function borrow(G, v) {
   const a = Math.min(room(G), Math.max(0, v));

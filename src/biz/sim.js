@@ -79,7 +79,7 @@ export function startDay(G) {
   pay(G, 'admin', D.admin + D.adminLift * G.lifts.length);
   pay(G, 'staff', wages(G));
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.lifts.find(x => x.id === l.id).maint ?? D.maintPerLift); }
-  if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate / 365);
+  if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate * D.dayStep / 365);
   return true;
 }
 
@@ -126,7 +126,7 @@ function close(G) {
 }
 
 export function nextDate(G) {
-  let d = addDays(G.date, 1);
+  let d = addDays(G.date, D.dayStep);
   if (!isSeason(d)) d = seasonStart(seasonOf(d) + (d >= seasonStart(seasonOf(d)) ? 1 : 0));
   return d;
 }

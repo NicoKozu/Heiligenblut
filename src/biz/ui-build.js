@@ -47,12 +47,11 @@ export function buildTab(G, h) {
     let st;
     if (done) st = '<span class="biz-good">fertig</span>';
     else if (j && j.left === 0) st = '<span class="biz-warn">fertig, wartet auf ' + B.waitFor(G, id).join(', ') + '</span>';
-    else if (j) st = j.left == null ? '<span class="biz-warn">im Sommer</span>' : '<span class="biz-warn">im Bau · noch ' + j.left + ' Tage</span>' + '<div class="biz-bar"><i style="width:' + Math.round((1 - j.left / j.days) * 100) + '%;background:#ffd84a"></i></div>';
+    else if (j) st = '<span class="biz-warn">' + (j.left == null ? 'bis Saisonstart' : 'fertig morgen früh') + '</span>';
     else if (G.summer && !why) st = '<button class="btn primary" data-act="build:' + id + ':s">Bis Saisonstart bauen</button>';
-    else if (why && !B.check(G, id, true)) st = '<span class="biz-warn">' + why + '</span><br><button class="btn" data-act="build:' + id + ':s">Im Sommer</button>';
     else if (why) st = '<span class="biz-bad">' + why + '</span>';
-    else st = '<button class="btn primary" data-act="build:' + id + '">Bauen · ' + p.days + ' Tage</button> <button class="btn" data-act="build:' + id + ':s">Im Sommer</button>';
-    return tr('<b>' + p.label + '</b><br><small style="opacity:.75">' + p.info + (p.close ? ' Sperre während Bau.' : '') + (p.closeHut ? ' Hütte während Bau zu.' : '') + '</small><br><small>' + use + (sat ? '<br>' + sat : '') + '</small>', eur(p.price) + '<br>' + st);
+    else st = '<button class="btn primary" data-act="build:' + id + '">Bauen · über Nacht</button>';
+    return tr('<b>' + p.label + '</b><br><small style="opacity:.75">' + p.info + '</small><br><small>' + use + (sat ? '<br>' + sat : '') + '</small>', eur(p.price) + '<br>' + st);
   };
   const c = cannons(G), dis = (x) => x ? ' disabled' : '';
   const money = G.cash + B.room(G);

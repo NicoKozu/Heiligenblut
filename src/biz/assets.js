@@ -116,17 +116,15 @@ export function liftMinute(G, l, ev) {
 
 export function dayStart(G) {
   for (const l of G.lifts) {
-    if (l.inspPlan && !l.broken) {
-      l.insp = D.inspect.min;
-      log(G, 'Inspektion ' + l.name + ' bis ' + Math.floor((D.time.open + D.inspect.min) / 60) + ':' + String((D.time.open + D.inspect.min) % 60).padStart(2, '0'));
-    }
-    l.inspPlan = false;
+    if (l.inspPlan && !l.broken) doInspect(G, l);
   }
 }
 
 export function overnight(G) {
   for (const l of G.lifts) {
     l.insp = 0;
+    if (l.inspPlan && !l.broken) doInspect(G, l);
+    l.inspPlan = false;
     if (!l.broken && l.cond < D.wear.keep) l.cond = Math.min(D.wear.keep, l.cond + D.wear.night);
     if (l.broken && l.repairLeft > 0 && (l.repairLeft -= D.night) <= 0) fixed(G, l, null);
   }
@@ -152,9 +150,16 @@ export function inspect(G, id) {
   const l = G.lifts.find(x => x.id === id);
   if (!l || l.broken || l.inspPlan || l.insp > 0) return false;
   pay(G, 'inspect', D.inspect.cost);
+  if (G.phase === 'prep') { doInspect(G, l); return true; }
   l.inspPlan = true;
-  log(G, 'Inspektion ' + l.name + (G.phase === 'prep' ? ' heute früh' : ' morgen früh') + ' geplant');
+  log(G, 'Inspektion ' + l.name + ' heute Nacht geplant');
   return true;
+}
+
+function doInspect(G, l) {
+  l.cond = Math.min(100, l.cond + D.inspect.gain);
+  l.inspPlan = false;
+  log(G, 'Inspektion ' + l.name + ' abgeschlossen (+' + D.inspect.gain + ' %)', 'good');
 }
 
 export function setOpen(G, kind, id, open) {
