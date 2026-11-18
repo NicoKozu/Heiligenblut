@@ -469,7 +469,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   }
 
   const folk = new Map(), paths = new Map(), tally = new Map(), qn = {};
-  let source = null, frame = 0;
+  let source = null, frame = 0, fdt = 0;
   const secById = id => secs.find(s => s.id === id);
   function hash(str) {
     let h = 2166136261;
@@ -498,11 +498,15 @@ export function createCrowd(terrain, pistes, lift, assets) {
     const p = pistes.list.find(x => x.id === id);
     let P = null;
     if (p) {
-      const pts = p.pts.slice(lift.clear(p.pts));
+      const pts = p.pts.slice(lift.clear(p.pts)), qs = secs.find(x => x.qbig);
+      const n0 = pts.length;
+      if (qs) while (pts.length > 2 && Math.hypot(pts[pts.length - 1][0] - qs.a[0], pts[pts.length - 1][1] - qs.a[1]) < 32) pts.pop();
+      const cut = pts.length < n0;
+      if (cut) pts.push(lanePt(qs, LANE_IN + 3, 0));
       if (pts.length > 1) {
         const cum = new Float32Array(pts.length);
         for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-        P = { pts, cum, len: cum[pts.length - 1], w: Math.max(4, p.width / 2 - 3) };
+        P = { pts, cum, len: cum[pts.length - 1], w: Math.max(4, p.width / 2 - 3), walk: cut ? cum[pts.length - 2] : Infinity };
       }
     }
     paths.set(id, P);
@@ -529,6 +533,20 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function ground(m, x, z, y) { m.pos.set(x, y ?? terrain.heightAt(x, z), z); }
   function local(m, h, lx, lz, y) { ground(m, h.x + h.dz * lx + h.dx * lz, h.z - h.dx * lx + h.dz * lz, y); }
   function queueAt(m, sec, rev, rank) {
+    if (!rev && sec.qbig) {
+      const t = rowD(rank >> 1), sd = rank & 1 ? 1 : -1;
+      if (m.qf !== frame - 1 || m.qd == null) { m.qd = frame > 3 ? Math.max(t, LANE_IN) : t; m.ql = sd; m.qv = 0; }
+      m.qf = frame;
+      const gap = m.qd - t;
+      m.qv = gap > 0.05 ? Math.min(Math.max(1.3, gap * 0.25, 0.4 + gap * 0.22), 8, m.qv + fdt * 1.5) : 0;
+      m.qd = Math.max(t, m.qd - m.qv * fdt);
+      m.ql += (sd - m.ql) * Math.min(1, fdt * 2);
+      const p = lanePt(sec, m.qd, m.ql, B);
+      ground(m, p[0], p[1]);
+      stand(m, B.h + m.lane * 0.15, true);
+      m.speed = m.qv;
+      return;
+    }
     const [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1, !rev && sec.qbig), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
     const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
     ground(m, bx + ox * a - oz * d, bz + oz * a + ox * d);
@@ -550,8 +568,8 @@ export function createCrowd(terrain, pistes, lift, assets) {
       ground(m, M.x, M.z);
       m.speed = v;
       m.cab = 0;
-      m.foot = false;
-      m.tuck = m.kid ? 0 : m.tk;
+      m.foot = d > P.walk;
+      m.tuck = m.kid || m.foot ? 0 : m.tk;
       m.br = m.type === 'board' ? 0.2 : m.brake;
       return true;
     }
@@ -614,6 +632,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function update(dt, camera) {
     const src = source?.();
     act.length = 0;
+    fdt = Math.min(dt, 0.1);
     if (src) fromFlow(src);
     else {
       for (const g of groups) stepGroup(g, dt);
