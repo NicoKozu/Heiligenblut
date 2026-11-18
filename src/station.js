@@ -159,8 +159,11 @@ export function createStationKit(terrain) {
     for (const a of [-1, 1]) K.add(BOX(hw * 2, 0.55, 0.4), M.dark, T(0, 7.55, a * (hl - 0.2)));
     K.add(roofGeo(hw + 1.1, hl + 1.3), M.roof, T(0, 7.8, 0));
     for (let k = -2; k <= 2; k++) K.add(BOX(0.12, 0.08, hl * 2 + 2.6), M.steel, T(k * (hw + 1.1) * 0.3, 7.8 + 0.28 * Math.sqrt((hw + 1.1) ** 2 - (k * (hw + 1.1) * 0.3) ** 2) + 0.02, 0));
-    const span = hl * 2 - 0.4, nz = Math.max(2, Math.round(span / 2.4));
-    K.add(worldUV(BOX(0.3, 3.2, span), 1.5), M.plank, T(-hw + 0.15, 1.95, 0));
+    const span = hl * 2 - 0.4, nz = Math.max(2, Math.round(span / 2.4)), dr = ends.door;
+    if (dr) {
+      for (const [z0, z1] of [[-span / 2, dr[0]], [dr[1], span / 2]]) if (z1 - z0 > 0.1) K.add(worldUV(BOX(0.3, 3.2, z1 - z0), 1.5), M.plank, T(-hw + 0.15, 1.95, (z0 + z1) / 2));
+      K.add(BOX(0.4, 0.3, dr[1] - dr[0]), M.dark, T(-hw + 0.15, 3.4, (dr[0] + dr[1]) / 2));
+    } else K.add(worldUV(BOX(0.3, 3.2, span), 1.5), M.plank, T(-hw + 0.15, 1.95, 0));
     K.add(BOX(0.06, 3.9, span), M.glass, T(-hw + 0.15, 5.45, 0));
     K.add(BOX(0.06, 2.4, span), M.glass, T(hw - 0.15, 6.2, 0));
     K.add(BOX(0.16, 0.16, span), M.dark, T(hw - 0.15, 5.0, 0));
@@ -195,7 +198,7 @@ export function createStationKit(terrain) {
     const lx = -o[1], lz = o[0], R = Math.atan2(o[0], o[1]);
     const P = (al, sd) => [E[0] + o[0] * al + lx * sd, E[1] + o[1] * al + lz * sd];
     const gh = (al, sd) => terrain.heightAt(...P(al, sd));
-    return { P, R, gh, lx, lz, E };
+    return { P, R, gh, lx, lz, E, o };
   }
 
   function rail(K, sec, end, Y) {
@@ -298,6 +301,16 @@ export function createStationKit(terrain) {
       if (e > 10) return null;
       const k = sm(Math.min(1, 1 - e / 10));
       return [h + (y - h) * k, k * 0.6];
+    });
+  }
+
+  function plaza(h) {
+    const sm = t => t * t * (3 - 2 * t), y = h.y + 0.3, o = [-h.dz, h.dx];
+    terrain.groom((x, z, g) => {
+      const dx = x - h.c[0], dz = z - h.c[1], u = dx * h.dx + dz * h.dz, v = dx * o[0] + dz * o[1];
+      const k = [[-u - h.hl, 11], [u - h.hl - 3, 18], [-v - h.hw - 4, 12], [v - h.hw - 24, 18]].reduce((k, [e, b]) => Math.min(k, sm(Math.max(0, Math.min(1, 1 - e / b)))), 1);
+      if (!k) return null;
+      return [g + (y - g) * k, k * 0.6];
     });
   }
 
@@ -414,10 +427,13 @@ export function createStationKit(terrain) {
     const face = (F, a) => F.R + a;
     for (const end of ['a', 'b']) {
       const isA = end === 'a', E = isA ? sec.a : sec.b, Y = isA ? sec.pts[0].y : sec.ropeB, fy = Y - 5.4 + 0.4;
-      const o = isA ? [-sec.dx, -sec.dz] : [sec.dx, sec.dz], F = frame(E, o);
+      const o = isA ? [-sec.dx, -sec.dz] : [sec.dx, sec.dz], F = frame(E, o), h = isA && opt.mid;
+      let Q = F;
+      if (h) { const q = [-h.dz, h.dx], w = h.hw + 0.55 - 16.1 - ((E[0] - h.c[0]) * q[0] + (E[1] - h.c[1]) * q[1]); Q = frame([E[0] + q[0] * w, E[1] + q[1] * w], q); }
+      (sec.qf ||= {})[end] = [...Q.E, ...Q.o];
       const c = opt.centers.find(c => Math.hypot(c[0] - E[0], c[1] - E[1]) < 30);
-      const s = c && ((c[0] - E[0]) * F.lx + (c[1] - E[1]) * F.lz) < -0.5 ? -1 : 1;
-      const put = (kind, al, sd, y, a) => { const [x, z] = F.P(al, sd); spots.push({ kind, x, z, y: y ?? terrain.heightAt(x, z), h: face(F, a), sec }); };
+      const s = h ? -1 : c && ((c[0] - E[0]) * F.lx + (c[1] - E[1]) * F.lz) < -0.5 ? -1 : 1;
+      const put = (kind, al, sd, y, a, G = F) => { const [x, z] = G.P(al, sd); spots.push({ kind, x, z, y: y ?? terrain.heightAt(x, z), h: face(G, a), sec }); };
       if (!sec.tunnel) {
         rail(K, sec, end, Y);
         K.add(CYL(3.45, 0.6, 32), M.dark, T(E[0], Y + 1.25, E[1]));
@@ -436,13 +452,13 @@ export function createStationKit(terrain) {
       }
       if (isA || sec.tunnel) {
         const big = !!opt.kiosk && isA;
-        flatten(F, fy - 0.05);
+        if (h) plaza(h); else flatten(F, fy - 0.05);
         (sec.qside ||= {})[end] = s;
         if (big) sec.qbig = true;
         const hA = sec.pts[0].y - 5.4, hB = sec.ropeB - 5.4;
-        waiting(K, F, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s, big);
-        put('gate', 17.1, -s * 5.6, undefined, s * -Math.PI / 2);
-        put('shovel', 16.1 + LQ + 1.6, -s * 6.4, undefined, s * Math.PI / 2);
+        waiting(K, Q, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s, big);
+        put('gate', 17.1, -s * 5.6, undefined, s * -Math.PI / 2, Q);
+        put('shovel', 16.1 + LQ + 1.6, -s * 6.4, undefined, s * Math.PI / 2, Q);
         if (opt.kiosk && isA) {
           const ky = kiosk(K, F, 5.75, 13.6, extra);
           put('cash', 5.75, 13.75, ky + 0.4, Math.PI / 2);

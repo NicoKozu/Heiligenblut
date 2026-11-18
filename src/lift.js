@@ -164,6 +164,18 @@ export function createLift(terrain, pistes, exp) {
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), yAx = new THREE.Vector3(0, 1, 0);
   const towers = [], halls = [];
 
+  const midAt = p => {
+    const k = STATIONS.findIndex(st => st.hw > 10 && Math.hypot(st.c[0] - p[0], st.c[1] - p[1]) < 25);
+    if (k < 0) return null;
+    const st = STATIONS[k], h = sections[st.s];
+    return { c: [st.c[0] + h.dx * st.off, st.c[1] + h.dz * st.off], dx: h.dx, dz: h.dz, hw: st.hw, hl: st.hl, y: base[k] };
+  };
+  const doorAt = st => {
+    const h = midAt(st.c), d = h && sections.find(s => s !== sections[st.s] && Math.hypot(s.a[0] - st.c[0], s.a[1] - st.c[1]) < 25);
+    if (!d) return null;
+    const ea = (d.a[0] - h.c[0]) * h.dx + (d.a[1] - h.c[1]) * h.dz;
+    return [ea - 5.8, Math.min(h.hl - 0.6, ea + 10.2)];
+  };
   function dress(sec) {
     const g = new THREE.Group();
     if (!sec.tunnel) {
@@ -205,7 +217,7 @@ export function createLift(terrain, pistes, exp) {
       g.add(cBody, cRoof, cFrame, cGlass);
       sec.cabs = [cBody, cGlass, cRoof, cFrame];
     }
-    const e = kit.ends(sec, { centers, ride: RIDE[sec.id], kiosk: sec.id === 'rossbach' });
+    const e = kit.ends(sec, { centers, ride: RIDE[sec.id], kiosk: sec.id === 'rossbach', mid: midAt(sec.a) });
     g.add(e.g);
     spots.push(...e.spots);
     halls.push(...e.obstacles);
@@ -224,7 +236,7 @@ export function createLift(terrain, pistes, exp) {
     const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 25;
     const at = SECTIONS.filter(d => near(d.a, st.c) || near(d.b, st.c));
     const title = at.map(d => near(d.a, st.c) ? d.from : d.to)[0];
-    const r = kit.hall(st, sections[st.s], base[k], title, at.map(d => d.name).join(' · ') + ' · ' + alt(base[k]), { front: at.some(d => near(d.a, st.c)), back: at.some(d => near(d.b, st.c)) });
+    const r = kit.hall(st, sections[st.s], base[k], title, at.map(d => d.name).join(' · ') + ' · ' + alt(base[k]), { front: at.some(d => near(d.a, st.c)), back: at.some(d => near(d.b, st.c)), door: doorAt(st) });
     group.add(r.g); halls.push(r.h); const id = SECTIONS[st.s].id; added.set(id, [...(added.get(id) || []), r]); });
 
   function addSection(id) {

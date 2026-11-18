@@ -201,6 +201,8 @@ function carGeo(kind) {
   return { body, detail, roofY, S };
 }
 
+const CLEAR = [[630, -915, 135]];
+
 export function createVillage(terrain, data, built) {
   const group = new THREE.Group();
   const H = (x, z) => terrain.heightAt(x, z);
@@ -247,12 +249,14 @@ export function createVillage(terrain, data, built) {
     return false;
   }
 
-  const roads = data.roads.map(([c, w, br, pts], id) => ({ c, w, br, pts, id }));
+  const clear = (x, z) => CLEAR.some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r);
+  const runs = pts => pts.reduce((o, p) => { if (clear(...p)) o.push([]); else o[o.length - 1].push(p); return o; }, [[]]).filter(r => r.length > 1);
+  const roads = data.roads.flatMap(([c, w, br, pts], id) => runs(pts).map(p => ({ c, w, br, pts: p, id })));
   const rivers = data.rivers.map(([w, pts], i) => ({ c: 5, w, pts: pts.filter(p => Math.hypot(p[0] - VC[0], p[1] - VC[1]) < 3600 && terrain.inside(p[0], p[1])), id: 10000 + i }));
   for (const r of roads) for (let i = 1; i < r.pts.length; i++) addSeg(...r.pts[i - 1], ...r.pts[i], r.w / 2, r.id, r.c < 4 ? 'road' : 'foot');
   for (const r of rivers) for (let i = 1; i < r.pts.length; i++) addSeg(...r.pts[i - 1], ...r.pts[i], r.w / 2, r.id, 'river');
 
-  const lots = data.lots.map(p => {
+  const lots = data.lots.filter(p => !p.some(q => clear(...q))).map(p => {
     let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
     for (const [x, z] of p) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     return { p, x0, x1, z0, z1 };
