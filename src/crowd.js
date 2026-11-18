@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createSkier, createBoarder } from './models.js';
 import { each } from './biz/people.js';
+import { queueSpot } from './station.js';
 
 const JACKETS = [0xc8202a, 0x2f6fd6, 0xf2c200, 0x1aa36b, 0xff6a00, 0x7a2fd6, 0xe8e8e8, 0x222a33, 0xff3f8e, 0x18a8c8, 0x8b1d2c, 0x3a7d2c, 0x5c6b7a, 0xffb000];
 const PANTS = [0x1d2b3a, 0x2d2d33, 0x111111, 0x40464f, 0x2a3b5c, 0x5a3a22, 0xe8e8e8, 0x6b1d2c, 0x3c4a2a];
@@ -467,11 +468,10 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function ground(m, x, z, y) { m.pos.set(x, y ?? terrain.heightAt(x, z), z); }
   function local(m, h, lx, lz, y) { ground(m, h.x + h.dz * lx + h.dx * lz, h.z - h.dx * lx + h.dz * lz, y); }
   function queueAt(m, sec, rev, rank) {
-    const row = Math.floor(rank / 12), col = rank % 12, sg = rev ? -1 : 1;
-    const back = 16.5 + row * 0.8 + m.jph * 0.04, side = (col - 5.5) * 0.7 + m.lane * 0.15;
-    const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1];
-    ground(m, bx - sec.dx * back * sg + sec.px * side, bz - sec.dz * back * sg + sec.pz * side);
-    stand(m, sec.heading + (rev ? Math.PI : 0) + m.lane * 0.3, false);
+    const [al, sd, fa, fs] = queueSpot(rank), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
+    const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
+    ground(m, bx + ox * a - oz * d, bz + oz * a + ox * d);
+    stand(m, Math.atan2(ox * fa - oz * fs, oz * fa + ox * fs) + m.lane * 0.2, false);
   }
   function place(m, kind, id, k, j, u, len, rank, src) {
     const e = Math.min(1, (len - j - u + src.frac) / len);

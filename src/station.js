@@ -8,6 +8,14 @@ const T = (x, y, z, ry = 0, rx = 0, rz = 0) => _m.compose(_p.set(x, y, z), _q.se
 const BOX = (x, y, z) => new THREE.BoxGeometry(x, y, z);
 const CYL = (r, h, n = 10) => new THREE.CylinderGeometry(r, r, h, n);
 const LQ = 13;
+const ROWS = [22.6, 24.2, 25.8, 27.4];
+export function queueSpot(r) {
+  if (r < 30) return [16.7 + Math.floor(r / 5) * 0.85, (r % 5 - 2) * 1.9, -1, 0];
+  r -= 30;
+  if (r < 48) { const row = Math.floor(r / 12), dir = row % 2 ? -1 : 1; return [ROWS[row], dir * (-4.1 + (r % 12) * 0.745), 0, -dir]; }
+  r -= 48;
+  return [29.6 + Math.floor(r / 2) * 0.8, -4.25 + (r % 2) * 0.75, -1, 0];
+}
 
 function kit() {
   const parts = new Map();
@@ -171,7 +179,7 @@ export function createStationKit(terrain) {
     const lx = -o[1], lz = o[0], R = Math.atan2(o[0], o[1]);
     const P = (al, sd) => [E[0] + o[0] * al + lx * sd, E[1] + o[1] * al + lz * sd];
     const gh = (al, sd) => terrain.heightAt(...P(al, sd));
-    return { P, R, gh, lx, lz };
+    return { P, R, gh, lx, lz, E };
   }
 
   function rail(K, sec, end, Y) {
@@ -210,14 +218,48 @@ export function createStationKit(terrain) {
   function gates(K, F, al) {
     for (let i = 0; i < 6; i++) {
       const sd = -4.75 + i * 1.9, [x, z] = F.P(al, sd), gy = F.gh(al, sd);
-      K.add(BOX(0.3, 1.05, 0.7), M.steel, T(x, gy + 0.52, z, F.R));
-      K.add(BOX(0.34, 0.06, 0.75), M.dark, T(x, gy + 1.07, z, F.R));
-      K.add(BOX(0.2, 0.05, 0.14), M.green, T(x, gy + 1.11, z, F.R));
+      K.add(BOX(0.3, 1.0, 1.2), M.steel, T(x, gy + 0.5, z, F.R));
+      K.add(BOX(0.34, 0.06, 1.26), M.dark, T(x, gy + 1.03, z, F.R));
+      K.add(BOX(0.31, 0.12, 0.5), M.yellow, T(x, gy + 0.8, z, F.R));
+      const [rx, rz] = F.P(al + 0.42, sd), [lx, lz] = F.P(al + 0.47, sd), [ox, oz] = F.P(al - 0.5, sd);
+      K.add(BOX(0.3, 0.36, 0.12), M.dark, T(rx, gy + 1.2, rz, F.R, -0.35));
+      K.add(BOX(0.22, 0.14, 0.02), M.green, T(lx, gy + 1.23, lz, F.R, -0.35));
+      K.add(BOX(0.12, 0.05, 0.12), M.green, T(ox, gy + 1.08, oz, F.R));
       if (i < 5) for (let k = 0; k < 3; k++) {
         const a = (k - 1) * 1.05, [hx, hz] = F.P(al, sd + 0.16), [ax, az] = F.P(al + Math.sin(a) * 0.5, sd + 0.16 + Math.cos(a) * 0.5);
         K.bar(M.chrome, hx, gy + 0.82, hz, ax, gy + 0.82 + (k === 1 ? 0 : -0.22), az, 0.022);
       }
     }
+  }
+
+  function belt(K, F, a1, s1, a2, s2) {
+    const l = Math.hypot(a2 - a1, s2 - s1), n = Math.max(1, Math.ceil(l / 2.2));
+    let prev = null;
+    for (let i = 0; i <= n; i++) {
+      const al = a1 + (a2 - a1) * i / n, sd = s1 + (s2 - s1) * i / n, [x, z] = F.P(al, sd), y = F.gh(al, sd);
+      K.add(CYL(0.15, 0.03, 12), M.dark, T(x, y + 0.02, z));
+      K.add(CYL(0.032, 0.95, 6), M.chrome, T(x, y + 0.48, z));
+      K.add(CYL(0.045, 0.06, 8), M.dark, T(x, y + 0.97, z));
+      if (prev) K.bar(M.blue, prev[0], prev[2] + 0.9, prev[1], x, y + 0.9, z, 0.028);
+      prev = [x, z, y];
+    }
+  }
+
+  function maze(K, F) {
+    for (const sd of [-2.85, -0.95, 0.95, 2.85]) belt(K, F, 16.3, sd, 21.7, sd);
+    ROWS.slice(0, -1).forEach((r, i) => i % 2 ? belt(K, F, r + 0.8, -3.45, r + 0.8, 4.75) : belt(K, F, r + 0.8, -4.75, r + 0.8, 3.45));
+    belt(K, F, 28.6, -3.3, 28.6, 4.75);
+  }
+
+  function flatten(F, y) {
+    const sm = t => t * t * (3 - 2 * t), o = [F.lz, -F.lx];
+    terrain.groom((x, z, h) => {
+      const dx = x - F.E[0], dz = z - F.E[1], al = dx * o[0] + dz * o[1], sd = dx * F.lx + dz * F.lz;
+      const e = Math.max(12 - al, al - 16.1 - LQ - 8, Math.abs(sd) - 9.5);
+      if (e > 14) return null;
+      const k = sm(Math.min(1, 1 - e / 14));
+      return [h + (y - h) * k, k * 0.6];
+    });
   }
 
   function waiting(K, F, al0, sec, rideInfo, hA, hB, extra, s) {
@@ -261,6 +303,18 @@ export function createStationKit(terrain) {
     const [rx, rz] = F.P(cm, 0);
     K.add(BOX(0.25, 0.25, cl + 1.4), M.plankDark, T(rx, H + 1.8, rz, F.R));
     gates(K, F, al0 - 0.35);
+    maze(K, F);
+    const lane = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.9), signMat(sec.name, 'Skipass bereithalten · kontaktlos scannen'));
+    const [gx, gz] = F.P(al0 - 0.15, 0);
+    lane.position.set(gx, H - 0.45, gz);
+    lane.rotation.y = F.R;
+    extra.push(lane);
+    for (let i = 0; i < 5; i++) {
+      const sd = -3.8 + i * 1.9, [ax, az] = F.P(al0 - 0.2, sd), [lx, lz] = F.P(al0 - 0.15, sd);
+      K.add(BOX(0.4, 0.3, 0.08), M.dark, T(ax, H - 1.1, az, F.R));
+      K.add(BOX(0.18, 0.18, 0.02), M.green, T(lx, H - 1.1, lz, F.R));
+      K.bar(M.dark, ax, H - 0.95, az, ax, H - 0.88, az, 0.02);
+    }
     const [bx, bz] = F.P(al0 + 1.2, -6.9 * s), by = terrain.heightAt(bx, bz);
     for (const d of [-1.1, 1.1]) { const [px, pz] = F.P(al0 + 1.2 + d, -6.9 * s); K.add(CYL(0.06, 2.6, 8), M.dark, T(px, by + 1.3, pz)); }
     const board = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.8), boardMat(sec, rideInfo, hA, hB));
@@ -342,6 +396,7 @@ export function createStationKit(terrain) {
         K.add(BOX(9.2, 0.02, 0.18), M.yellow, T(x1, fy + 0.01, z1, F.R));
       }
       if (isA || sec.tunnel) {
+        flatten(F, fy - 0.05);
         const hA = sec.pts[0].y - 5.4, hB = sec.ropeB - 5.4;
         waiting(K, F, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s);
         put('gate', 17.1, -s * 5.6, undefined, s * -Math.PI / 2);
