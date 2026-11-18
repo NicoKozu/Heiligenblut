@@ -26,7 +26,6 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
   const v3 = createView3d({ scene, cam, terrain, lift, pistes, scenery, act: a => action(a) });
   function mgr(on) {
     if (on === v3.mgr) return;
-    if (on && hold && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) ui.close();
     v3.setMgr(on);
   }
 
@@ -175,7 +174,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     hold = want;
     if (hold) {
       const v = G.fin?.over ? 'over' : G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily';
-      if (ui.view !== v && !(v3.mgr && v !== 'over')) ui.open(v);
+      if (ui.view !== v) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';
 

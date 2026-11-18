@@ -186,7 +186,7 @@ async function start() {
       }
     }
     const flying = cam.mode === 'fly';
-    if (cam.mode === 'fly') flush();
+    if (cam.mode === 'fly' && !biz?.active) flush();
     if (consume('Escape')) pause();
     if (consume('KeyP')) peaks.toggle();
     if (pending) { lift.leave(player.state); applyStart(pending).catch(e => fail('Manager: ' + e.message)); pending = null; }
@@ -200,10 +200,10 @@ async function start() {
       crowd.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
-    } else if (!hold) flush();
+    } else if (!hold && !(flying && biz?.active)) flush();
     lift.update(dt, player.state, player, goTo);
     biz?.update(Math.min(raw, 1));
-    if (hold || biz?.mgr) flush();
+    if (hold || (flying && biz?.active)) flush();
     village.update(dt, cam.camera);
     crowd.update(dt, cam.camera);
     workers.update(dt, cam.camera);
