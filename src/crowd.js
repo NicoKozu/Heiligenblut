@@ -22,6 +22,7 @@ const POOL = { ski: 10, board: 5 };
 const FAR = 2600;
 const WALK = 2.2;
 const CAP = 4;
+const APEX = 4.7;
 const QMAX = 140;
 const SEATS = [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
 
@@ -209,12 +210,12 @@ export function createCrowd(terrain, pistes, lift, assets) {
     const own = lift.rideCabin();
     for (let i = 0; i < sec.count; i++) {
       if (taken.has(key(sec, i)) || (own && own.sec === sec && own.i === i)) continue;
-      const u = lift.cabinU(sec, i);
-      if (mid ? u > 30 && u < sec.upLen - 60 : true) list.push({ i, u, d: mid ? R() : sec.L - u });
+      const u = lift.cabinU(sec, i), p = (u + APEX) % sec.L;
+      if (mid ? u > 30 && u < sec.upLen - 60 : sec.L - p > 3) list.push({ i, p, d: mid ? R() : sec.L - p });
     }
     list.sort((a, b) => a.d - b.d);
     if (list.length < n) return null;
-    return list.slice(0, n).map(c => { taken.add(key(sec, c.i)); return { i: c.i, last: c.u, started: !!mid, done: false }; });
+    return list.slice(0, n).map(c => { taken.add(key(sec, c.i)); return { i: c.i, last: c.p, started: !!mid, done: false }; });
   }
   function release(g) {
     if (g.cabs) for (const c of g.cabs) taken.delete(key(g.sec, c.i));
@@ -255,16 +256,42 @@ export function createCrowd(terrain, pistes, lift, assets) {
           j++;
         }
         if (g === L.q[0]) L.w = ready ? (L.w || 0) + dt : 0;
-        if (g === L.q[0] && L.w > 2.5 && L.t <= 0 && !lift.stop.has(sec.name)) {
-          const cabs = grabCabins(g, Math.ceil(g.members.length / CAP), false);
-          if (cabs) { g.cabs = cabs; g.state = 'ride'; L.t = 3 + g.members.length * 0.8; L.w = 0; }
-        }
+        if (g === L.q[0] && L.w > 2.5 && L.t <= 0 && !lift.stop.has(sec.name)) { startBoard(g); L.t = 3 + g.members.length * 0.8; L.w = 0; }
       }
     }
   }
 
+  const loc = (sec, al, sd) => [sec.a[0] - sec.dx * al + sec.dz * sd, sec.a[1] - sec.dz * al - sec.dx * sd];
+  function startBoard(g) {
+    const sec = g.sec, S = sec.qside?.a ?? 1;
+    g.state = 'board';
+    g.cabs = null;
+    g.members.forEach((m, i) => {
+      const p0 = lanePt(sec, m.qd, m.qs), p1 = lanePt(sec, 0, m.qs);
+      const al = -(sec.dx * (p1[0] - sec.a[0]) + sec.dz * (p1[1] - sec.a[1]));
+      const pts = [p0, p1, loc(sec, al, S * 5.8), loc(sec, 8.2, S * 2.6), loc(sec, 5.7 + Math.floor(i / CAP) * 0.9, ((i % CAP) - 1.5) * 0.75)];
+      const cum = [0];
+      for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+      m.bp = { pts, cum };
+      m.bd = 0;
+    });
+  }
+  function boardAt(sec, m, out) {
+    const { pts, cum } = m.bp, d = Math.min(m.bd, cum[cum.length - 1]);
+    let k = 1;
+    while (k < pts.length - 1 && cum[k] < d) k++;
+    const l = cum[k] - cum[k - 1] || 1, t = Math.min(1, (d - cum[k - 1]) / l), [x0, z0] = pts[k - 1], [x1, z1] = pts[k];
+    out.x = x0 + (x1 - x0) * t;
+    out.z = z0 + (z1 - z0) * t;
+    out.h = d >= cum[cum.length - 1] ? sec.heading : Math.atan2(x1 - x0, z1 - z0);
+    const al = -(sec.dx * (out.x - sec.a[0]) + sec.dz * (out.z - sec.a[1])), sd = sec.dz * (out.x - sec.a[0]) - sec.dx * (out.z - sec.a[1]);
+    out.y = Math.abs(sd) < 6.4 && al > -7 && al < 15 ? sec.pts[0].y - 5 : terrain.heightAt(out.x, out.z);
+    return out;
+  }
+
   function leaveLift(g) {
     const sec = g.sec;
+    for (const m of g.members) m.bp = null;
     release(g);
     buildLeg(g, sec.b[0] + sec.dx * 4, sec.b[1] + sec.dz * 4, sec.nb);
   }
@@ -366,12 +393,19 @@ export function createCrowd(terrain, pistes, lift, assets) {
       if (lift.stop.has(g.sec.name)) return;
       g.cabs = grabCabins(g, Math.ceil(g.members.length / CAP), false);
       if (g.cabs) g.state = 'ride';
+    } else if (g.state === 'board') {
+      let all = true;
+      for (const m of g.members) { m.bd += 1.25 * dt; if (m.bd < m.bp.cum[m.bp.cum.length - 1]) all = false; }
+      if (all && !lift.stop.has(g.sec.name)) {
+        g.cabs = grabCabins(g, Math.ceil(g.members.length / CAP), false);
+        if (g.cabs) g.state = 'ride';
+      }
     } else if (g.state === 'ride') {
       let all = true;
       for (const c of g.cabs) {
-        const u = lift.cabinU(g.sec, c.i);
+        const u = (lift.cabinU(g.sec, c.i) + APEX) % g.sec.L;
         if (!c.started && u < c.last - g.sec.L * 0.5) c.started = true;
-        if (c.started && u >= g.sec.upLen) c.done = true;
+        if (c.started && u >= g.sec.upLen + APEX) c.done = true;
         c.last = u;
         if (!c.done) all = false;
       }
@@ -395,16 +429,37 @@ export function createCrowd(terrain, pistes, lift, assets) {
       m.show = true;
       return;
     }
+    if (g.state === 'board') {
+      boardAt(g.sec, m, B);
+      m.pos.set(B.x, B.y, B.z);
+      m.heading = B.h;
+      m.speed = m.bd < m.bp.cum[m.bp.cum.length - 1] ? 1.25 : 0;
+      m.lean = 0;
+      m.tuck = 0;
+      m.cab = 0;
+      m.foot = true;
+      m.br = 0;
+      m.show = true;
+      return;
+    }
     if (g.state === 'ride') {
       const c = g.cabs[Math.floor(g.members.indexOf(m) / CAP)];
-      if (!c.started || c.done) return;
+      if (c.done || (!c.started && !m.bp)) return;
       lift.cabinAt(g.sec, c.i, v3);
       const k = g.members.indexOf(m) % CAP, [a, b] = SEATS[k], sec = g.sec;
-      m.pos.set(v3.x + sec.dx * a + sec.px * b * 0.6, v3.y - 0.9, v3.z + sec.dz * a + sec.pz * b * 0.6);
-      m.heading = sec.heading + (b < 0 ? Math.PI / 2 : -Math.PI / 2);
+      const sx = v3.x + sec.dx * a + sec.px * b * 0.6, sy = v3.y - 0.9, sz = v3.z + sec.dz * a + sec.pz * b * 0.6, sh = sec.heading + (b < 0 ? Math.PI / 2 : -Math.PI / 2);
       m.lean = 0;
-      m.cab = 1;
+      m.tuck = 0;
+      m.br = 0;
       m.show = true;
+      if (c.started) { m.pos.set(sx, sy, sz); m.heading = sh; m.cab = 1; return; }
+      boardAt(sec, m, B);
+      const t = Math.max(0, 1 - (sec.L - c.last) / 6);
+      m.pos.set(B.x + (sx - B.x) * t, B.y + (sy - B.y) * t, B.z + (sz - B.z) * t);
+      m.heading = t > 0 ? Math.atan2(sx - B.x, sz - B.z) : B.h;
+      m.speed = t > 0 && t < 1 ? 1 : 0;
+      m.cab = 0;
+      m.foot = true;
       return;
     }
     if (g.state !== 'path') return;
