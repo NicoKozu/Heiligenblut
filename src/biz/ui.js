@@ -213,7 +213,7 @@ export function createUI(h) {
       '<div class="sep"></div>' +
       (G.weather ? row(wx(G.weather.today), fmtT(G.weather.today.tTal) + ' / ' + fmtT(G.weather.today.tBerg)) + row('Wind Berg · Lawine', '<span class="' + (stormy(G.weather.today) ? 'biz-bad' : '') + '">' + G.weather.today.wind + ' km/h</span> · <span class="' + atone(G.weather.aval) + '">' + G.weather.aval + '</span>') + row('Ø Schneehöhe', Math.round(avgSnow(G)) + ' cm', stone(avgSnow(G))) + '<div class="sep"></div>' : '') +
       row('Phase', '<span class="biz-phase ' + G.phase + '">' + D.phaseLabels[G.phase] + '</span>') +
-      row('Zeitfaktor', '×' + G.factor + (G.phase === 'open' ? '' : ' (steht)')) +
+      row('Zeitfaktor', (G.factor < 1 ? 'Echtzeit' : '×' + G.factor) + (G.phase === 'open' ? '' : ' (steht)')) +
       '<div class="sep"></div>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > D.start.credit * 0.8 ? 'biz-bad' : '') : '') +
