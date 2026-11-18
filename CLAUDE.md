@@ -27,6 +27,7 @@
 - Etappe 23 (Feinbalancing): Buchhaltung lückenlos (Kassenabgleich je Tag, `build.js` `post`/`writeoff`), Saisonkarten-Erlös je Besuch (`flow.cardVisits`), Jahresergebnis inkl. Sommerkosten (`s.year`), abhängige Bauprojekte vorab bestellbar (`ready`). `guestCost` 9, `admin` 2500, `adminLift` 1200, `expW` 1,7. Ziele in MANAGER.md B (5 Saisonen).
 - Simtest 23: vernünftig S1 +0,37 · S2 +1,55 · S3 +1,80 · S4 +2,02 · S5 185k/+2,58 Mio; investor schneller, S5 schuldenfrei; abwarten/gierig/geizig verlieren. `--check` ~100 s.
 - Etappe 24: `biz/view3d.js` Manager-Kamera (V, `camera.js` Modus `mgr`: `startMgr/endMgr/goTo/focus`), Klick/Alt+Klick → Objektkarte (Lift/Piste/Hütte/Bauprojekt, Aktionen über `bridge` `action`), Status-Sprites (H), Pisten-Overlay (O) über Terrain-Uniform `pTint` (`terrain.tint`, `pistes.setTint`), geplante Lifte gestrichelt. Optik: `src/textures.js` (prozedurale Holz/Stein/Schindel-Texturen, `worldUV`), Hütten mit Blockbau, Fensterrahmen, Geländer, Ski, wehender Fahne, Kaminrauch (`public/textures/smoke.webp`, CC0 aus npm `@pmndrs/assets`), drehende Seilscheiben. Sim unverändert.
+- Gondel-Optik (Zusatz nach 24): `src/station.js` D-Line-Stationen (gewölbtes Dach, Verglasung, Umlaufschiene mit Reifenförderer, Antrieb, Liftwart-Kabine, Stationsschilder), Wartebereich je Einstieg (Holzdeck, Geländer, Vordach, Drehkreuze, Infotafel, Skiständer, Fahnen), Kassa an der Talstation; Kabinen im Omega-Stil, Stützen mit Rollenbatterien/Bühne. `src/workers.js` Liftpersonal (`lift.spots`, `createWorker` in models.js, max. 16 im Umkreis 280 m, animiert).
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
@@ -38,6 +39,7 @@
 - `src/lift.js` `createLift(terrain, pistes, exp)` → `group, sections, update, collide, leave, clear, riding, valleySpawn, shut, stop, setOpen(id, open, why), addSection, removeSection, site, onAdd, pace, cabinAt, cabinU, rideCabin`
 - `src/pistes.js` `loadPistes(terrain)` → `list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt`, `LEVELS`; Daten `public/pistes.json`
 - `src/scenery.js` Bäume, Hütten (animiert: Rauch, Fahne, `wind`), `setHut(name, open)` · `src/textures.js` prozedurale Materialien · `src/props.js` OSM-Gebäude/Felsen (`public/osm.json`), `blocked` · `src/effects.js` Spuren/Schneestaub
+- `src/station.js` `createStationKit(terrain)` → `hall, ends` · `src/workers.js` `createWorkers(lift, assets)`
 - `src/crowd.js` `createCrowd(...)` → `update, collide, setDensity, setQueue, setSource(fn), link, count`
 - `src/panorama.js` Fern-DEM, Sonnenschatten, `shade(root)`, `render` · `src/peaks.js` Gipfelnamen (P) · `src/weatherfx.js` Wetter-Optik
 - `src/camera.js` Verfolger/Ego (C)/Orbit/Flug (F) · `src/menu.js` · `src/audio.js` (M) · `src/config.js` `get, image, texture`

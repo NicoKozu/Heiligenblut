@@ -16,6 +16,7 @@ import { createAudio } from './audio.js';
 import { loadAssets } from './assets.js';
 import { createProps } from './props.js';
 import { createCrowd } from './crowd.js';
+import { createWorkers } from './workers.js';
 import { createWeatherFx } from './weatherfx.js';
 import { get } from './config.js';
 
@@ -80,6 +81,8 @@ async function start() {
 
   const crowd = createCrowd(terrain, pistes, lift, assets);
   scene.add(crowd.group);
+  const workers = createWorkers(lift, assets);
+  scene.add(workers.group);
   lift.onAdd = sec => crowd.link(sec);
   const player = createPlayer(terrain, assets);
   scene.add(player.object);
@@ -194,6 +197,7 @@ async function start() {
     biz?.update(Math.min(raw, 1));
     if (hold || cam.mode === 'mgr') flush();
     crowd.update(dt, cam.camera);
+    workers.update(dt, cam.camera);
     player.object.visible = !lift.riding() && cam.mode !== 'ego' && cam.mode !== 'fly';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
     hud.update(player.state, dt);

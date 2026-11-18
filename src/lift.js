@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { materials, worldUV } from './textures.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { createStationKit } from './station.js';
 import { consume, down } from './input.js';
 import { D } from './biz/data.js';
 
@@ -22,7 +23,7 @@ const SECTIONS = [
 ];
 const STATIONS = [
   { c: [-158, -109], s: 0, off: -4, hl: 11, hw: 6.5 },
-  { c: [626, -922], s: 0, off: 0, hl: 17, hw: 6.5 },
+  { c: [626, -922], s: 0, off: 0, hl: 17, hw: 10.5 },
   { c: [1110, -2861], s: 1, off: 3, hl: 11, hw: 6.5 },
   { c: [40, -3263], s: 2, off: -4, hl: 11, hw: 6.5 },
   { c: [1099, -2892], s: 2, off: 2, hl: 9, hw: 6 }
@@ -125,26 +126,41 @@ export function createLift(terrain, pistes, exp) {
   const glassMat = mat(0x9fc6dc, { roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.45 });
   const frameMat = mat(0x50565c, { metalness: 0.5, roughness: 0.4 });
   const shaftGeo = new THREE.CylinderGeometry(0.5, 0.95, 1, 6).translate(0, 0.5, 0);
+  const B = (x, y, z, px, py, pz) => new THREE.BoxGeometry(x, y, z).translate(px, py, pz);
   const headGeo = mergeGeometries([
-    new THREE.BoxGeometry(GAUGE * 2 + 2, 0.5, 0.7).translate(0, -0.7, 0),
-    new THREE.BoxGeometry(0.5, 0.35, 3.2).translate(GAUGE, 0.1, 0),
-    new THREE.BoxGeometry(0.5, 0.35, 3.2).translate(-GAUGE, 0.1, 0),
-    new THREE.BoxGeometry(0.3, 0.8, 0.3).translate(GAUGE, -0.35, 0),
-    new THREE.BoxGeometry(0.3, 0.8, 0.3).translate(-GAUGE, -0.35, 0)
+    B(GAUGE * 2 + 1.8, 0.5, 0.7, 0, -0.75, 0),
+    B(GAUGE * 2 + 1.2, 0.05, 1.5, 0, -1.05, 0),
+    ...[-0.75, 0.75].map(z => B(GAUGE * 2 + 1.2, 0.05, 0.05, 0, -0.15, z)),
+    ...[-1, 1].flatMap(s => [
+      B(0.24, 0.22, 3.2, s * GAUGE, -0.05, 0),
+      B(0.18, 0.5, 0.18, s * GAUGE, -0.4, 0),
+      B(0.18, 2.5, 0.18, s * (GAUGE + 0.8), 0.4, 0),
+      ...[-0.75, 0.75].map(z => B(0.05, 0.9, 0.05, s * (GAUGE + 0.6), -0.6, z)),
+      ...[-1.25, -0.75, -0.25, 0.25, 0.75, 1.25].map(z => new THREE.CylinderGeometry(0.2, 0.2, 0.1, 12).rotateZ(Math.PI / 2).translate(s * GAUGE, 0.15, z))
+    ]),
+    B(GAUGE * 2 + 1.8, 0.2, 0.2, 0, 1.65, 0)
   ]);
   const padGeo = new THREE.CylinderGeometry(1.35, 1.35, 2.2, 10).translate(0, 1.1, 0);
   const wheelGeo = mergeGeometries([new THREE.CylinderGeometry(GAUGE + 0.2, GAUGE + 0.2, 0.4, 20, 1, true), new THREE.CylinderGeometry(GAUGE - 0.1, GAUGE - 0.1, 0.15, 20), ...[0, 1, 2, 3].map(i => new THREE.BoxGeometry(GAUGE * 2, 0.12, 0.25).rotateY(i * Math.PI / 4))]);
-  const body = new THREE.BoxGeometry(1.9, 1.05, 1.9).translate(0, -0.55, 0);
-  const glass = new THREE.BoxGeometry(1.86, 0.95, 1.86).translate(0, 0.45, 0);
+  const body = new RoundedBoxGeometry(1.95, 1.05, 2.3, 2, 0.2).translate(0, -0.57, 0);
+  const glass = new RoundedBoxGeometry(1.88, 1.02, 2.24, 1, 0.16).translate(0, 0.42, 0);
+  const roof = new RoundedBoxGeometry(1.99, 0.3, 2.34, 1, 0.13).translate(0, 1.02, 0);
+  const hanger = new THREE.CatmullRomCurve3([[0, 1.15, 0], [0.1, 1.9, 0], [0.32, 2.75, 0], [0.12, 3.3, 0], [0, 3.5, 0]].map(p => new THREE.Vector3(...p)));
   const frame = mergeGeometries([
-    new THREE.BoxGeometry(2.0, 0.22, 2.0).translate(0, 1.0, 0),
-    new THREE.BoxGeometry(0.12, 2.5, 0.12).translate(0, 2.35, 0),
-    new THREE.BoxGeometry(0.12, 0.12, 1.0).translate(0, 3.55, -0.45),
-    new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0, 3.65, 0)
+    new THREE.TubeGeometry(hanger, 10, 0.07, 5),
+    B(0.3, 0.28, 0.95, 0, 3.58, 0),
+    B(0.08, 0.3, 0.2, 0.14, 3.78, 0),
+    ...[-0.36, 0.36].map(z => new THREE.CylinderGeometry(0.1, 0.1, 0.06, 10).rotateZ(Math.PI / 2).translate(-0.18, 3.75, z)),
+    ...[-1, 1].flatMap(a => [-1, 1].map(b => B(0.07, 1.02, 0.07, a * 0.9, 0.42, b * 1.07))),
+    ...[-1, 1].map(a => B(0.03, 1.95, 0.05, a * 0.985, -0.08, 0)),
+    ...[-1, 1].map(a => B(0.03, 0.05, 2.2, a * 0.975, -0.06, 0)),
+    ...[-1, 1].map(b => B(1.1, 0.75, 0.06, 0, -0.45, b * 1.17)),
+    B(0.6, 0.12, 0.6, 0, 1.22, 0)
   ]);
-  const tx = materials(), wood = tx.plank;
-  const concrete = mat(0xb9b4ab, { roughness: 0.95 });
-  const roofMat = mat(0x3c4650, { roughness: 0.7 });
+  const roofTop = mat(0xf2f2ef, { roughness: 0.4 });
+  const kit = createStationKit(terrain);
+  const centers = STATIONS.map(st => { const d = SECTIONS[st.s], l = Math.hypot(d.b[0] - d.a[0], d.b[1] - d.a[1]); return [st.c[0] + (d.b[0] - d.a[0]) / l * st.off, st.c[1] + (d.b[1] - d.a[1]) / l * st.off]; });
+  const spots = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), yAx = new THREE.Vector3(0, 1, 0);
   const towers = [], halls = [];
 
@@ -181,51 +197,42 @@ export function createLift(terrain, pistes, exp) {
     }
     sec.tw = tw;
     if (sec.count) {
-      const cBody = new THREE.InstancedMesh(body, mat(sec.color ?? 0xc8202a, { roughness: 0.45 }), sec.count);
+      const cBody = new THREE.InstancedMesh(body, mat(sec.color ?? 0xc8202a, { roughness: 0.35, metalness: 0.15 }), sec.count);
       const cGlass = new THREE.InstancedMesh(glass, glassMat, sec.count);
+      const cRoof = new THREE.InstancedMesh(roof, roofTop, sec.count);
       const cFrame = new THREE.InstancedMesh(frame, frameMat, sec.count);
-      for (const m of [cBody, cGlass, cFrame]) { m.castShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
-      g.add(cBody, cFrame, cGlass);
-      sec.cabs = [cBody, cGlass, cFrame];
+      for (const m of [cBody, cGlass, cRoof, cFrame]) { m.castShadow = m !== cGlass; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
+      g.add(cBody, cRoof, cFrame, cGlass);
+      sec.cabs = [cBody, cGlass, cRoof, cFrame];
     }
+    const e = kit.ends(sec, { centers, ride: RIDE[sec.id], kiosk: sec.id === 'rossbach' });
+    g.add(e.g);
+    spots.push(...e.spots);
+    halls.push(...e.obstacles);
     sec.mesh = g;
     group.add(g);
   }
 
-  function hall(st, sec, y) {
-    const cx = st.c[0] + sec.dx * st.off, cz = st.c[1] + sec.dz * st.off;
-    const g = new THREE.Group();
-    g.position.set(cx, y, cz);
-    g.rotation.y = sec.heading;
-    let lo = y;
-    for (const a of [-1, 1]) for (const b of [-1, 1]) lo = Math.min(lo, terrain.heightAt(cx + sec.dx * st.hl * a + sec.px * st.hw * b, cz + sec.dz * st.hl * a + sec.pz * st.hw * b));
-    const depth = y - lo + 3;
-    const plat = new THREE.Mesh(new THREE.BoxGeometry(st.hw * 2, depth, st.hl * 2), concrete);
-    plat.position.y = 0.3 - depth / 2;
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(st.hw * 2 + 1.5, 0.6, st.hl * 2 + 1.5), roofMat);
-    roof.position.y = 7.9;
-    const wall = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.4, 7.4, st.hl * 2), 1.5), wood);
-    wall.position.set(-st.hw, 4, 0);
-    g.add(plat, roof, wall);
-    for (const a of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.5, 7.4, 0.5), wood);
-      p.position.set(st.hw - 0.3, 4, a * (st.hl - 0.3));
-      g.add(p);
-    }
-    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return { g, h: { x: cx, z: cz, dx: sec.dx, dz: sec.dz, hl: st.hl, hw: st.hw, top: y + 7.6 } };
+  const alt = y => Math.round(y).toLocaleString('de-AT') + ' m';
+  function hall(st, sec, y, title, ends) {
+    return kit.hall(st, sec, y, title, sec.name + ' · ' + alt(y), ends);
   }
 
   for (const sec of sections) { dress(sec); towers.push(...sec.tw); }
   const added = new Map(), all = [...sections];
-  STATIONS.forEach((st, k) => { const r = hall(st, sections[st.s], base[k]); group.add(r.g); halls.push(r.h); const id = SECTIONS[st.s].id; added.set(id, [...(added.get(id) || []), r]); });
+  STATIONS.forEach((st, k) => {
+    const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 25;
+    const at = SECTIONS.filter(d => near(d.a, st.c) || near(d.b, st.c));
+    const title = at.map(d => near(d.a, st.c) ? d.from : d.to)[0];
+    const r = kit.hall(st, sections[st.s], base[k], title, at.map(d => d.name).join(' · ') + ' · ' + alt(base[k]), { front: at.some(d => near(d.a, st.c)), back: at.some(d => near(d.b, st.c)) });
+    group.add(r.g); halls.push(r.h); const id = SECTIONS[st.s].id; added.set(id, [...(added.get(id) || []), r]); });
 
   function addSection(id) {
     const sec = all.find(s => s.id === id) || planned.find(s => s.id === id);
     if (!sec || sections.includes(sec)) return null;
     if (!added.has(id)) {
       dress(sec);
-      const hs = [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a)), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b))];
+      const hs = [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a), sec.from, { front: true }), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b), sec.to, { back: true })];
       for (const r of hs) sec.mesh.add(r.g);
       added.set(id, hs);
     }
@@ -257,7 +264,7 @@ export function createLift(terrain, pistes, exp) {
     mast.position.set(9, 16, 0);
     const jib = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 30), yellow);
     jib.position.set(9, 32, 7);
-    const cw = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2, 3), concrete);
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2, 3), kit.M.steel);
     cw.position.set(9, 31, -7);
     const hook = new THREE.Mesh(new THREE.BoxGeometry(0.1, 14, 0.1), ropeMat);
     hook.position.set(9, 25, 18);
@@ -461,6 +468,6 @@ export function createLift(terrain, pistes, exp) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  const api = { group, sections, all, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
+  const api = { group, sections, all, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, spots, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
   return api;
 }

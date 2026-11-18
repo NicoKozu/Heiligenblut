@@ -193,3 +193,52 @@ export function createBoarder(src) {
 
   return { object: group, pose, dress };
 }
+
+export function createWorker(src, colors = {}) {
+  const group = new THREE.Group();
+  const f = rig(src, { Jacket: 0xb5162b, Sleeve: 0x1f2a36, Pants: 0x1b2129, Boots: 0x2b2b2b, Gloves: 0x111111, Helmet: 0x1f2a36, ...colors });
+  group.add(f.root);
+  let tool = null;
+  if (colors.tool) {
+    tool = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.45, 6).rotateX(Math.PI / 2).translate(0, 0, 0.55), mat(0x8a5a2b, 0.7));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.42).translate(0, 0, 1.45), mat(0xd23a1e, 0.5));
+    tool.add(shaft, blade);
+    for (const m of [shaft, blade]) m.castShadow = true;
+    group.add(tool);
+  }
+  const h = new THREE.Vector3(), t = new THREE.Vector3(), Z = new THREE.Vector3(0, 0, 1);
+  function pose(act, time, look = 0) {
+    const dig = act === 'shovel', sw = Math.sin(time * 2.2);
+    const bend = dig ? 0.5 + 0.3 * sw : act === 'desk' ? 0.18 : 0.04, knee = dig ? 0.35 + 0.15 * sw : 0.05;
+    f.begin();
+    f.aim('Spine', 'Spine1', V(0, Math.cos(bend * 0.5), Math.sin(bend * 0.5)));
+    f.aim('Spine1', 'Spine2', V(0, Math.cos(bend), Math.sin(bend) + Math.sin(time * 1.3) * 0.015));
+    f.aim('Spine2', 'Neck', V(0, Math.cos(bend), Math.sin(bend)));
+    f.aim('Neck', 'Head', V(0, 1, 0.1 - bend * 0.3));
+    f.aim('Head', 'HeadTop_End', V(0, 1, 0.05 - bend * 0.4), look);
+    for (const s of [1, -1]) {
+      const L = s > 0 ? 'Left' : 'Right', R = s < 0;
+      f.aim(L + 'UpLeg', L + 'Leg', V(s * 0.09, -Math.cos(knee), Math.sin(knee)));
+      f.aim(L + 'Leg', L + 'Foot', V(s * 0.03, -Math.cos(knee * 0.9), -Math.sin(knee * 0.9)));
+      f.aim(L + 'Foot', L + 'ToeBase', V(s * 0.12, -0.45, 1));
+      let arm = V(s * 0.18, -1, 0.04), fore = V(s * 0.06, -1, 0.2);
+      if (act === 'wave' && R) { arm = V(-0.7, 0.45, 0.25); fore = V(-0.25 + 0.35 * Math.sin(time * 7), 1, 0.15); }
+      else if (act === 'point' && R) { arm = V(-0.45, -0.05, 0.9); fore = V(-0.4, 0.05, 0.9); }
+      else if (act === 'guide') { const k = Math.sin(time * 1.7 + s); arm = V(s * 0.35, -0.75, 0.55); fore = V(s * (0.1 + 0.25 * k), -0.2, 1); }
+      else if (act === 'desk') { arm = V(s * 0.2, -0.85, 0.45); fore = V(-s * 0.05, -0.35, 1); }
+      else if (dig) { arm = V(s * 0.12, -0.5 + 0.35 * sw, 0.85); fore = V(-s * 0.25, -0.35 + 0.3 * sw, 1); }
+      f.aim(L + 'Arm', L + 'ForeArm', arm);
+      f.aim(L + 'ForeArm', L + 'Hand', fore);
+      f.aim(L + 'Hand', L + 'HandMiddle1', fore);
+    }
+    f.plant(t.set(0, 0.08, 0));
+    if (tool) {
+      f.local('RightHand', h);
+      f.local('LeftHand', t);
+      tool.position.copy(h);
+      tool.quaternion.setFromUnitVectors(Z, t.sub(h).normalize());
+    }
+  }
+  return { object: group, pose, dress: f.dress };
+}
