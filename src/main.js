@@ -170,10 +170,10 @@ async function start() {
       return;
     }
     adapt(raw);
-    if (consume('KeyC') && cam.mode !== 'fly' && cam.mode !== 'mgr') { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
+    if (consume('KeyC') && cam.mode !== 'fly') { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
     if (consume('KeyM')) { audio.init(); player.state.note = audio.toggle() ? 'Ton an' : 'Ton aus'; player.state.noteT = 1.2; }
     if (consume('KeyI')) fps.hidden = !fps.hidden;
-    if (consume('KeyF') && !lift.riding() && cam.mode !== 'mgr') {
+    if (consume('KeyF') && !lift.riding()) {
       const st = player.state;
       if (cam.mode === 'fly') {
         const l = cam.endFly();
@@ -182,10 +182,10 @@ async function start() {
       } else {
         cam.startFly();
         st.vel.set(0, 0, 0); st.speed = 0;
-        st.note = 'Flugmodus · F = landen'; st.noteT = 1e9;
+        st.note = 'Flugmodus · F = landen'; st.noteT = biz?.active ? 1.5 : 1e9;
       }
     }
-    const flying = cam.mode === 'fly' || cam.mode === 'mgr';
+    const flying = cam.mode === 'fly';
     if (cam.mode === 'fly') flush();
     if (consume('Escape')) pause();
     if (consume('KeyP')) peaks.toggle();
@@ -200,10 +200,10 @@ async function start() {
       crowd.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
-    } else if (!hold && cam.mode !== 'mgr') flush();
+    } else if (!hold) flush();
     lift.update(dt, player.state, player, goTo);
     biz?.update(Math.min(raw, 1));
-    if (hold || cam.mode === 'mgr') flush();
+    if (hold || biz?.mgr) flush();
     village.update(dt, cam.camera);
     crowd.update(dt, cam.camera);
     workers.update(dt, cam.camera);
@@ -216,7 +216,7 @@ async function start() {
     scenery.update(cam.camera);
     props.update(cam.camera);
     audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
-    followSun(cam.mode === 'mgr' ? cam.focus : player.state.pos);
+    followSun(biz?.mgr ? cam.focus : player.state.pos);
     wfx.update(dt, cam.camera, renderer.domElement.height);
     pano.update(cam.camera, dt);
     pano.render(renderer, scene, cam.camera);
