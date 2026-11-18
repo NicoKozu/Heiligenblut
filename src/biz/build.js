@@ -77,7 +77,7 @@ export function order(G, id, summer) {
 function applyDone(G, id) {
   const p = P[id];
   for (const lid of p.lifts || []) if (!G.lifts.some(l => l.id === lid)) G.lifts.push({ id: lid, name: D.lifts.find(l => l.id === lid).name, open: true, cond: 100, run: 0, util: 0 });
-  for (const lid in p.places || {}) { const l = G.lifts.find(x => x.id === lid); if (l) l.places = p.places[lid]; }
+  for (const lid in p.places || {}) { const l = G.lifts.find(x => x.id === lid); if (l) l.places = Math.max(l.places || 0, p.places[lid]); }
   if (p.hut && G.side?.huts[p.hut]) { const h = G.side.huts[p.hut]; if (!h.own) { h.own = true; h.open = true; } }
 }
 
@@ -206,7 +206,7 @@ export function seasonPL(G, sy = G.season) {
 }
 
 export function benefit(G, id, fc) {
-  const p = P[id], cap = (p.lifts || []).reduce((a, l) => a + D.lifts.find(x => x.id === l).cap, 0) + Object.entries(p.places || {}).reduce((a, [l, b]) => { const d = D.lifts.find(x => x.id === l); return a + d.cap * (b / d.places - 1); }, 0);
+  const p = P[id], cap = (p.lifts || []).reduce((a, l) => a + D.lifts.find(x => x.id === l).cap, 0) + Object.entries(p.places || {}).reduce((a, [l, b]) => { const d = D.lifts.find(x => x.id === l); return a + d.cap * (b - (p.from || d.places)) / d.places; }, 0);
   const km = (p.pistes || []).reduce((a, x) => a + D.pistes.find(y => y.id === x).km, 0);
   const seats = sum(p.seats) + (p.hut ? D.side.huts.find(h => h.id === p.hut).seats : 0);
   let gain = null;
