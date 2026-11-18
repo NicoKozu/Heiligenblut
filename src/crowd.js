@@ -22,6 +22,7 @@ const POOL = { ski: 10, board: 5 };
 const FAR = 2600;
 const WALK = 2.2;
 const CAP = 4;
+const HALL = 16;
 const APEX = 4.7;
 const RIDE0 = 40;
 const QV = 300;
@@ -722,16 +723,23 @@ export function createCrowd(terrain, pistes, lift, assets) {
     }
     for (let j = 0; j < Math.min(2, V.q.length); j++) {
       const m = V.q[j];
-      if (!run || m.sc < 1 || hall >= pl * 3 || V.c - 1 < -debt) continue;
+      if (!run || m.sc < 1 || hall >= HALL || V.c - 1 < -debt) continue;
       V.q.splice(j--, 1);
       V.c--;
       hall++;
       let g = V.b[V.b.length - 1];
       if (!g || g.c || g.m.length >= pl) V.b.push(g = { m: [], c: null });
       const i = g.m.length;
-      m.bp = boardPath(sec, lanePt(sec, m.qd, m.qsv), m.qsv, i >> 2, i & 3);
+      m.bp = boardPath(sec, lanePt(sec, m.qd, m.qsv), m.qsv, 3, 0);
       m.bd = 0;
+      m.slot = -1;
       g.m.push(m);
+    }
+    let n = 0, f = true;
+    for (const g of V.b) {
+      g.f = !g.c && f;
+      if (!g.c) f = false;
+      if (!g.c?.st) for (const m of g.m) slot(sec, m, n++);
     }
     for (const m of V.q) {
       const p = lanePt(sec, m.qd, m.qsv, B), ex = p[0] - m.pos.x, ez = p[1] - m.pos.z, e = m.qin && Math.hypot(ex, ez) < 3 ? Math.min(1, dt * 8) : 1;
@@ -742,6 +750,13 @@ export function createCrowd(terrain, pistes, lift, assets) {
       act.push(m);
     }
     for (let i = V.b.length - 1; i >= 0; i--) if (!stepB(sec, V.b[i], run, dt, k, pl)) V.b.splice(i, 1);
+  }
+  function slot(sec, m, n) {
+    if (m.slot === n) return;
+    m.slot = n;
+    const { pts, cum } = m.bp, e = cum.length - 1, p = loc(sec, 5.7 + (n >> 2) * 0.8, ((n & 3) - 1.5) * 0.75);
+    if (m.bd >= cum[e]) { pts.push(p); cum.push(cum[e] + Math.hypot(p[0] - pts[e][0], p[1] - pts[e][1])); }
+    else { pts[e] = p; cum[e] = cum[e - 1] + Math.hypot(p[0] - pts[e - 1][0], p[1] - pts[e - 1][1]); }
   }
   function stepB(sec, g, run, dt, k, pl) {
     const L = sec.L;
@@ -757,7 +772,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
         m.speed = m.bd < end ? 1.25 * k : 0;
         act.push(m);
       }
-      if (all && run && sec.count) {
+      if (all && run && g.f && sec.count) {
         const own = lift.rideCabin(), win = Math.max(6, sec.speed * 0.8);
         let best = -1, bd = Infinity;
         for (let i = 0; i < sec.count; i++) {
