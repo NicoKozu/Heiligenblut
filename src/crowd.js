@@ -671,7 +671,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
     tally.clear();
     for (const k in qn) qn[k] = 0;
     for (const sec of secs) if (sec.qbig) {
-      const V = vline(sec), o = src.f.out?.['q:' + sec.id] || 0;
+      const V = vline(sec), o = src.f.out?.['b:' + sec.id] || 0;
       if (qo[sec.id] != null && o > qo[sec.id]) V.c += o - qo[sec.id];
       qo[sec.id] = o;
     }
@@ -689,15 +689,16 @@ export function createCrowd(terrain, pistes, lift, assets) {
       if (m.show) act.push(m);
     });
     for (const [key, m] of folk) if (m.seen !== frame) { folk.delete(key); if (m.qarr) arr.push(m); }
-    for (const [sec, V] of vq) stepV(sec, V, src.pace || 0);
+    for (const [sec, V] of vq) stepV(sec, V, src);
     arr.length = 0;
   }
-  function stepV(sec, V, pace) {
+  function stepV(sec, V, src) {
     if (!secs.includes(sec)) { V.q.length = V.b.length = 0; return; }
-    const run = !lift.stop.has(sec.name), k = Math.max(1, pace * 7.5), dt = fdt * k;
+    const run = !lift.stop.has(sec.name), k = Math.max(1, (src.pace || 0) * 60), dt = fdt * k;
+    const pl = src.places?.(sec.id) || CAP, debt = pl * 60 / (src.gap?.(sec.id) || 10);
     if (!run) V.c = 0;
     V.c = Math.min(V.c, 40);
-    const want = Math.min(QV, V.T + Math.floor(V.c));
+    const want = Math.max(0, Math.min(QV, V.T + Math.floor(V.c)));
     while (V.q.length > want) V.q.pop();
     while (V.q.length < want) {
       const j = V.q.length, t = rowD(j >> 1), qs = j & 1 ? 1 : -1, r = !V.f && arr.pop();
@@ -706,17 +707,33 @@ export function createCrowd(terrain, pistes, lift, assets) {
       m.qv = 0;
       m.qsv = r ? 0 : qs;
       m.qin = !!r;
+      m.sc = 0;
       V.q.push(m);
     }
     V.f = false;
-    V.t -= dt;
-    let ready = V.q.length > 0;
+    let hall = 0;
+    for (const g of V.b) if (!g.c?.st) hall += g.m.length;
     for (let j = 0; j < V.q.length; j++) {
       const m = V.q[j], t = rowD(j >> 1), gap = m.qd - t, qs = j & 1 ? 1 : -1;
       m.qv = gap > 0.05 ? Math.min(gap > 4 ? 1.3 : 0.4 + gap * 0.22, m.qv + dt * 1.2) : 0;
       m.qd = Math.max(t, m.qd - m.qv * dt);
       m.qsv += (qs - m.qsv) * Math.min(1, dt * 2.5);
-      if (j < 4 && gap > 0.4) ready = false;
+      m.sc = j < 2 && gap < 0.3 ? (m.sc || 0) + dt : 0;
+    }
+    for (let j = 0; j < Math.min(2, V.q.length); j++) {
+      const m = V.q[j];
+      if (!run || m.sc < 1 || hall >= pl * 3 || V.c - 1 < -debt) continue;
+      V.q.splice(j--, 1);
+      V.c--;
+      hall++;
+      let g = V.b[V.b.length - 1];
+      if (!g || g.c || g.m.length >= pl) V.b.push(g = { m: [], c: null });
+      const i = g.m.length;
+      m.bp = boardPath(sec, lanePt(sec, m.qd, m.qsv), m.qsv, i >> 2, i & 3);
+      m.bd = 0;
+      g.m.push(m);
+    }
+    for (const m of V.q) {
       const p = lanePt(sec, m.qd, m.qsv, B), ex = p[0] - m.pos.x, ez = p[1] - m.pos.z, e = m.qin && Math.hypot(ex, ez) < 3 ? Math.min(1, dt * 8) : 1;
       m.qin = true;
       ground(m, m.pos.x + ex * e, m.pos.z + ez * e);
@@ -724,20 +741,9 @@ export function createCrowd(terrain, pistes, lift, assets) {
       m.speed = m.qv * k;
       act.push(m);
     }
-    V.w = ready ? V.w + dt : 0;
-    let n = Math.min(4, Math.floor(V.c), V.q.length);
-    if (n === 3) n = 2;
-    if (run && n > 0 && V.w > 2.5 && V.t <= 0) {
-      const g = { m: V.q.splice(0, n), c: null };
-      g.m.forEach((m, i) => { m.bp = boardPath(sec, lanePt(sec, m.qd, m.qsv), m.qsv, 0, i); m.bd = 0; });
-      V.b.push(g);
-      V.c -= n;
-      V.t = 3 + n * 0.8;
-      V.w = 0;
-    }
-    for (let i = V.b.length - 1; i >= 0; i--) if (!stepB(sec, V.b[i], run, dt, k)) V.b.splice(i, 1);
+    for (let i = V.b.length - 1; i >= 0; i--) if (!stepB(sec, V.b[i], run, dt, k, pl)) V.b.splice(i, 1);
   }
-  function stepB(sec, g, run, dt, k) {
+  function stepB(sec, g, run, dt, k, pl) {
     const L = sec.L;
     if (!g.c) {
       let all = true;
@@ -755,7 +761,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
         const own = lift.rideCabin(), win = Math.max(6, sec.speed * 0.8);
         let best = -1, bd = Infinity;
         for (let i = 0; i < sec.count; i++) {
-          if ((used.get(key(sec, i)) || 0) + g.m.length > 8 || (own && own.sec === sec && own.i === i)) continue;
+          if ((used.get(key(sec, i)) || 0) + g.m.length > pl || (own && own.sec === sec && own.i === i)) continue;
           const d = L - (lift.cabinU(sec, i) + APEX) % L;
           if (d > win && d < bd) { bd = d; best = i; }
         }

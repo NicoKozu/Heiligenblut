@@ -109,7 +109,7 @@ function buildSection(sec, terrain, base, avoid) {
   }
 
   const towers = tw.slice(1, -1).map(t => ({ x: ax + dx * t.s, z: az + dz * t.s, y: t.y, g: terrain.heightAt(ax + dx * t.s, az + dz * t.s) }));
-  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: sec.tunnel ? 0 : Math.floor(L / Math.min(SPACING, RIDE[sec.id] ? cum[upEnd] / Math.ceil(RIDE[sec.id].ride * RIDE[sec.id].cap / 360) : SPACING)), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
+  return { ...sec, len, dx, dz, px, pz, pts, at, L, ropeB: rope(len), upLen: cum[upEnd], towers, count: sec.tunnel ? 0 : Math.floor(L / Math.min(SPACING, RIDE[sec.id] ? cum[upEnd] / Math.round(RIDE[sec.id].ride * 60 / RIDE[sec.id].gap) : SPACING)), phase: 0, speed: SPEED, heading: Math.atan2(dx, dz) };
 }
 
 export function createLift(terrain, pistes, exp) {

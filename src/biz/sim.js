@@ -50,6 +50,7 @@ function migrate(G) {
   if (!G.seasons) G.seasons = [];
   if (!G.ev) G.ev = [];
   if (G.summer === undefined) G.summer = null;
+  for (const l of G.lifts) if (l.boost) { l.places = Math.round(D.lifts.find(x => x.id === l.id).places * (1 + l.boost)); delete l.boost; }
   if (G.today && !G.today.hits) G.today.hits = {};
   if (!G.today || !G.today.types) resetToday(G);
   return G;

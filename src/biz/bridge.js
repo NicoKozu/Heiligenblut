@@ -132,7 +132,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
   }
 
   const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
-  const view = () => active && G.flow ? { f: G.flow, frac: G.phase === 'open' ? clk.frac() : 0, pace: lift.pace || 0, huts } : null;
+  const view = () => active && G.flow ? { f: G.flow, frac: G.phase === 'open' ? clk.frac() : 0, pace: lift.pace || 0, huts, places: id => G.lifts.find(x => x.id === id)?.places || D.lifts.find(x => x.id === id)?.places, gap: id => D.lifts.find(x => x.id === id)?.gap } : null;
 
   function end() {
     if (!active) return;
