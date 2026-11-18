@@ -40,7 +40,7 @@ Bei „Etappe XX“: nur **Abschnitt A (Grundregeln)**, **Abschnitt B (Referenzw
 2. Nur die im Etappen-Abschnitt genannten Quelldateien lesen (bei Bedarf gezielt per `grep` nach Funktionsnamen suchen statt ganze Dateien zu lesen).
 3. Branch `etappe-XX` von aktuellem `main` anlegen.
 4. Umsetzen. Regeln: keine Kommentare im Code, alle Zahlen in `biz/data.js`, Sim bleibt rein (kein DOM/three.js in `sim.js`, `data.js` und den anderen Sim-Modulen), Spielstand bleibt JSON, neue Felder alter Spielstände über `migrate()` in `sim.js` ergänzen.
-5. Prüfen: `node --check` für jede geänderte `.js`-Datei; `node tools/simtest.mjs` (ab Etappe 20b im Repo, Aufruf siehe Etappe 20b) mit `--check`, alle Ziele OK. Playwright-Smoke-Test entfällt (Nutzerwunsch).
+5. Prüfen: `node --check` für jede geänderte `.js`-Datei; `node tools/simtest.mjs` (ab Etappe 20b im Repo, Aufruf siehe Etappe 20b) mit `--check`, alle Ziele OK. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright.
 6. Abnahme-Liste der Etappe Punkt für Punkt durchgehen und im Chat abhaken.
 7. In `CLAUDE.md` unter „Stand“ 2–4 Zeilen zur Etappe eintragen (Dateien, Funktionen, wichtigste Zahlen aus dem Simtest), bei neuen Dateien auch „Struktur“ ergänzen.
 8. Commit, Push, Pull Request nach `main`, PR selbst mergen. Danach stoppen: 3–5 Zeilen Zusammenfassung + was der Nutzer im Spiel testen soll.
@@ -313,7 +313,7 @@ Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenhe
 - `node tools/simtest.mjs --days 30 --strat vernünftig --daily` läuft und zeigt plausible Tage.
 - `node tools/simtest.mjs --check` (alle Strategien, 3 Saisonen) → alle Ziele OK.
 - Saisonwechsel wird 2× ohne Fehler durchlaufen (Werte wie Ruf, Kasse, Kredit, Bauprojekte werden übernommen).
-- Im Browser: Manager startet, ein Tag ×20 läuft (manuell durch den Nutzer, kein Playwright).
+- Im Browser: Manager startet, ein Tag ×20 läuft (Playwright-Browsertest).
 
 ---
 
