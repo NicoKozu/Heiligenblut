@@ -145,6 +145,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     sync();
     crowd?.setSource?.(null);
     village?.setSource?.(null);
+    village?.setScale?.(1);
     lift.pace = null;
   }
 
@@ -174,6 +175,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     }
     sync();
     lift.pace = G.phase === 'open' ? D.time.gameSecPerSec * G.factor / 60 : null;
+    village?.setScale?.(G.phase === 'open' ? G.factor : 1);
 
     const rc = lift.rideCabin();
     if (rc && G.phase !== 'open' && lift.stop.has(rc.sec.name)) park();

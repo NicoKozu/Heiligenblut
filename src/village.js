@@ -940,8 +940,10 @@ export function createVillage(terrain, data, built) {
 
   const blocked = (x, z, m) => onRoad(x, z, m + 0.6) || inLot(x, z, m + 1) || inBig(x, z, m + 7);
   let flowT = 0;
+  let tscale = 1;
   function update(dt, camera) {
-    step(Math.min(dt, 0.1));
+    const t = Math.min(dt, 0.1) * tscale, n = Math.max(1, Math.ceil(t / 0.1));
+    for (let i = 0; i < n; i++) step(t / n);
     flowT += dt;
     if (waterMesh) M.water.map.offset.x = -flowT * 0.09;
     const d = Math.hypot(camera.position.x - VC[0], camera.position.z - VC[1]);
@@ -957,5 +959,5 @@ export function createVillage(terrain, data, built) {
     }
     crowd.setExtra?.(() => walkers.map(w => w.m));
   }
-  return { group, update, blocked, attach, setSource: fn => { src = fn; }, lot: { center: P.c, stalls: stalls.length } };
+  return { group, update, blocked, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
 }
