@@ -209,7 +209,7 @@ export const costToday = G => sum(G.today.costs);
 
 export function setFactor(G, dir) {
   const f = D.time.factors, i = f.indexOf(G.factor);
-  G.factor = f[Math.max(0, Math.min(f.length - 1, (i < 0 ? 0 : i) + dir))];
+  G.factor = f[Math.max(0, Math.min(f.length - 1, (i < 0 ? f.indexOf(1) : i) + dir))];
   return G.factor;
 }
 
