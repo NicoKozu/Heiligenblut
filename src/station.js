@@ -21,7 +21,17 @@ function snowSpot(r, S) {
   r -= 14;
   return [23.1 + Math.floor(r / 2) * 0.8, S * (7.1 + (r % 2) * 0.8), -1, 0];
 }
-export const queueSpot = (r, S = 1) => r % 2 ? snowSpot(r >> 1, S) : deckSpot(r >> 1);
+const LANE = [[16.7, 7.5], [17.4, 7.5], [17.4, 30], [19.4, 30], [19.4, 11], [21.4, 11], [21.4, 30], [23.4, 30], [23.4, 11], [25.4, 11], [25.4, 30], [25.4, 90]];
+const LCUM = LANE.map((p, i) => i ? Math.hypot(p[0] - LANE[i - 1][0], p[1] - LANE[i - 1][1]) : 0).map((v, i, a) => a.slice(0, i + 1).reduce((x, y) => x + y));
+export const LANE_IN = LCUM[10] + 1.5;
+export const rowD = k => k ? 1.5 + k * 1.2 : 0;
+export function laneAt(d, side, S) {
+  let i = 1;
+  while (i < LANE.length - 1 && LCUM[i] < d) i++;
+  const [a0, s0] = LANE[i - 1], [a1, s1] = LANE[i], l = LCUM[i] - LCUM[i - 1], t = (d - LCUM[i - 1]) / l, ta = (a1 - a0) / l, ts = (s1 - s0) / l, w = i === 1 ? 0.95 : 0.45;
+  return [a0 + (a1 - a0) * t - ts * side * w, S * (s0 + (s1 - s0) * t + ta * side * w), -ta, -S * ts];
+}
+export const queueSpot = (r, S = 1, big) => r % 2 ? (big ? laneAt(rowD(r >> 2), r >> 1 & 1 ? 1 : -1, S) : snowSpot(r >> 1, S)) : deckSpot(r >> 1);
 
 function kit() {
   const parts = new Map();
@@ -253,25 +263,36 @@ export function createStationKit(terrain) {
     }
   }
 
-  function maze(K, F, S) {
-    for (const sd of [5.6, 7.5, 9.4]) belt(K, F, 16.3, S * sd, 22.5, S * sd);
+  function maze(K, F, S, big) {
+    if (big) {
+      belt(K, F, 16.3, S * 5.6, 18.4, S * 5.6);
+      belt(K, F, 16.3, S * 7.5, 17.1, S * 7.5);
+      belt(K, F, 18.4, S * 5.6, 18.4, S * 29);
+      belt(K, F, 16.4, S * 9.4, 16.4, S * 31);
+      belt(K, F, 20.4, S * 12.4, 20.4, S * 31);
+      belt(K, F, 22.4, S * 9.4, 22.4, S * 29);
+      belt(K, F, 24.4, S * 12.4, 24.4, S * 31);
+      belt(K, F, 26.4, S * 9.4, 26.4, S * 31);
+      belt(K, F, 18.4, S * 9.4, 26.4, S * 9.4);
+      belt(K, F, 16.4, S * 31, 24.4, S * 31);
+    } else for (const sd of [5.6, 7.5, 9.4]) belt(K, F, 16.3, S * sd, 22.5, S * sd);
     for (const sd of [-2.85, -0.95, 0.95, 2.85]) belt(K, F, 16.3, sd, 21.7, sd);
     ROWS.slice(0, -1).forEach((r, i) => i % 2 ? belt(K, F, r + 0.8, -3.45, r + 0.8, 4.75) : belt(K, F, r + 0.8, -4.75, r + 0.8, 3.45));
     belt(K, F, 28.6, -3.3, 28.6, 4.75);
   }
 
-  function flatten(F, y) {
+  function flatten(F, y, S, big) {
     const sm = t => t * t * (3 - 2 * t), o = [F.lz, -F.lx];
     terrain.groom((x, z, h) => {
       const dx = x - F.E[0], dz = z - F.E[1], al = dx * o[0] + dz * o[1], sd = dx * F.lx + dz * F.lz;
-      const e = Math.max(12 - al, al - 16.1 - LQ - 2, Math.abs(sd) - 9.8);
+      const e = Math.max(12 - al, al - 16.1 - LQ - 2, -S * sd - 9.8, S * sd - (big ? 32 : 9.8));
       if (e > 10) return null;
       const k = sm(Math.min(1, 1 - e / 10));
       return [h + (y - h) * k, k * 0.6];
     });
   }
 
-  function waiting(K, F, al0, sec, rideInfo, hA, hB, extra, s) {
+  function waiting(K, F, al0, sec, rideInfo, hA, hB, extra, s, big) {
     const W = 4.75, n = 6, rows = 10;
     const pos = new Float32Array((n + 1) * (rows + 1) * 3), uv = new Float32Array((n + 1) * (rows + 1) * 2), idx = [];
     for (let j = 0; j <= rows; j++) for (let i = 0; i <= n; i++) {
@@ -312,7 +333,7 @@ export function createStationKit(terrain) {
     const [rx, rz] = F.P(cm, 0);
     K.add(BOX(0.25, 0.25, cl + 1.4), M.plankDark, T(rx, H + 1.8, rz, F.R));
     gates(K, F, al0 - 0.35, s);
-    maze(K, F, s);
+    maze(K, F, s, big);
     const lane = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.9), signMat(sec.name, 'Skipass bereithalten · kontaktlos scannen'));
     const [gx, gz] = F.P(al0 - 0.15, 0);
     lane.position.set(gx, H - 0.45, gz);
@@ -405,10 +426,12 @@ export function createStationKit(terrain) {
         K.add(BOX(9.2, 0.02, 0.18), M.yellow, T(x1, fy + 0.01, z1, F.R));
       }
       if (isA || sec.tunnel) {
-        flatten(F, fy - 0.05);
+        const big = !!opt.kiosk && isA;
+        flatten(F, fy - 0.05, s, big);
         (sec.qside ||= {})[end] = s;
+        if (big) sec.qbig = true;
         const hA = sec.pts[0].y - 5.4, hB = sec.ropeB - 5.4;
-        waiting(K, F, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s);
+        waiting(K, F, 16.1, sec, opt.ride, isA ? hA : hB, isA ? hB : hA, extra, s, big);
         put('gate', 17.1, -s * 5.6, undefined, s * -Math.PI / 2);
         put('shovel', 16.1 + LQ + 1.6, -s * 6.4, undefined, s * Math.PI / 2);
         if (opt.kiosk && isA) {
