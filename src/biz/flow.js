@@ -22,7 +22,14 @@ function bell(c, t) {
   return (L / 2 + (x + R / Math.PI * Math.sin(Math.PI * x / R)) / 2) / tot;
 }
 
-export const leaveShare = t => smooth((t - F.leave.from) / (F.leave.to - F.leave.from));
+export function ahead(G, L) {
+  const f = G.flow;
+  if (!f || G.phase !== 'open' || !(L > 0)) return 0;
+  const t = G.min;
+  return Math.max(0, f.plan.full * (bell(F.arrive, t + L) - bell(F.arrive, t)) + f.plan.half * (bell(F.half, t + L) - bell(F.half, t)));
+}
+
+export const leaveShare =t => smooth((t - F.leave.from) / (F.leave.to - F.leave.from));
 export const capPerMin = l => LIFT[l.id].cap * (1 + (l.boost || 0)) / 60;
 export const runMinutes = p => Math.max(1, Math.round(p.km / F.speed[p.level] * 60 + F.pause[p.level]));
 export const levelWeight = (lv, skill = F.skill) => Object.entries(skill).reduce((a, [c, s]) => a + s * F.pref[c][lv], 0);

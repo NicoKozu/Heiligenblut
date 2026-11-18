@@ -739,7 +739,7 @@ export function createVillage(terrain, data, built) {
   const walkers = [];
   const routeCache = new Map();
   const cached = (k, f) => { if (!routeCache.has(k)) routeCache.set(k, f()); return routeCache.get(k); };
-  let src = null, want = 0, free = { t: 0, churn: 6 }, spawnT = 0, localT = 4, busT = 30;
+  let src = null, want = 0, free = { t: 0, churn: 6 }, spawnT = 0, footT = 0, localT = 4, busT = 30;
   const occupied = new Set();
   const lotCars = () => parked.length + moving.filter(m => m.to === 'park').length;
 
@@ -773,6 +773,33 @@ export function createVillage(terrain, data, built) {
       n++;
     }
     return n;
+  }
+  let footR = null, footSeed = 70000, leadC = null;
+  function footPath() {
+    if (!footR && kasse) footR = makeRoute([...walkBase, kasse].map(p => [p[0], p[1], 0]), { smooth: 1 });
+    return footR;
+  }
+  function spawnFoot(r = Math.random, mid = false) {
+    const R = footPath();
+    if (!crowdApi || !R || walkers.length > 220) return false;
+    const m = crowdApi.make(footSeed++);
+    walkers.push({ m, r: R, dir: 1, s: mid ? r() * R.len : -r() * 1.5, v: (m.kid ? 1.0 : 1.15) + r() * 0.2, lane: (r() - 0.5) * 1.6, foot: true, ski: m.type === 'ski' && !m.kid ? 1 : m.type === 'ski' ? 0.75 : 0 });
+    return true;
+  }
+  function lead() {
+    if (leadC) return leadC;
+    if (!kasse || !stalls.length) return { car: 5, foot: 3 };
+    const n = Math.min(12, stalls.length);
+    let walk = 0, lot = 0;
+    for (let i = 0; i < n; i++) {
+      const st = stalls[Math.floor(i * stalls.length / n)];
+      walk += walkPath({ stall: st }).len / 1.25;
+      lot += lotIn(st).len / 3;
+    }
+    const drive = ROAD_IN[0].len / 8;
+    const clamp = v => Math.max(1, Math.min(15, v / 60));
+    leadC = { car: clamp(drive + (walk + lot) / n), foot: clamp((footPath()?.len || 200) / 1.25) };
+    return leadC;
   }
   function arrive(instant, r = Math.random) {
     const st = freeStall(r);
@@ -819,23 +846,35 @@ export function createVillage(terrain, data, built) {
   let crowdApi = null;
   const tmp = {};
   function step(dt) {
-    const target = src ? src() : null;
-    if (target === null) {
+    const s = src ? src() : null;
+    let transit = 0, footWant = 0;
+    if (s === null) {
       free.t += dt;
       want = Math.round(stalls.length * (0.7 + 0.08 * Math.sin(free.t / 240)));
       free.churn -= dt;
       if (free.churn < 0) { free.churn = 14 + Math.random() * 18; if (parked.length > want - 6) depart(false); }
-    } else want = Math.round(stalls.length * Math.max(0, Math.min(1, target)));
+    } else {
+      const k = stalls.length / Math.max(1, s.cap);
+      want = Math.min(stalls.length, Math.round((s.cars + s.inb) * k));
+      transit = Math.round(s.inb * k);
+      footWant = Math.round(s.foot * k);
+    }
     const have = lotCars();
     const diff = want - have;
-    if (diff > 8) for (let i = 0; i < diff - 8; i++) arrive('walk');
+    if (diff > 8) for (let i = 0; i < diff - 8; i++) arrive(s === null || i < transit ? 'walk' : true);
     if (diff < -8) for (let i = 0; i < -diff - 8; i++) depart(true);
     spawnT -= dt;
     if (spawnT <= 0) {
       if (diff > 0) { arrive(false); spawnT = Math.max(1.6, 9 / Math.sqrt(diff)); }
-      else if (diff < 0) { depart(false); spawnT = Math.max(2.2, 12 / Math.sqrt(-diff)); }
+      else if (diff < -1) { depart(false); spawnT = Math.max(2.2, 12 / Math.sqrt(-diff)); }
       else spawnT = 1;
     }
+    let nf = 0;
+    for (const w of walkers) if (w.foot) nf++;
+    const df = footWant - nf;
+    if (df > 6) for (let i = 0; i < df - 3; i++) spawnFoot(Math.random, true);
+    footT -= dt;
+    if (footT <= 0) { footT = df > 0 ? 0.6 : 0.3; if (df > 0) spawnFoot(); }
     localT -= dt;
     if (localT <= 0) { local(false); localT = 6 + Math.random() * 12; }
     busT -= dt;
@@ -942,7 +981,7 @@ export function createVillage(terrain, data, built) {
   let flowT = 0;
   let tscale = 1;
   function update(dt, camera) {
-    const t = Math.min(dt, 0.1) * tscale, n = Math.max(1, Math.ceil(t / 0.1));
+    const t = Math.min(dt, 0.1) * tscale, n = Math.max(1, Math.ceil(t / 0.2));
     for (let i = 0; i < n; i++) step(t / n);
     flowT += dt;
     if (waterMesh) M.water.map.offset.x = -flowT * 0.09;
@@ -956,8 +995,9 @@ export function createVillage(terrain, data, built) {
       kasse = [sec.a[0] - sec.dx * 7 - sec.px * 19, sec.a[1] - sec.dz * 7 - sec.pz * 19];
       const w = data.walk.filter(p => Math.hypot(p[0] - sec.a[0], p[1] - sec.a[1]) > 22);
       walkBase.length = 0; walkBase.push(...w);
+      footR = null; leadC = null;
     }
     crowd.setExtra?.(() => walkers.map(w => w.m));
   }
-  return { group, update, blocked, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
+  return { group, update, blocked, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lead, lot: { center: P.c, stalls: stalls.length } };
 }

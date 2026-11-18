@@ -8,6 +8,7 @@ import * as M from './marketing.js';
 import * as X from './side.js';
 import * as B from './build.js';
 import * as V from './season.js';
+import * as Fl from './flow.js';
 import { consume } from '../input.js';
 import { createView3d } from './view3d.js';
 
@@ -127,7 +128,16 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     sync();
     ui.render(G);
     crowd?.setSource?.(view);
-    village?.setSource?.(() => active && G.flow ? (G.flow.cars || 0) / Math.max(1, G.side.park.cap) : 0);
+    const vs = { cars: 0, inb: 0, foot: 0, cap: 1 };
+    village?.setSource?.(() => {
+      if (!active || !G.flow) return Object.assign(vs, { cars: 0, inb: 0, foot: 0 });
+      const f = G.flow, ld = village.lead(), sh = X.parkShare(G);
+      vs.cap = G.side.park.cap;
+      vs.cars = f.cars || 0;
+      vs.inb = Math.min(Math.max(0, vs.cap - vs.cars), Fl.ahead(G, ld.car) * sh / D.side.parking.persons);
+      vs.foot = Fl.ahead(G, ld.foot) * (1 - sh);
+      return vs;
+    });
     v3.set(true, G);
   }
 
@@ -175,7 +185,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     }
     sync();
     lift.pace = G.phase === 'open' ? D.time.gameSecPerSec * G.factor / 60 : null;
-    village?.setScale?.(G.phase === 'open' ? G.factor : 1);
+    village?.setScale?.(G.phase === 'open' ? D.time.gameSecPerSec * G.factor : 1);
 
     const rc = lift.rideCabin();
     if (rc && G.phase !== 'open' && lift.stop.has(rc.sec.name)) park();
