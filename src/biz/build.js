@@ -95,7 +95,7 @@ function complete(G, j) {
   if (G.flow) ensureKeys(G.flow);
   asset(G, id, p.label, p.price, p.life);
   const staff = (p.lifts || []).reduce((a, l) => a + D.lifts.find(x => x.id === l).staff, 0);
-  log(G, p.label + ' fertiggestellt' + (staff ? ' – braucht ' + staff + ' Liftpersonal mehr' : ''), 'good');
+  log(G, p.label + ' fertiggestellt' + '', 'good');
 }
 
 export const ready = (G, id) => (P[id].needs || []).every(n => done(G, n));

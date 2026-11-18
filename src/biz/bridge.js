@@ -3,11 +3,9 @@ import { createUI } from './ui.js';
 import { D } from './data.js';
 import * as A from './assets.js';
 import * as N from './snow.js';
-import * as P from './staff.js';
 import * as M from './marketing.js';
 import * as X from './side.js';
 import * as B from './build.js';
-import * as V from './season.js';
 import { consume } from '../input.js';
 import { createView3d } from './view3d.js';
 
@@ -45,24 +43,19 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (a === 'splan' && S.summerStage(G, 'plan')) save();
     else if (a === 'srep' && S.summerStage(G, 'report')) save();
     else if (a === 'sstart' && S.startSeason(G)) { ui.open('prep'); save(); note('Neue Saison ' + G.season + '/' + String(G.season + 1).slice(2), 3); }
-    else if (a.startsWith('rev:')) { if (V.revise(G, a.slice(4))) { save(); note('Revision durchgeführt', 2); } }
     else if (a === 'close') ui.close();
     else if (a.startsWith('price:') && G.phase !== 'open') { const [, k, d] = a.split(':'); S.setPrice(G, k, G.prices[k] + Number(d)); save(); }
     else if (a.startsWith('tog:hut:')) { if (X.toggleHut(G, a.slice(8))) save(); }
     else if (a.startsWith('lvl:')) { const [, id, lv] = a.split(':'); if (X.setLevel(G, id, lv)) save(); }
     else if (a.startsWith('sp:')) { const [, k, d] = a.split(':'), o = k === 'rental' ? G.side.rental : k === 'school' ? G.side.school : G.side.park; if (X.setSidePrice(G, k, o.price + Number(d))) save(); }
     else if (a.startsWith('rent:')) { if (X.rentalAct(G, a.slice(5))) { save(); note(a === 'rent:buy' ? 'Neue Leihausrüstung gekauft' : 'Leihausrüstung gewartet', 2); } }
-    else if (a.startsWith('tog:')) { const [, k, id] = a.split(':'), o = k === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id]; if (!o) return; if (A.setOpen(G, k, id, !o.open)) save(); else if (k === 'lift' && !o.open && !P.canOpen(G, id)) note('Zu wenig Liftpersonal für ' + o.name, 3); }
+    else if (a.startsWith('tog:')) { const [, k, id] = a.split(':'), o = k === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id]; if (!o) return; if (A.setOpen(G, k, id, !o.open)) save(); }
     else if (a.startsWith('repair:')) { const [, id, x] = a.split(':'); if (A.repair(G, id, x === 'x')) { ui.drop(id); save(); note('Reparatur beauftragt', 2); } }
-    else if (a.startsWith('insp:')) { if (A.inspect(G, a.slice(5))) save(); }
+    else if (a.startsWith('insp:')) { if (A.inspect(G, a.slice(5))) { save(); note('Revision durchgeführt', 2); } }
     else if (a.startsWith('drop:')) ui.drop(a.slice(5));
     else if (a.startsWith('grm:')) { if (N.setGroom(G, a.slice(4))) save(); }
     else if (a.startsWith('gun:')) { const [, id, d] = a.split(':'); if (N.setGun(G, id, Number(d))) save(); }
-    else if (a.startsWith('hire:')) { if (P.hire(G, a.slice(5))) save(); }
-    else if (a.startsWith('fire:')) { if (P.fire(G, a.slice(5))) save(); }
-    else if (a.startsWith('wage:')) { if (P.setWage(G, Number(a.slice(5)))) save(); }
     else if (a.startsWith('mkt:')) { const id = a.slice(4); if (M.act(G, id)) { save(); note(D.mkt.campaigns[id].label + (D.mkt.campaigns[id].kind === 'weekly' ? (G.mkt.on[id] ? ' gestartet' : ' gestoppt') : ' gebucht'), 2); } }
-    else if (a === 'bonus') { if (P.bonus(G)) { save(); note('Prämie ausgezahlt', 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
     else if (a.startsWith('build:')) { const m = a.slice(6), w = m.endsWith(':s') ? 's' : '', id = w ? m.slice(0, -2) : m; if (B.order(G, id, w === 's')) { save(); note(D.build.projects[id].label + ' beauftragt', 2.5); } }
     else if (a.startsWith('loan:')) { const v = a.slice(5), n = v === 'all' ? -G.loan : Number(v), r = n > 0 ? B.borrow(G, n) : B.repay(G, -n); if (r) { save(); note(n > 0 ? 'Kredit aufgenommen' : 'Kredit getilgt', 1.5); } }

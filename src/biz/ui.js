@@ -4,10 +4,10 @@ import { pl } from './area.js';
 import { fmtDate, fmtClock, phase as calPhase } from './calendar.js';
 import { costToday, report, prev, forecast } from './sim.js';
 import { avgPrice, priceFactor } from './demand.js';
-import { status, repairQuote, fmtDur } from './assets.js';
+import { status, repairQuote, fmtDur, serviced } from './assets.js';
 import { live, stars } from './satisfaction.js';
 import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
-import { GROUPS, duty, needs, wages, heads, dayCost, pendingOf, nextArrival, bonusCost, bonusDone } from './staff.js';
+import { GROUPS, duty, needs, wages, heads, dayCost } from './staff.js';
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
 import * as X from './side.js';
 import { finTab, buildTab, overView } from './ui-build.js';
@@ -143,8 +143,6 @@ function parts(sat) {
     (sat.ded ? '<div class="biz-part"><span>Ereignis-Abzug</span><span></span><b class="biz-bad">−' + Math.round(sat.ded) + '</b></div>' : '');
 }
 const guestsN = G => G.phase === 'prep' ? forecast(G).n : Math.max(G.today.expected || 0, G.today.guests || 0);
-const sumK = o => GROUPS.reduce((a, k) => a + o[k], 0);
-const ddmm = d => d.slice(8) + '.' + d.slice(5, 7) + '.';
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
 const atone = a => a >= 4 ? 'biz-bad' : a >= 3 ? 'biz-warn' : 'biz-good';
 const stone = s => s >= 60 ? 'biz-good' : s >= 30 ? 'biz-warn' : 'biz-bad';
@@ -228,7 +226,7 @@ export function createUI(h) {
       row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
       (open && G.flow.cashWait >= 0.5 ? row('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
       '<div class="sep"></div>' +
-      (st => { const nd = sumK(needs(G, guestsN(G))), du = GROUPS.reduce((a, k) => a + duty(G, k), 0); return row('Personal im Dienst / benötigt', du + ' / ' + nd, du >= nd ? 'biz-good' : du >= nd * 0.85 ? 'biz-warn' : 'biz-bad') + row('Moral', Math.round(st.morale), tone(st.morale, 60, 40)) + row('Lohnkosten heute', eur(G.today.costs.staff || wages(G))); })(G.staff) +
+      row('Personal', heads(G) + ' Mitarbeiter') + row('Lohnkosten heute', eur(G.today.costs.staff || wages(G))) +
       '<div class="sep"></div>' +
       G.lifts.map(l => {
         const st = status(l), on = open && st === 'run', w = on ? G.flow.wait[l.id] : 0;
@@ -269,8 +267,7 @@ export function createUI(h) {
       return '<button class="btn primary" data-act="repair:' + l.id + '">Reparieren · ' + eur(a.cost) + ' · ' + fmtDur(a.min) + '</button><button class="btn" data-act="repair:' + l.id + ':x">Express · ' + eur(b.cost) + ' · ' + fmtDur(b.min) + '</button>';
     }
     if (st === 'repair') return '<span class="biz-warn">Reparatur läuft · noch ' + fmtDur(l.repairLeft) + '</span>';
-    const ins = l.inspPlan ? '<span class="biz-warn">Inspektion heute Nacht</span>' : st === 'insp' ? '<span class="biz-warn">Inspektion läuft · noch ' + fmtDur(l.insp) + '</span>' : '<button class="btn" data-act="insp:' + l.id + '">Inspektion · ' + eur(D.inspect.cost) + ' · +' + D.inspect.gain + ' %</button>';
-    return ins;
+    return serviced(G, l) ? '<span class="biz-good">Revision erledigt</span>' : '<button class="btn" data-act="insp:' + l.id + '">Revision · ' + eur(D.inspect.cost) + ' · ' + D.inspect.to + ' %</button>';
   }
 
   function assets(G) {
@@ -278,7 +275,7 @@ export function createUI(h) {
       const st = status(l);
       return '<tr><td><i class="biz-dot ' + DOT[st] + '"></i> <b>' + l.name + '</b><br><span style="opacity:.75">' + D.liftStatus[st] + (l.broken ? ' – ' + l.broken.label : '') + ' · Zustand <span class="' + tone(l.cond, 75, 50) + '">' + Math.round(l.cond) + ' %</span></span></td><td><div class="acts">' + liftActs(G, l) + sw('lift', l.id, l.open) + '</div></td></tr>';
     }).join('') + '</table>' +
-      '<p class="note">Verschleiß im Betrieb; je schlechter der Zustand, desto häufiger Störungen. Inspektion sperrt den Lift morgens 2 h. Geschlossene Lifte verursachen keine Stromkosten.</p>' +
+      '<p class="note">Verschleiß im Betrieb; je schlechter der Zustand, desto häufiger Störungen. Einmal je Saison Revision (' + eur(D.inspect.cost) + ' je Lift, ohne Stillstand) setzt den Zustand auf ' + D.inspect.to + ' %. Geschlossene Lifte verursachen keine Stromkosten.</p>' +
       '<h2>Pisten</h2><table>' + pl(G).map(p => {
         const o = G.pistes[p.id];
         return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> ' + p.id + ' ' + p.name + ' <span style="opacity:.7">· ' + p.level + ' · ' + p.km.toLocaleString('de-DE') + ' km · Schnee ' + Math.round(o.snow) + ' cm' + (o.aper ? ' · <span class="biz-bad">aper</span>' : '') + '</span></td><td>' + sw('piste', p.id, o.open, o.aper) + '</td></tr>';
@@ -339,20 +336,10 @@ export function createUI(h) {
   }
 
   function staffTab(G) {
-    const st = G.staff, nd = needs(G, guestsN(G)), open = G.phase === 'open', SG = D.staff.groups;
-    const pm = (act, dis) => '<button data-act="' + act + '"' + (dis ? ' disabled' : '') + '>' + (act.startsWith('fire') || act.endsWith('-' + D.staff.wageStep) ? '−' : '+') + '</button>';
-    return '<h2>Personal · Bedarf für ' + num(guestsN(G)) + ' Gäste</h2><table>' + GROUPS.map(k => {
-      const d = duty(G, k), pd = pendingOf(G, k), sk = st.sick[k] || 0;
-      return '<tr><td><b>' + SG[k].label + '</b> <span style="opacity:.6;font-size:12px">' + eur(dayCost(G, k)) + '/Tag</span><br><span style="opacity:.8;font-size:13px">im Dienst <span class="' + (d >= nd[k] ? 'biz-good' : d >= nd[k] * 0.85 ? 'biz-warn' : 'biz-bad') + '">' + d + '</span> / benötigt ' + nd[k] +
-        (sk ? ' · <span class="biz-bad">' + sk + ' krank</span>' : '') + (pd ? ' · <span class="biz-good">+' + pd + ' ab ' + ddmm(nextArrival(G, k)) + '</span>' : '') + '</span><br><span style="opacity:.55;font-size:12px">' + SG[k].info + '</span></td>' +
-        '<td><span class="price">' + pm('fire:' + k, open || (!st.n[k] && !pd)) + '<b style="min-width:34px;text-align:center">' + st.n[k] + '</b>' + pm('hire:' + k) + '</span></td></tr>';
-    }).join('') + tr('Gesamt', heads(G) + ' Köpfe · ' + eur(wages(G)) + '/Tag', 'sum') + '</table>' +
-      '<h2>Lohn und Moral</h2><table>' +
-      tr('Lohnniveau', '<span class="price">' + pm('wage:-' + D.staff.wageStep, st.wage <= D.staff.wage[0]) + '<b style="min-width:44px;text-align:center">' + st.wage + ' %</b>' + pm('wage:' + D.staff.wageStep, st.wage >= D.staff.wage[1]) + '</span>') +
-      tr('Moral', '<span class="' + tone(st.morale, 60, 40) + '">' + Math.round(st.morale) + '</span>' + (st.morale < D.staff.morale.sickBelow ? ' · <span class="biz-bad">Krankmeldungen!</span>' : '')) +
-      tr('Überlastung letzter Tag', '<span class="' + (st.over > 0.1 ? 'biz-bad' : st.over > 0.02 ? 'biz-warn' : 'biz-good') + '">' + Math.round(st.over * 100) + ' %</span>') +
-      tr('Prämie', '<button class="btn' + (bonusDone(G) ? '' : ' primary') + '" data-act="bonus"' + (bonusDone(G) ? ' disabled' : '') + '>' + (bonusDone(G) ? 'heute ausgezahlt' : 'Prämie zahlen · ' + eur(bonusCost(G)) + ' · Moral +' + D.staff.bonus.gain) + '</button>') +
-      '</table><p class="note">Einstellung wirkt nach ' + D.staff.delay + ' Tagen, Kündigung kostet ' + D.staff.fireDays + ' Tageslöhne (nicht während des Betriebs). Moral sinkt bei Überlastung (zu wenig Leute) und Lohnkürzung, steigt mit Lohn und Prämie; unter ' + D.staff.morale.sickBelow + ' gibt es Krankmeldungen. Saisonkräfte enden am Saisonende, je nach Moral kommt ein Teil wieder.</p>';
+    const SG = D.staff.groups, n = G.phase === 'prep' ? needs(G, guestsN(G)) : G.staff.n, all = GROUPS.reduce((a, k) => a + n[k], 0), cost = GROUPS.reduce((a, k) => a + n[k] * dayCost(G, k), 0);
+    return '<h2>Personal · automatisch nach Bedarf</h2><table>' + GROUPS.map(k => '<tr><td><b>' + SG[k].label + '</b><br><span style="opacity:.55;font-size:12px">' + SG[k].info + '</span></td><td>' + n[k] + ' × ' + eur(dayCost(G, k)) + '</td></tr>').join('') +
+      tr('Gesamt', all + ' Mitarbeiter · ' + eur(cost) + '/Tag', 'sum') + '</table>' +
+      '<p class="note">Personal wird jeden Morgen automatisch nach offenen Anlagen, Pisten, Hütten und erwarteten Gästen eingeteilt. Es zählt nur als laufende Kosten.</p>';
   }
 
   function sideTab(G) {
@@ -419,7 +406,7 @@ export function createUI(h) {
         (r.seg ? '<h2>Zielgruppen</h2>' + segBar(r.seg) + '<table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(r.seg[s] || 0) + (r.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(r.sat.seg[s]) + '">' + Math.round(r.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' : '') +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).filter(([k]) => k in D.tickets).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Tickets', eur(ticketSum(r.revs)), 'sum') + '</table>' + areaReport(r) +
         '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
-        (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Im Dienst / benötigt', r.staff.duty + ' / ' + r.staff.need + (r.staff.sick ? ' · <span class="biz-bad">' + r.staff.sick + ' krank</span>' : '')) + tr('Moral', '<span class="' + tone(r.staff.morale, 60, 40) + '">' + Math.round(r.staff.morale) + '</span> · Überlastung ' + Math.round(r.staff.over * 100) + ' %') + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +
+        (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Mitarbeiter', num(r.staff.heads)) + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +
         '<h2>Morgen</h2><table>' + (G.weather?.ahead[0] ? tr('Wetter (Prognose)', wline(G.weather.ahead[0].fc)) : '') + tr('Erwartete Gäste ' + fmtDate(forecast(G).date), num(forecast(G).n)) + tr('Nacht-Aufträge', eur(nightTotals(G).total) + ' · <button class="btn" data-tab="snow">Schnee planen</button>') + '</table>') +
