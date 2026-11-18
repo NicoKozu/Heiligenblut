@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createSkier, createBoarder } from './models.js';
 import { each } from './biz/people.js';
-import { queueSpot } from './station.js';
+import { queueSpot, laneAt, rowD, LANE_IN } from './station.js';
 
 const JACKETS = [0xc8202a, 0x2f6fd6, 0xf2c200, 0x1aa36b, 0xff6a00, 0x7a2fd6, 0xe8e8e8, 0x222a33, 0xff3f8e, 0x18a8c8, 0x8b1d2c, 0x3a7d2c, 0x5c6b7a, 0xffb000];
 const PANTS = [0x1d2b3a, 0x2d2d33, 0x111111, 0x40464f, 0x2a3b5c, 0x5a3a22, 0xe8e8e8, 0x6b1d2c, 0x3c4a2a];
@@ -135,7 +135,12 @@ export function createCrowd(terrain, pistes, lift, assets) {
       cur = o.r.b;
     }
     if (!sec) sec = nodes[cur].lifts.find(x => secs.includes(x)) || secs[0];
-    push(...sec.a);
+    if (sec.qbig) {
+      while (pts.length > 1 && Math.hypot(pts[pts.length - 1][0] - sec.a[0], pts[pts.length - 1][1] - sec.a[1]) < 32) pts.pop();
+      const l = len();
+      for (let i = segs.length - 1; i >= 0; i--) if (segs[i].s0 >= l) segs.splice(i, 1); else segs[i].s1 = Math.min(segs[i].s1, l);
+    }
+    push(...(sec.qbig ? lanePt(sec, LANE_IN, 0) : sec.a));
     const cum = new Float32Array(pts.length), y = new Float32Array(pts.length);
     for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     for (let i = 0; i < pts.length; i++) y[i] = terrain.heightAt(pts[i][0], pts[i][1]);
@@ -210,10 +215,45 @@ export function createCrowd(terrain, pistes, lift, assets) {
     g.cabs = null;
   }
 
+  function lanePt(sec, d, side, out) {
+    const [al, sd, fa, fs] = laneAt(d, side, sec.qside?.a ?? 1), ox = -sec.dx, oz = -sec.dz;
+    const p = [sec.a[0] + ox * al - oz * sd, sec.a[1] + oz * al + ox * sd];
+    if (out) out.h = Math.atan2(ox * fa - oz * fs, oz * fa + ox * fs);
+    return p;
+  }
+  const lines = new Map();
   function startWait(g) {
     g.state = 'wait';
     g.cabs = null;
     for (const m of g.members) m.show = false;
+    if (!g.sec.qbig || g.off) return;
+    g.state = 'queue';
+    g.members.forEach((m, i) => { m.qd = LANE_IN + i * 1.2; m.qv = 0; m.qs = 1; });
+    if (!lines.has(g.sec)) lines.set(g.sec, { q: [], t: 0 });
+    lines.get(g.sec).q.push(g);
+  }
+  function stepLines(dt) {
+    for (const [sec, L] of lines) {
+      L.q = L.q.filter(g => g.state === 'queue' && g.sec === sec);
+      L.t -= dt;
+      let j = 0;
+      for (const g of L.q) {
+        if (g.off) { g.state = 'wait'; continue; }
+        let ready = true;
+        for (const m of g.members) {
+          const t = rowD(j >> 1), gap = m.qd - t;
+          m.qs = j & 1 ? 1 : -1;
+          m.qv = gap > 0.05 ? Math.min(gap > 6 ? WALK : 0.6 + gap * 0.3, m.qv + dt * 1.5) : 0;
+          m.qd = Math.max(t, m.qd - m.qv * dt);
+          if (gap > 0.4) ready = false;
+          j++;
+        }
+        if (g === L.q[0] && ready && L.t <= 0 && !lift.stop.has(sec.name)) {
+          const cabs = grabCabins(g, Math.ceil(g.members.length / CAP), false);
+          if (cabs) { g.cabs = cabs; g.state = 'ride'; L.t = 3 + g.members.length * 0.8; }
+        }
+      }
+    }
   }
 
   function leaveLift(g) {
@@ -334,6 +374,19 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function placeMember(g, m, dt) {
     m.show = false;
     if (g.off) return;
+    if (g.state === 'queue') {
+      const p = lanePt(g.sec, m.qd, m.qs, B);
+      m.pos.set(p[0], terrain.heightAt(p[0], p[1]), p[1]);
+      m.heading = B.h;
+      m.speed = m.qv;
+      m.lean = 0;
+      m.tuck = 0;
+      m.cab = 0;
+      m.foot = false;
+      m.br += ((m.type === 'board' ? 1 : 0.3) - m.br) * Math.min(1, dt * 4);
+      m.show = true;
+      return;
+    }
     if (g.state === 'ride') {
       const c = g.cabs[Math.floor(g.members.indexOf(m) / CAP)];
       if (!c.started || c.done) return;
@@ -467,7 +520,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function ground(m, x, z, y) { m.pos.set(x, y ?? terrain.heightAt(x, z), z); }
   function local(m, h, lx, lz, y) { ground(m, h.x + h.dz * lx + h.dx * lz, h.z - h.dx * lx + h.dz * lz, y); }
   function queueAt(m, sec, rev, rank) {
-    const [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
+    const [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1, !rev && sec.qbig), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
     const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
     ground(m, bx + ox * a - oz * d, bz + oz * a + ox * d);
     stand(m, Math.atan2(ox * fa - oz * fs, oz * fa + ox * fs) + m.lane * 0.2, false);
@@ -555,6 +608,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
     if (src) fromFlow(src);
     else {
       for (const g of groups) stepGroup(g, dt);
+      stepLines(dt);
       for (const g of groups) for (const m of g.members) { placeMember(g, m, dt); if (m.show) act.push(m); }
       for (let i = 0; i < queued; i++) { pulk[i].foot = true; act.push(pulk[i]); }
     }
