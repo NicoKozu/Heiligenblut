@@ -16,6 +16,7 @@ import { createAudio } from './audio.js';
 import { loadAssets } from './assets.js';
 import { createProps } from './props.js';
 import { createCrowd } from './crowd.js';
+import { createVillage } from './village.js';
 import { createWorkers } from './workers.js';
 import { createWeatherFx } from './weatherfx.js';
 import { get } from './config.js';
@@ -55,6 +56,7 @@ async function start() {
   const assetsP = loadAssets();
   const osmP = get('public/osm.json', 'json');
   const expP = get('public/expansion.json', 'json');
+  const villP = get('public/village.json', 'json');
   menu.setStatus('Lade Gelände …');
   const terrain = await loadTerrain();
   scene.add(terrain.mesh);
@@ -68,6 +70,11 @@ async function start() {
   menu.setStatus('Pflanze Wald …');
   await new Promise(r => setTimeout(r, 0));
   const props = createProps(terrain, pistes, lift, await osmP);
+  menu.setStatus('Baue Straßen und Parkplatz …');
+  await new Promise(r => setTimeout(r, 0));
+  const village = createVillage(terrain, await villP, props.blocked);
+  props.avoid(village.blocked);
+  scene.add(village.group);
   const scenery = createScenery(terrain, pistes, lift, assets, props.blocked);
   scene.add(scenery.group);
   menu.setStatus('Baue Ort und Felsen …');
@@ -84,6 +91,7 @@ async function start() {
   const workers = createWorkers(lift, assets);
   scene.add(workers.group);
   lift.onAdd = sec => crowd.link(sec);
+  village.attach(crowd, lift);
   const player = createPlayer(terrain, assets);
   scene.add(player.object);
   const goTo = k => {
@@ -121,7 +129,7 @@ async function start() {
     player.setMode(c.mode);
     if (c.game === 'free') biz?.end();
     else {
-      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx, scenery, cam, scene, terrain });
+      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx, scenery, cam, scene, terrain, village });
       biz.begin(c.game === 'new');
     }
     if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
@@ -196,6 +204,7 @@ async function start() {
     lift.update(dt, player.state, player, goTo);
     biz?.update(Math.min(raw, 1));
     if (hold || cam.mode === 'mgr') flush();
+    village.update(dt, cam.camera);
     crowd.update(dt, cam.camera);
     workers.update(dt, cam.camera);
     player.object.visible = !lift.riding() && cam.mode !== 'ego' && cam.mode !== 'fly';

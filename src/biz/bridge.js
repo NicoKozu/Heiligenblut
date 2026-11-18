@@ -11,7 +11,7 @@ import * as V from './season.js';
 import { consume } from '../input.js';
 import { createView3d } from './view3d.js';
 
-export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain }) {
+export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain, village }) {
   const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
@@ -127,6 +127,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     sync();
     ui.render(G);
     crowd?.setSource?.(view);
+    village?.setSource?.(() => active && G.flow ? (G.flow.cars || 0) / Math.max(1, G.side.park.cap) : 0);
     v3.set(true, G);
   }
 
@@ -143,6 +144,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     ui.show(false);
     sync();
     crowd?.setSource?.(null);
+    village?.setSource?.(null);
     lift.pace = null;
   }
 
