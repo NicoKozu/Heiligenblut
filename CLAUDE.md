@@ -16,9 +16,9 @@
 - Pro Etappe neuen Chat starten (spart Tokens).
 
 ## Offene Etappen (Reihenfolge)
-22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 24 Manager in 3D: Kamera (V), Objekte anklicken/Objektkarte, Status-Symbole, Pisten-Overlay · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
+22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
 
-## Stand (Etappen 1–21 und 23 fertig, Details `HISTORY.md`)
+## Stand (Etappen 1–21, 23, 24 fertig, Details `HISTORY.md`)
 - 3D: echtes DEM (15-m-Gelände, Satellitenbild Sentinel-2, Panorama bis 56 km), Fahrphysik Ski/Board, Pisten/Lifte/Hütten aus OSM, Bäume/Gebäude/Felsen, Gäste 1:1 als Figuren (Manager), Flugmodus (F), Menü, Audio.
 - Manager-Sim (`src/biz/`, rein, headless testbar): Zeit/Phasen, Nachfrage je Zielgruppe, Flussmodell, Anlagen/Defekte, Zufriedenheit/Ruf, Wetter/Schnee, Personal, Marketing/Konkurrenz, Nebengeschäfte, Bau/Kredit/AfA. Start nur mit Gondel Rossbach + Piste 10 + Rossbach Alm (Kasse 1,5 Mio, Kredit bis 6 Mio), Rest sind Bauprojekte.
 - Etappe 20b: `tools/simtest.mjs` + Balancing. Werte in `data.js` (nicht MANAGER.md B) maßgeblich: Bauprojekte ~50 %, Nachfrage ×0,65, Lift-Wartung je Lift `maint`, Gästebetrieb 15 €/Gast, Preis-Note bis −50, Grundwartung nachts bis 70 %. Ohne offene Piste keine Nachfrage; Folgeprojekte im Sommer vorbestellbar.
@@ -26,6 +26,7 @@
 - Etappe 21: Saisonende → `G.summer` {sy, next, stage report/plan} statt Tageswechsel; `season.js` `snapshot` (Saisonbilanz in `G.seasons`), `revise` (Revision auf 95 %), `fixed` (Sommer-Verwaltung 20 Tage + Zinsen); `sim.js` `endSeason/startSeason/summerStage`; `ui-season.js` Saisonbilanz + Sommerplanung; Events `G.ev` (Bau/Personal). Keine Szenarien/Slots (Nutzerwunsch). Simtest alle OK (vern S3 Skitage 121k knapp).
 - Etappe 23 (Feinbalancing): Buchhaltung lückenlos (Kassenabgleich je Tag, `build.js` `post`/`writeoff`), Saisonkarten-Erlös je Besuch (`flow.cardVisits`), Jahresergebnis inkl. Sommerkosten (`s.year`), abhängige Bauprojekte vorab bestellbar (`ready`). `guestCost` 9, `admin` 2500, `adminLift` 1200, `expW` 1,7. Ziele in MANAGER.md B (5 Saisonen).
 - Simtest 23: vernünftig S1 +0,37 · S2 +1,55 · S3 +1,80 · S4 +2,02 · S5 185k/+2,58 Mio; investor schneller, S5 schuldenfrei; abwarten/gierig/geizig verlieren. `--check` ~100 s.
+- Etappe 24: `biz/view3d.js` Manager-Kamera (V, `camera.js` Modus `mgr`: `startMgr/endMgr/goTo/focus`), Klick/Alt+Klick → Objektkarte (Lift/Piste/Hütte/Bauprojekt, Aktionen über `bridge` `action`), Status-Sprites (H), Pisten-Overlay (O) über Terrain-Uniform `pTint` (`terrain.tint`, `pistes.setTint`), geplante Lifte gestrichelt. Optik: `src/textures.js` (prozedurale Holz/Stein/Schindel-Texturen, `worldUV`), Hütten mit Blockbau, Fensterrahmen, Geländer, Ski, wehender Fahne, Kaminrauch (`public/textures/smoke.webp`, CC0 aus npm `@pmndrs/assets`), drehende Seilscheiben. Sim unverändert.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
@@ -36,7 +37,7 @@
 - `src/models.js` `createSkier/createBoarder(figure)`, `dress()` · `src/assets.js` `loadAssets()` (spruce.glb, figure.glb in `public/models/`)
 - `src/lift.js` `createLift(terrain, pistes, exp)` → `group, sections, update, collide, leave, clear, riding, valleySpawn, shut, stop, setOpen(id, open, why), addSection, removeSection, site, onAdd, pace, cabinAt, cabinU, rideCabin`
 - `src/pistes.js` `loadPistes(terrain)` → `list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt`, `LEVELS`; Daten `public/pistes.json`
-- `src/scenery.js` Bäume, Hütten, `setHut(name, open)` · `src/props.js` OSM-Gebäude/Felsen (`public/osm.json`), `blocked` · `src/effects.js` Spuren/Schneestaub
+- `src/scenery.js` Bäume, Hütten (animiert: Rauch, Fahne, `wind`), `setHut(name, open)` · `src/textures.js` prozedurale Materialien · `src/props.js` OSM-Gebäude/Felsen (`public/osm.json`), `blocked` · `src/effects.js` Spuren/Schneestaub
 - `src/crowd.js` `createCrowd(...)` → `update, collide, setDensity, setQueue, setSource(fn), link, count`
 - `src/panorama.js` Fern-DEM, Sonnenschatten, `shade(root)`, `render` · `src/peaks.js` Gipfelnamen (P) · `src/weatherfx.js` Wetter-Optik
 - `src/camera.js` Verfolger/Ego (C)/Orbit/Flug (F) · `src/menu.js` · `src/audio.js` (M) · `src/config.js` `get, image, texture`
@@ -50,7 +51,7 @@
 - `weather.js` · `snow.js` (`night, setGroom, setGun, groomPlan, gunPlan, nightTemp`) · `staff.js` (`needs, hire, fire, setWage, bonus, seasonEnd`) · `marketing.js` (`act`, Konkurrenz `G.comp`) · `side.js` (Hütten, Verleih, Schule, Parkplatz)
 - `build.js` `check(G, id, summer), order, buildDay, borrow, repay, depreciate, solvency, groomer, cannon, pipe, seasonPL, benefit` · `area.js` `pl(G), DIRS, keys, baseKm`
 - `season.js` Saisonbilanz/Revision/Sommerkosten · `ui-season.js` Bilanz- und Sommer-Ansicht
-- `bridge.js` Brücke zur 3D-Welt · `ui.js`, `ui-build.js` Panel/Overlays/Tabs
+- `bridge.js` Brücke zur 3D-Welt · `ui.js`, `ui-build.js` Panel/Overlays/Tabs · `view3d.js` Objektkarte, Status-Symbole, Overlay (three + DOM)
 - `tools/simtest.mjs` Headless-Balancingtest
 
 ## Koordinaten

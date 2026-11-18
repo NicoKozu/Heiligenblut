@@ -9,19 +9,31 @@ import * as X from './side.js';
 import * as B from './build.js';
 import * as V from './season.js';
 import { consume } from '../input.js';
+import { createView3d } from './view3d.js';
 
-export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
+export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain }) {
   const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
-  let G = null, active = false, hold = false, acc = 0;
+  let G = null, active = false, hold = false, acc = 0, htxt = '';
 
   addEventListener('keydown', e => {
     if (!active || document.body.classList.contains('menu')) return;
     if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat) keys.push('tab'); }
     else if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') keys.push('+');
     else if (e.key === '-' || e.code === 'NumpadSubtract') keys.push('-');
+    else if (!e.repeat && e.code === 'KeyV') keys.push('v');
+    else if (!e.repeat && e.code === 'KeyH') keys.push('h');
+    else if (!e.repeat && e.code === 'KeyO') keys.push('o');
   });
+  const v3 = createView3d({ scene, cam, terrain, lift, pistes, scenery, act: a => action(a) });
+  function mgr(on) {
+    if (on === v3.mgr || (on && cam.mode === 'fly')) return;
+    if (on) { cam.startMgr(); if (hold && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) ui.close(); }
+    else cam.endMgr();
+    v3.setMgr(on);
+    note(on ? 'Manager-Kamera' : 'Fahrer-Ansicht', 1.2);
+  }
 
   function note(t, s = 2.5) { player.state.note = t; player.state.noteT = s; }
 
@@ -98,6 +110,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
       pistes.setSurface(p.id, o.groomed && lb !== 'pulvrig' ? Math.min(1, Math.max(0, (o.cond - 40) / 45)) : 0, lb === 'pulvrig' ? 0 : Math.min(1, Math.max(0, (88 - o.cond) / 50)), Math.min(1, Math.max(0, (C.thin - o.snow) / (C.thin - C.minOpen + 6))));
     }
     env?.set(active ? G.weather?.today : null);
+    if (scenery) scenery.wind = active && G.weather?.today ? G.weather.today.wind / 70 : 0.2;
     if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.side.huts[h.id].own && G.phase !== 'closed'));
   }
 
@@ -114,6 +127,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     sync();
     ui.render(G);
     crowd?.setSource?.(view);
+    v3.set(true, G);
   }
 
   const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
@@ -122,6 +136,8 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
   function end() {
     if (!active) return;
     save();
+    mgr(false);
+    v3.set(false, null);
     active = false;
     hold = false;
     ui.show(false);
@@ -136,12 +152,17 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
       const k = keys.shift();
       if (k === '+' || k === '-') note('Zeitfaktor ×' + S.setFactor(G, k === '+' ? 1 : -1), 1.2);
       else if (k === 'tab') ui.togglePanel();
+      else if (k === 'v') mgr(!v3.mgr);
+      else if (k === 'h') note(v3.toggleIcons() ? 'Symbole an' : 'Symbole aus', 1.2);
+      else if (k === 'o') { const m = v3.cycle(); if (m) note('Pisten-Overlay: ' + m, 1.5); }
     }
     if (consume('KeyB')) {
       if (ui.view === 'office') ui.close();
       else if (!ui.view) ui.open('office');
     }
-    if ((consume('Enter') || consume('NumpadEnter')) && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) action({ prep: 'start', daily: 'next', season: 'splan', summer: 'sstart' }[ui.view]);
+    const hv = !G.fin?.over && hold && (G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily');
+    const ev = ['prep', 'daily', 'season', 'summer'].includes(ui.view) ? ui.view : v3.mgr && !ui.view ? hv : null;
+    if ((consume('Enter') || consume('NumpadEnter')) && ev) action({ prep: 'start', daily: 'next', season: 'splan', summer: 'sstart' }[ev]);
 
     for (const e of clk(G, dt)) {
       if (e === 'warn') note('Lifte schließen in 15 min', 3);
@@ -160,13 +181,18 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery }) {
     hold = want;
     if (hold) {
       const v = G.fin?.over ? 'over' : G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily';
-      if (ui.view !== v) ui.open(v);
+      if (ui.view !== v && !(v3.mgr && v !== 'over')) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';
 
+    v3.update(G, dt);
+    if (v3.mgr) {
+      const t = '<b>Manager-Kamera</b> · WASD/Rand verschieben · Rad Höhe · rechte Maus drehen · Klick Objekt · Doppelklick hinfliegen · O Overlay · H Symbole · V zurück' + (hold && !ui.view ? ' · <b>Enter ' + ({ prep: 'Tag starten', daily: 'nächster Tag', season: 'weiter', summer: 'Saison starten' }[hv] || '') + '</b>' : '');
+      if (t !== htxt) { htxt = t; v3.hint(t); }
+    }
     acc += dt;
     if (acc > 0.1 || hold) { acc = 0; ui.render(G); }
   }
 
-  return { begin, end, update, save, get hold() { return active && hold; }, get active() { return active; } };
+  return { begin, end, update, save, get hold() { return active && hold; }, get active() { return active; }, get mgr() { return active && v3.mgr; } };
 }

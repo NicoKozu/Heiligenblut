@@ -365,5 +365,6 @@ export async function loadPistes(terrain) {
   }
 
   const setSurface = (id, cord, worn, aper) => terrain.surface(list.findIndex(p => p.id === id) + 1, cord, worn, aper);
-  return { group, list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt };
+  const setTint = (id, c, a) => terrain.tint(list.findIndex(p => p.id === id) + 1, c, a);
+  return { group, list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt, setTint };
 }

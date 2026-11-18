@@ -118,7 +118,7 @@ async function start() {
     player.setMode(c.mode);
     if (c.game === 'free') biz?.end();
     else {
-      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx, scenery });
+      if (!biz) biz = (await import('./biz/bridge.js')).createBiz({ lift, player, crowd, pistes, env: wfx, scenery, cam, scene, terrain });
       biz.begin(c.game === 'new');
     }
     if (c.start < 0) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
@@ -159,10 +159,10 @@ async function start() {
       return;
     }
     adapt(raw);
-    if (consume('KeyC') && cam.mode !== 'fly') { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
+    if (consume('KeyC') && cam.mode !== 'fly' && cam.mode !== 'mgr') { player.state.note = cam.toggle() === 'ego' ? 'Ego-Kamera' : 'Verfolgerkamera'; player.state.noteT = 1.2; snap = true; }
     if (consume('KeyM')) { audio.init(); player.state.note = audio.toggle() ? 'Ton an' : 'Ton aus'; player.state.noteT = 1.2; }
     if (consume('KeyI')) fps.hidden = !fps.hidden;
-    if (consume('KeyF') && !lift.riding()) {
+    if (consume('KeyF') && !lift.riding() && cam.mode !== 'mgr') {
       const st = player.state;
       if (cam.mode === 'fly') {
         const l = cam.endFly();
@@ -174,8 +174,8 @@ async function start() {
         st.note = 'Flugmodus · F = landen'; st.noteT = 1e9;
       }
     }
-    const flying = cam.mode === 'fly';
-    if (flying) flush();
+    const flying = cam.mode === 'fly' || cam.mode === 'mgr';
+    if (cam.mode === 'fly') flush();
     if (consume('Escape')) pause();
     if (consume('KeyP')) peaks.toggle();
     if (pending) { lift.leave(player.state); applyStart(pending).catch(e => fail('Manager: ' + e.message)); pending = null; }
@@ -189,12 +189,12 @@ async function start() {
       crowd.collide(player.state, (st, v) => fx.burst(st, 50, v));
       for (let k = 0; k < pistes.list.length; k++) if (consume('Digit' + (k + 1))) goTo(k);
       if (consume('Digit0')) player.spawnAt(lift.valleySpawn.x, lift.valleySpawn.z, lift.valleySpawn.heading);
-    } else if (!hold) flush();
+    } else if (!hold && cam.mode !== 'mgr') flush();
     lift.update(dt, player.state, player, goTo);
     biz?.update(Math.min(raw, 1));
-    if (hold) flush();
+    if (hold || cam.mode === 'mgr') flush();
     crowd.update(dt, cam.camera);
-    player.object.visible = !lift.riding() && cam.mode !== 'ego' && !flying;
+    player.object.visible = !lift.riding() && cam.mode !== 'ego' && cam.mode !== 'fly';
     fx.update(dt, player.state, lift.riding(), renderer.domElement.height);
     hud.update(player.state, dt);
     const st = player.state;
@@ -203,7 +203,7 @@ async function start() {
     scenery.update(cam.camera);
     props.update(cam.camera);
     audio.update(st, { steer: (down('KeyA', 'ArrowLeft') ? 1 : 0) - (down('KeyD', 'ArrowRight') ? 1 : 0), brake: down('KeyS', 'ArrowDown') }, false);
-    followSun(player.state.pos);
+    followSun(cam.mode === 'mgr' ? cam.focus : player.state.pos);
     wfx.update(dt, cam.camera, renderer.domElement.height);
     pano.update(cam.camera, dt);
     pano.render(renderer, scene, cam.camera);
