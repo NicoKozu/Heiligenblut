@@ -13,7 +13,7 @@
 - **Immer mergen:** Jede Änderung (auch kleine Zusätze außerhalb von Etappen) per PR nach `main` und selbst mergen, ohne Rückfrage.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
 - Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
-- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~100 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Kein Playwright (Nutzerwunsch).
+- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~100 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen).
 - Spiel muss nach jeder Etappe lauffähig bleiben; Freies Fahren lädt keinen `biz`-Code; alte Spielstände laden (`migrate()` in `sim.js`).
 - Pro Etappe neuen Chat starten (spart Tokens).
 
