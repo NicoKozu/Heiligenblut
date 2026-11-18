@@ -141,7 +141,9 @@ export function createProps(terrain, pistes, lift, osm) {
   };
   index();
 
+  let avoid = null;
   function blocked(x, z, m) {
+    if (avoid && avoid(x, z, m)) return true;
     const list = bgrid.get(Math.floor(x / BC) * 65536 + Math.floor(z / BC));
     if (!list) return false;
     for (const i of list) {
@@ -493,5 +495,5 @@ export function createProps(terrain, pistes, lift, osm) {
     } else state.vel.multiplyScalar(0.8);
   }
 
-  return { group, blocked, build, update, collide, get count() { return { buildings: blds.length, rocks: rocks.length, inst: list.reduce((a, c) => a + [c.body, c.big, c.detail, c.small].reduce((x, g) => x + g.children.reduce((y, m) => y + m.count, 0), 0), 0) }; } };
+  return { avoid: fn => { avoid = fn; }, group, blocked, build, update, collide, get count() { return { buildings: blds.length, rocks: rocks.length, inst: list.reduce((a, c) => a + [c.body, c.big, c.detail, c.small].reduce((x, g) => x + g.children.reduce((y, m) => y + m.count, 0), 0), 0) }; } };
 }

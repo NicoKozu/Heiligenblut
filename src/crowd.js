@@ -559,6 +559,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
       for (const g of groups) for (const m of g.members) { placeMember(g, m, dt); if (m.show) act.push(m); }
       for (let i = 0; i < queued; i++) { pulk[i].foot = true; act.push(pulk[i]); }
     }
+    if (extra) for (const m of extra()) act.push(m);
     grow(act.length);
 
     const cx = camera.position.x, cz = camera.position.z;
@@ -641,5 +642,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
     }
   }
 
-  return { group, update, collide, setDensity, setQueue, link, setSource: fn => { source = fn; }, get count() { return source ? act.length : members.length; } };
+  let extra = null;
+  const make = s => { const m = guest(mul(s >>> 0)); m.foot = true; return m; };
+  return { group, update, collide, setDensity, setQueue, link, make, setExtra: fn => { extra = fn; }, setSource: fn => { source = fn; }, get count() { return source ? act.length : members.length; } };
 }
