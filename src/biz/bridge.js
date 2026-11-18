@@ -153,7 +153,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     if (!active) return;
     while (keys.length) {
       const k = keys.shift();
-      if (k === '+' || k === '-') { const f = S.setFactor(G, k === '+' ? 1 : -1); note(f < 1 ? 'Zeitfaktor Echtzeit' : 'Zeitfaktor ×' + f, 1.2); };
+      if (k === '+' || k === '-') { const f = S.setFactor(G, k === '+' ? 1 : -1); note(f < 1 ? 'Zeitfaktor Echtzeit' : 'Zeitfaktor ×' + f, 1.2); }
       else if (k === 'tab') ui.togglePanel();
       else if (k === 'v') mgr(!v3.mgr);
       else if (k === 'h') note(v3.toggleIcons() ? 'Symbole an' : 'Symbole aus', 1.2);
