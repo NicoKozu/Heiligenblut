@@ -87,3 +87,4 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 - Inspektion: in der Vorbereitung sofort, sonst über Nacht, kein Liftstillstand.
 - Geld ÷6: Projekte, Startkasse 250k, Kredit 1 Mio, Startanlagen, Pistengerät 32k, Kanone 3,7k, Leitung 20k/km, Verleih 16k, Kampagnen einmalig, Sommer-Verwaltung 4 Tage. Reparatur Antrieb 8–16 h, Seil 16–32 h Betriebszeit.
 - Simtest (5 Seeds): vern S1 11,6k/+0,08 · S2 20,8k/+0,35 · S3 24k/+0,30 · S5 34,6k/+0,57 Mio; investor baut alles in S1; gierig wird ab S3 insolvent.
+- Vereinfachung Personal/Wartung: Personal wird täglich automatisch nach Bedarf eingeteilt (nur Kosten, Moral fix 70). Lift-Verschleiß ohne Nacht-Erholung, Revision einmal je Saison 10.000 € je Lift → Zustand 100 % (Winter sofort, Sommer für kommende Saison). Simtest --check alle Ziele OK.

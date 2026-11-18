@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { D } from './data.js';
-import { status, repairQuote, fmtDur } from './assets.js';
+import { status, repairQuote, fmtDur, serviced } from './assets.js';
 import * as X from './side.js';
 import * as N from './snow.js';
 import * as B from './build.js';
@@ -236,7 +236,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       const q = repairQuote(l, false, G), qx = repairQuote(l, true, G);
       h += btn('repair:' + id, 'Reparieren ' + eur(q.cost), { p: true, tip: fmtDur(q.min) }) + btn('repair:' + id + ':x', 'Express ' + eur(qx.cost), { tip: fmtDur(qx.min) });
     }
-    h += btn('insp:' + id, l.inspPlan ? 'Inspektion geplant' : 'Inspektion ' + eur(D.inspect.cost), { off: !!(l.broken || l.inspPlan || l.insp > 0) });
+    if (!l.build) h += btn('insp:' + id, serviced(G, l) ? 'Revision erledigt' : 'Revision ' + eur(D.inspect.cost), { off: !!(l.broken || serviced(G, l)) });
     return h + '</div>';
   }
 

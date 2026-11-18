@@ -2,7 +2,7 @@ import { D } from './data.js';
 import { built } from './area.js';
 import { int, next as rand } from './rng.js';
 import { hit } from './satisfaction.js';
-import { techFactor, riskFactor, canOpen } from './staff.js';
+import { techFactor, riskFactor } from './staff.js';
 import { out } from './people.js';
 
 const F = D.fault;
@@ -101,31 +101,17 @@ export function liftMinute(G, l, ev) {
     if (l.repairLeft > 0 && --l.repairLeft <= 0) fixed(G, l, ev);
     return;
   }
-  if (l.insp > 0) {
-    if (--l.insp <= 0) {
-      l.cond = Math.min(100, l.cond + D.inspect.gain);
-      log(G, 'Inspektion ' + l.name + ' abgeschlossen', 'good');
-      ev.push({ t: 'insp', id: l.id });
-    }
-    return;
-  }
   if (!l.open) return;
   l.cond = Math.max(0, l.cond - D.wear.perHour / 60 * (D.wear.base + l.util));
   if (rand(G) < faultChance(l.cond) * riskFactor(G)) breakLift(G, l, ev);
 }
 
-export function dayStart(G) {
-  for (const l of G.lifts) {
-    if (l.inspPlan && !l.broken) doInspect(G, l);
-  }
-}
+export function dayStart() {}
 
 export function overnight(G) {
   for (const l of G.lifts) {
     l.insp = 0;
-    if (l.inspPlan && !l.broken) doInspect(G, l);
     l.inspPlan = false;
-    if (!l.broken && l.cond < D.wear.keep) l.cond = Math.min(D.wear.keep, l.cond + D.wear.night);
     if (l.broken && l.repairLeft > 0 && (l.repairLeft -= D.night) <= 0) fixed(G, l, null);
   }
 }
@@ -146,29 +132,28 @@ export function repair(G, id, express) {
   return true;
 }
 
+export const svcKey = G => G.summer ? G.summer.sy + 1 : G.season;
+export const serviced = (G, l) => l.svc === svcKey(G);
+
 export function inspect(G, id) {
   const l = G.lifts.find(x => x.id === id);
-  if (!l || l.broken || l.inspPlan || l.insp > 0) return false;
-  pay(G, 'inspect', D.inspect.cost);
-  if (G.phase === 'prep') { doInspect(G, l); return true; }
-  l.inspPlan = true;
-  log(G, 'Inspektion ' + l.name + ' heute Nacht geplant');
+  if (!l || l.broken || l.build || serviced(G, l)) return false;
+  const c = D.inspect.cost, S = G.summer;
+  if (S) {
+    G.cash -= c;
+    S.costs.revision = (S.costs.revision || 0) + c;
+    const rec = G.seasons.find(x => x.sy === S.sy);
+    if (rec) { rec.sumCost = (rec.sumCost || 0) + c; rec.year = rec.result - rec.sumCost; }
+  } else pay(G, 'inspect', c);
+  l.cond = D.inspect.to;
+  l.svc = svcKey(G);
+  log(G, 'Revision ' + l.name + ' erledigt – Zustand ' + D.inspect.to + ' %', 'good');
   return true;
-}
-
-function doInspect(G, l) {
-  l.cond = Math.min(100, l.cond + D.inspect.gain);
-  l.inspPlan = false;
-  log(G, 'Inspektion ' + l.name + ' abgeschlossen (+' + D.inspect.gain + ' %)', 'good');
 }
 
 export function setOpen(G, kind, id, open) {
   const o = kind === 'lift' ? G.lifts.find(x => x.id === id) : G.pistes[id];
   if (!o || o.open === open || (open && kind === 'piste' && o.aper)) return false;
-  if (open && kind === 'lift' && !canOpen(G, id)) {
-    log(G, o.name + ' kann nicht öffnen – zu wenig Liftpersonal', 'bad');
-    return false;
-  }
   if (kind === 'lift') o.staffOff = false;
   if (!open && !(kind === 'lift' && (o.broken || o.insp > 0))) hit(G, kind === 'lift' ? 'fault' : 'pisteClose');
   o.open = open;

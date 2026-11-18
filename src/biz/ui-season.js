@@ -1,8 +1,9 @@
 import { D } from './data.js';
-import { label, revQuote, fixed } from './season.js';
+import { label, fixed } from './season.js';
+import { serviced } from './assets.js';
 import { fmtDate } from './calendar.js';
 
-const P = D.build.projects, ST = D.staff.groups;
+const P = D.build.projects;
 const sum = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const ztone = z => z >= 70 ? 'biz-good' : z >= 50 ? 'biz-warn' : 'biz-bad';
 
@@ -22,8 +23,6 @@ export function seasonView(G, h) {
   const cost = Object.entries(s.cost).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const lb = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
   const day = (t, d) => tr(t, fmtDate(d.date) + ' · ' + num(d.guests) + ' Gäste · ' + eur(d.result));
-  const hired = Object.entries(s.hired).filter(([, v]) => v > 0), fired = Object.entries(s.fired).filter(([, v]) => v > 0);
-  const nh = hired.reduce((a, [, v]) => a + v, 0), nf = fired.reduce((a, [, v]) => a + v, 0);
   const seg = Object.entries(s.seg).filter(([, v]) => v > 0);
   const segT = sum(s.seg);
   return '<h1>Saisonbilanz ' + label(s.sy) + '</h1><p class="sub">' + fmtDate(s.from) + ' – ' + fmtDate(s.to) + ' · ' + s.days + ' Betriebstage</p>' +
@@ -51,9 +50,7 @@ export function seasonView(G, h) {
     '<h2>Kosten</h2><table>' + cost.map(([k, v]) => tr(D.costLabels[k] || k, eur(-v) + ' <small style="opacity:.6">' + pc(v / s.C * 100) + '</small>')).join('') + tr('<b>Summe</b>', '<b>' + eur(-s.C) + '</b>', 'sum') + '</table>' +
     '<h2>Gebaut und investiert</h2><table>' + (s.built.length ? s.built.map(id => tr(P[id]?.label || id, eur(P[id]?.price || 0))).join('') : tr('Keine Bauprojekte fertiggestellt', '–')) + tr('Investitionen in der Saison', eur(s.invest), 'sum') + '</table>' +
     '<h2>Personal</h2><table>' + tr('Mitarbeiter Saisonende', num(s.heads)) +
-    tr('Eingestellt', nh ? num(nh) + ' <small style="opacity:.7">(' + hired.map(([k, v]) => v + ' ' + ST[k].label).join(', ') + ')</small>' : '–') +
-    tr('Gekündigt', nf ? num(nf) + ' <small style="opacity:.7">(' + fired.map(([k, v]) => v + ' ' + ST[k].label).join(', ') + ')</small>' : '–') +
-    tr('Saisonkräfte gegangen', num(s.left)) + tr('Lohnkosten', eur(s.wages)) + tr('Ø Moral', dec(s.morale, 0)) + tr('Krankmeldungen', num(s.sick)) + '</table>' +
+    tr('Mitarbeiter zuletzt', num(s.heads)) + tr('Lohnkosten', eur(s.wages)) + '</table>' +
     (seg.length ? '<h2>Gäste nach Zielgruppe</h2><table>' + seg.map(([k, v]) => tr('<i class="biz-dot" style="background:' + D.segs[k].color + '"></i> ' + D.segs[k].label, num(v) + ' <small style="opacity:.6">' + pc(v / segT * 100) + '</small>')).join('') + '</table>' : '') +
     '<h2>Finanzen am Saisonende</h2><table>' + tr('Kasse', eur(s.cash1) + dl(s.cash1, s.cash0, eur)) + tr('Kredit', eur(s.debt1)) + tr('Anlagevermögen (Buchwert)', eur(s.book)) + tr('Eigenkapital', '<span class="' + (s.equity >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(s.equity) + '</span>' + dl(s.equity, o?.equity, eur)) + '</table>' +
     '<div class="go"><button class="primary" data-act="splan">Zur Sommerplanung ⏎</button></div>';
@@ -65,16 +62,15 @@ export function summerView(G, h, tabs, body) {
   const revTot = Object.values(S.costs).reduce((a, b) => a + b, 0);
   const fcN = h.fc(G);
   const rows = lifts.map(l => {
-    const q = revQuote(G, l), done = S.rev[l.id];
-    const st = done ? '<span class="biz-good">Revision erledigt</span>' : l.broken ? '<span class="biz-bad">defekt – erst reparieren</span>' : q.pts <= 0 ? '<span class="biz-good">kein Bedarf</span>' : '<button class="btn" data-act="rev:' + l.id + '"' + (G.cash < q.cost ? ' disabled' : '') + '>Revision ' + eur(q.cost) + '</button>';
-    return tr(l.name + '<br><small style="opacity:.7">Zustand ' + Math.round(l.cond) + ' % → ' + D.summer.revTarget + ' %</small>', st);
+    const st = serviced(G, l) ? '<span class="biz-good">Revision erledigt</span>' : l.broken ? '<span class="biz-bad">defekt – erst reparieren</span>' : '<button class="btn" data-act="insp:' + l.id + '"' + (G.cash < D.inspect.cost ? ' disabled' : '') + '>Revision ' + eur(D.inspect.cost) + '</button>';
+    return tr(l.name + '<br><small style="opacity:.7">Zustand ' + Math.round(l.cond) + ' %</small>', st);
   }).join('');
   const jobs = G.build.jobs.filter(j => j.left == null);
   const over = body ||
     '<h2>Sommerpause</h2><table>' + tr('Saisonstart', fd(n)) + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Erwartete Gäste am ersten Tag', num(fcN)) + '</table>' +
-    '<h2>Revision der Lifte</h2><table>' + rows + '</table><p class="note">Die Revision setzt den Zustand auf ' + D.summer.revTarget + ' %. Weniger Verschleiß bedeutet weniger Defekte.</p>' +
+    '<h2>Revision der Lifte</h2><table>' + rows + '</table><p class="note">Einmal je Saison: Revision setzt den Zustand auf ' + D.inspect.to + ' % (zählt für die kommende Saison). Weniger Verschleiß bedeutet weniger Defekte.</p>' +
     '<h2>Bauprojekte im Sommer</h2><table>' + (jobs.length ? jobs.map(j => tr(P[j.id].label, '<span class="biz-warn">fertig zum Saisonstart</span>')).join('') : tr('Keine beauftragt', '<button class="btn" data-tab="build">Bau planen</button>')) + '</table>' +
-    '<h2>Personal</h2><table>' + tr('Mitarbeiter im Winter', num(Object.values(G.staff.n).reduce((a, b) => a + b, 0)) + ' · <button class="btn" data-tab="staff">Personal planen</button>') + '</table>' +
+    '<h2>Personal</h2><table>' + tr('Mitarbeiter im Winter', num(Object.values(G.staff.n).reduce((a, b) => a + b, 0)) + ' (automatisch)') + '</table>' +
     '<h2>Fixkosten im Sommer (pauschal beim Saisonstart)</h2><table>' + tr('Verwaltung', eur(-f.admin)) + tr('Kreditzinsen', eur(-f.interest)) + (S.costs.revision ? tr('Revisionen (bereits bezahlt)', eur(-S.costs.revision)) : '') +
     tr('<b>Summe</b>', '<b>' + eur(-(f.admin + f.interest + revTot)) + '</b>', 'sum') + '</table>';
   return '<h1>Sommerplanung</h1><p class="sub">Saison ' + label(S.sy) + ' ist beendet · nächste Saison ' + label(S.sy + 1) + '</p>' + tabs +

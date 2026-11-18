@@ -7,7 +7,7 @@ import { initBuild, buildDay, depreciate, solvency } from './build.js';
 import { pay, initAssets, liftMinute, dayStart, overnight, running } from './assets.js';
 import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfaction.js';
 import { initWeather, applyWind } from './weather.js';
-import { initStaff, morning, evening, wages, minute as staffMinute, seasonEnd } from './staff.js';
+import { initStaff, staffAuto, evening, wages, minute as staffMinute } from './staff.js';
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
 import { snapshot, fixed } from './season.js';
@@ -28,7 +28,6 @@ export function newGame(seed = newSeed()) {
   initSnow(G, true);
   migrate(G);
   resetToday(G);
-  morning(G);
   return G;
 }
 
@@ -78,6 +77,7 @@ export function startDay(G) {
   dayStart(G);
   sideStart(G);
   pay(G, 'admin', D.admin + D.adminLift * G.lifts.length);
+  staffAuto(G, dm.n);
   pay(G, 'staff', wages(G));
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.lifts.find(x => x.id === l.id).maint ?? D.maintPerLift); }
   if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate * D.dayStep / 365);
@@ -159,7 +159,6 @@ export function nextDay(G) {
   G.phase = 'prep';
   G.min = D.time.open;
   resetToday(G);
-  morning(G);
   return true;
 }
 
@@ -168,7 +167,6 @@ function endSeason(G, d) {
   G.summer = { sy, next: d, stage: 'report', costs: {}, rev: {} };
   if (s) { const f = fixed(G); s.sumCost = f.admin + f.interest; s.year = s.result - s.sumCost; G.seasons.push(s); }
   if (G.seasons.length > D.summer.keep) G.seasons.shift();
-  seasonEnd(G);
   return true;
 }
 
@@ -199,7 +197,6 @@ export function startSeason(G) {
   G.phase = 'prep';
   G.min = D.time.open;
   resetToday(G);
-  morning(G);
   solvency(G);
   return true;
 }

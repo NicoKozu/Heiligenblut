@@ -3,13 +3,11 @@ import { D } from '../src/biz/data.js';
 import { newGame, startSeason, startDay, tick, nextDay, setPrice, forecast, report, nextDate } from '../src/biz/sim.js';
 import { repair, inspect } from '../src/biz/assets.js';
 import { setGroom, setGun, nightTemp, groomPlan } from '../src/biz/snow.js';
-import { hire, fire, setWage, needs, pendingOf, GROUPS } from '../src/biz/staff.js';
 import { act } from '../src/biz/marketing.js';
 import { setLevel, setSidePrice, HUTS } from '../src/biz/side.js';
 import { check, order, borrow, repay, seasonPL, groomer } from '../src/biz/build.js';
 import { seasonOf } from '../src/biz/calendar.js';
 import { pl } from '../src/biz/area.js';
-import { revise } from '../src/biz/season.js';
 
 const argv = process.argv.slice(2);
 const opt = k => { const i = argv.indexOf('--' + k); return i < 0 ? null : argv[i + 1]; };
@@ -53,12 +51,6 @@ function tryBuild(G, c, ids, summer) {
   return left;
 }
 
-function hireByNeed(G) {
-  const fc = forecast(G).n, nd = needs(G, fc);
-  for (const j of G.build.jobs) if (j.left != null && j.left <= D.staff.delay + 1) for (const l of P[j.id].lifts || []) nd.lift += Math.ceil(LIFT[l].staff * D.staff.relief);
-  for (const k of GROUPS) { const have = G.staff.n[k] + pendingOf(G, k); if (have < nd[k]) hire(G, k, nd[k] - have); }
-}
-
 function repairAll(G, express) {
   for (const l of G.lifts) if (l.broken && !(l.repairLeft > 0)) repair(G, l.id, express === true || (express === 'rossbach' && l.id === 'rossbach'));
 }
@@ -90,8 +82,7 @@ function sensible(cfg = {}) {
     const gp = groomPlan(G);
     if (gp.want > gp.cap + 1 && afford(G, D.groom.price + (c.held || 0), c)) groomer(G, 1);
     groomAll(G, true);
-    for (const l of G.lifts) if (!l.broken && !l.inspPlan && !(l.insp > 0) && l.cond < 72) inspect(G, l.id);
-    hireByNeed(G);
+    for (const l of G.lifts) if (!l.broken && l.cond < 72) inspect(G, l.id);
   };
   s.live = G => repairAll(G, 'rossbach');
   s.evening = G => {
@@ -101,13 +92,13 @@ function sensible(cfg = {}) {
     if (c.repayFrom ? si >= c.repayFrom : !x.queue.length) if (G.cash > c.repayAbove) repay(G, G.cash - c.repayAbove);
     if (lastDay(G) && c.plan[si + 1]) c.si = si + 1, x.queue = tryBuild(G, c, [...x.queue, ...c.plan[si + 1]], true), x.planned = si + 1;
   };
-  s.summer = G => { for (const l of G.lifts) revise(G, l.id); };
+  s.summer = G => { for (const l of G.lifts) if (l.cond < 90) inspect(G, l.id); };
   return s;
 }
 
 function waiting() {
   const s = { name: 'abwarten' };
-  s.morning = G => { groomAll(G, true); hireByNeed(G); };
+  s.morning = G => groomAll(G, true);
   s.live = G => repairAll(G, false);
   s.evening = G => { repairAll(G, false); snowGuns(G); };
   return s;
@@ -127,16 +118,6 @@ function greedy() {
 function stingy() {
   const s = { name: 'geizig' };
   s.morning = G => {
-    const x = ctx(G, s);
-    if (x.started !== G.season) {
-      x.started = G.season;
-      if (G.staff.wage !== 90) setWage(G, 90 - G.staff.wage);
-      const min = { lift: G.lifts.reduce((a, l) => a + LIFT[l.id].staff, 0), patrol: 1, tech: 1, groomer: 0, cashier: 1, instructor: 1 };
-      for (const k in min) {
-        if (G.staff.n[k] > min[k]) fire(G, k, G.staff.n[k] - min[k]);
-        else if (G.staff.n[k] < min[k]) hire(G, k, min[k] - G.staff.n[k]);
-      }
-    }
     groomAll(G, false);
   };
   s.live = G => repairAll(G, false);
