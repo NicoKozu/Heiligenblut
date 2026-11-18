@@ -21,9 +21,9 @@ function snowSpot(r, S) {
   r -= 14;
   return [23.1 + Math.floor(r / 2) * 0.8, S * (7.1 + (r % 2) * 0.8), -1, 0];
 }
-const LANE = [[16.7, 7.5], [17.4, 7.5], [17.4, 30], [19.4, 30], [19.4, 11], [21.4, 11], [21.4, 30], [23.4, 30], [23.4, 11], [25.4, 11], [25.4, 30], [25.4, 90]];
+const LANE = [[10.4, 8.6], [10.4, 9.9], [1, 9.9], [1, 30], [-1, 30], [-1, 11.5], [-3, 11.5], [-3, 30], [-5, 30], [-5, 11.5], [-7, 11.5], [-7, 30], [-7, 90]];
 const LCUM = LANE.map((p, i) => i ? Math.hypot(p[0] - LANE[i - 1][0], p[1] - LANE[i - 1][1]) : 0).map((v, i, a) => a.slice(0, i + 1).reduce((x, y) => x + y));
-export const LANE_IN = LCUM[10] + 1.5;
+export const LANE_IN = LCUM[11] + 1.5;
 export const rowD = k => k ? 1.5 + k * 1.2 : 0;
 export function laneAt(d, side, S) {
   let i = 1;
@@ -232,7 +232,7 @@ export function createStationKit(terrain) {
   }
 
   function gates(K, F, al, S) {
-    const i0 = S < 0 ? -3 : 0, i1 = S < 0 ? 5 : 8;
+    const i0 = S < 0 ? -3 : 0, i1 = S > 0 ? 8 : 5;
     for (let i = i0; i <= i1; i++) {
       const sd = i > 5 ? 5.6 + (i - 6) * 1.9 : i < 0 ? -5.6 + (i + 1) * 1.9 : -4.75 + i * 1.9, [x, z] = F.P(al, sd), gy = F.gh(al, sd);
       if (i === 6 && S > 0 || i === -1 && S < 0) { const [ex, ez] = F.P(al, S * 5.18); K.bar(M.chrome, x, gy + 0.9, z, ex, gy + 0.9, ez, 0.03); }
@@ -265,27 +265,36 @@ export function createStationKit(terrain) {
 
   function maze(K, F, S, big) {
     if (big) {
-      belt(K, F, 16.3, S * 5.6, 18.4, S * 5.6);
-      belt(K, F, 16.3, S * 7.5, 17.1, S * 7.5);
-      belt(K, F, 18.4, S * 5.6, 18.4, S * 29);
-      belt(K, F, 16.4, S * 9.4, 16.4, S * 31);
-      belt(K, F, 20.4, S * 12.4, 20.4, S * 31);
-      belt(K, F, 22.4, S * 9.4, 22.4, S * 29);
-      belt(K, F, 24.4, S * 12.4, 24.4, S * 31);
-      belt(K, F, 26.4, S * 9.4, 26.4, S * 31);
-      belt(K, F, 18.4, S * 9.4, 26.4, S * 9.4);
-      belt(K, F, 16.4, S * 31, 24.4, S * 31);
+      belt(K, F, 0, S * 8.4, 8.5, S * 8.4);
+      belt(K, F, 2, S * 10.9, 12.8, S * 10.9);
+      belt(K, F, 12.8, S * 7.9, 12.8, S * 10.9);
+      belt(K, F, 2, S * 10.9, 2, S * 31);
+      belt(K, F, 0, S * 8.4, 0, S * 29);
+      belt(K, F, -2, S * 12.9, -2, S * 31);
+      belt(K, F, -4, S * 10.4, -4, S * 29);
+      belt(K, F, -6, S * 12.9, -6, S * 31);
+      belt(K, F, -8, S * 10.4, -8, S * 31);
+      belt(K, F, -8, S * 10.4, 0, S * 10.4);
+      belt(K, F, -6, S * 31, 2, S * 31);
+      for (const al of [8.5, 10.4, 12.3]) {
+        const [x, z] = F.P(al, S * 7.9), gy = terrain.heightAt(x, z), [rx, rz] = F.P(al, S * 8.32), [lx, lz] = F.P(al, S * 8.37);
+        K.add(BOX(0.3, 1.0, 1.2), M.steel, T(x, gy + 0.5, z, F.R + Math.PI / 2));
+        K.add(BOX(0.34, 0.06, 1.26), M.dark, T(x, gy + 1.03, z, F.R + Math.PI / 2));
+        K.add(BOX(0.31, 0.12, 0.5), M.yellow, T(x, gy + 0.8, z, F.R + Math.PI / 2));
+        K.add(BOX(0.3, 0.36, 0.12), M.dark, T(rx, gy + 1.2, rz, F.R + Math.PI / 2, -0.35 * S));
+        K.add(BOX(0.22, 0.14, 0.02), M.green, T(lx, gy + 1.23, lz, F.R + Math.PI / 2, -0.35 * S));
+      }
     } else for (const sd of [5.6, 7.5, 9.4]) belt(K, F, 16.3, S * sd, 22.5, S * sd);
     for (const sd of [-2.85, -0.95, 0.95, 2.85]) belt(K, F, 16.3, sd, 21.7, sd);
     ROWS.slice(0, -1).forEach((r, i) => i % 2 ? belt(K, F, r + 0.8, -3.45, r + 0.8, 4.75) : belt(K, F, r + 0.8, -4.75, r + 0.8, 3.45));
     belt(K, F, 28.6, -3.3, 28.6, 4.75);
   }
 
-  function flatten(F, y, S, big) {
+  function flatten(F, y) {
     const sm = t => t * t * (3 - 2 * t), o = [F.lz, -F.lx];
     terrain.groom((x, z, h) => {
       const dx = x - F.E[0], dz = z - F.E[1], al = dx * o[0] + dz * o[1], sd = dx * F.lx + dz * F.lz;
-      const e = Math.max(12 - al, al - 16.1 - LQ - 2, -S * sd - 9.8, S * sd - (big ? 32 : 9.8));
+      const e = Math.max(12 - al, al - 16.1 - LQ - 2, Math.abs(sd) - 9.8);
       if (e > 10) return null;
       const k = sm(Math.min(1, 1 - e / 10));
       return [h + (y - h) * k, k * 0.6];
@@ -332,7 +341,7 @@ export function createStationKit(terrain) {
     }
     const [rx, rz] = F.P(cm, 0);
     K.add(BOX(0.25, 0.25, cl + 1.4), M.plankDark, T(rx, H + 1.8, rz, F.R));
-    gates(K, F, al0 - 0.35, s);
+    gates(K, F, al0 - 0.35, big ? 0 : s);
     maze(K, F, s, big);
     const lane = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.9), signMat(sec.name, 'Skipass bereithalten · kontaktlos scannen'));
     const [gx, gz] = F.P(al0 - 0.15, 0);
@@ -427,7 +436,7 @@ export function createStationKit(terrain) {
       }
       if (isA || sec.tunnel) {
         const big = !!opt.kiosk && isA;
-        flatten(F, fy - 0.05, s, big);
+        flatten(F, fy - 0.05);
         (sec.qside ||= {})[end] = s;
         if (big) sec.qbig = true;
         const hA = sec.pts[0].y - 5.4, hB = sec.ropeB - 5.4;
