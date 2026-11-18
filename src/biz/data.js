@@ -6,12 +6,12 @@ export const D = {
   start: { cash: 250000, loan: 0, credit: 1000000, rate: 0.055, rep: 55, cond: [70, 85] },
   time: { open: 510, close: 990, gameSecPerSec: 8, factors: [0.125, 1, 2, 5, 10, 20], maxSteps: 40, warn: 15 },
   lifts: [
-    { id: 'rossbach', name: 'Gondel Rossbach', cap: 1400, kw: 260, staff: 4, maint: 1800, ride: 9, from: 'tal', to: 'rossbach' },
-    { id: 'schareck', name: 'Gondel Schareck', cap: 1200, kw: 300, staff: 4, maint: 2400, ride: 8, from: 'rossbach', to: 'schareck', exposed: true, proj: 'schareck' },
-    { id: 'panorama', name: 'Panoramabahn', cap: 1800, kw: 220, staff: 3, maint: 2000, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true, proj: 'panorama' },
-    { id: 'tunnelbahn', name: 'Tunnelbahn Fleißalm', cap: 1000, kw: 240, staff: 2, maint: 800, ride: 5, from: 'rossbach', to: 'fleissalm', both: true, proj: 'tunnelbahn' },
-    { id: 'fleissbahn', name: 'Fleißbahn', cap: 2000, kw: 320, staff: 3, maint: 1500, ride: 8, from: 'fleissalm', to: 'fleisstop', proj: 'fleissbahn' },
-    { id: 'hochfleiss', name: 'Hochfleiß', cap: 1400, kw: 160, staff: 2, maint: 1000, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, proj: 'hochfleiss' }
+    { id: 'rossbach', name: 'Gondel Rossbach', gap: 10, places: 4, kw: 260, staff: 4, maint: 1800, ride: 9, from: 'tal', to: 'rossbach' },
+    { id: 'schareck', name: 'Gondel Schareck', gap: 12, places: 4, kw: 300, staff: 4, maint: 2400, ride: 8, from: 'rossbach', to: 'schareck', exposed: true, proj: 'schareck' },
+    { id: 'panorama', name: 'Panoramabahn', gap: 8, places: 4, kw: 220, staff: 3, maint: 2000, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true, proj: 'panorama' },
+    { id: 'tunnelbahn', name: 'Tunnelbahn Fleißalm', gap: 14, places: 4, kw: 240, staff: 2, maint: 800, ride: 5, from: 'rossbach', to: 'fleissalm', both: true, proj: 'tunnelbahn' },
+    { id: 'fleissbahn', name: 'Fleißbahn', gap: 7, places: 4, kw: 320, staff: 3, maint: 1500, ride: 8, from: 'fleissalm', to: 'fleisstop', proj: 'fleissbahn' },
+    { id: 'hochfleiss', name: 'Hochfleiß', gap: 10, places: 4, kw: 160, staff: 2, maint: 1000, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, proj: 'hochfleiss' }
   ],
   nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl', fleissalm: 'Fleißalm', fleisstop: 'Fleißbahn Berg', hochfleiss: 'Hochfleiß' },
   nodeH: { tal: 1309, rossbach: 1750, schareck: 2556, fallbichl: 2219, fleissalm: 1808, fleisstop: 2470, hochfleiss: 2920 },
@@ -217,7 +217,7 @@ export const D = {
       p12: { label: 'Piste 12 Muldenabfahrt', price: 35000, life: 25, needs: ['fleissbahn'], pistes: ['12'], info: 'rot · 2,2 km · Fleißbahn Berg → Fleißalm' },
       hochfleiss: { label: 'Sessellift Hochfleiß', price: 170000, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
       p11a: { label: 'Piste 11a Gratabfahrt', price: 55000, life: 25, needs: ['hochfleiss'], pistes: ['11a'], info: 'rot · 3,6 km · Hochfleiß → Fleißalm' },
-      rossbach10: { label: 'Gondel Rossbach 10er', price: 300000, life: 20, boost: { rossbach: 0.6 }, info: '+60 % Kapazität am Zubringer.' },
+      rossbach10: { label: 'Gondel Rossbach 6er-Kabinen', price: 300000, life: 20, places: { rossbach: 6 }, info: '6 statt 4 Plätze je Kabine, +50 % Kapazität am Zubringer.' },
       'hut:rossbach': { label: 'Ausbau Rossbach Alm', price: 60000, life: 25, seats: { rossbach: 120 }, info: '+120 Sitzplätze' },
       'hut:schareck': { label: 'Ausbau Panoramarestaurant', price: 60000, life: 25, needs: ['new:schareck'], seats: { schareck: 120 }, info: '+120 Sitzplätze' },
       'hut:spatzl': { label: 'Ausbau Spatzl Alm', price: 60000, life: 25, needs: ['new:spatzl'], seats: { spatzl: 120 }, info: '+120 Sitzplätze' },
@@ -290,3 +290,5 @@ export const D = {
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal', build: 'Umbau' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
 };
+
+for (const l of D.lifts) l.cap = Math.round(3600 / l.gap * l.places);

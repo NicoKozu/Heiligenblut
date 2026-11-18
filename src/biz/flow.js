@@ -23,7 +23,8 @@ function bell(c, t) {
 }
 
 export const leaveShare = t => smooth((t - F.leave.from) / (F.leave.to - F.leave.from));
-export const capPerMin = l => LIFT[l.id].cap * (1 + (l.boost || 0)) / 60;
+export const places = l => l.places || LIFT[l.id].places;
+export const capPerMin = l => 60 / LIFT[l.id].gap * places(l);
 export const runMinutes = p => Math.max(1, Math.round(p.km / F.speed[p.level] * 60 + F.pause[p.level]));
 export const levelWeight = (lv, skill = F.skill) => Object.entries(skill).reduce((a, [c, s]) => a + s * F.pref[c][lv], 0);
 
@@ -154,6 +155,7 @@ export function step(G, t) {
       const b = on ? Math.min(f.queue[k], c) : 0;
       f.queue[k] -= b;
       out(f, 'q:' + k, b);
+      out(f, 'b:' + k, b);
       if (f.queue[k] < 1e-6) f.queue[k] = 0;
       const r = f.ride[k];
       r[r.length - 1] += b;

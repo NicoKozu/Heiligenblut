@@ -228,7 +228,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       row('Zustand', '<span style="color:' + ccol(l.cond) + '">' + Math.round(l.cond) + ' %</span>') + bar(l.cond, ccol(l.cond)) +
       row('Wartezeit', run ? '<span style="color:' + wcol(w) + '">' + (w < 0.5 ? '–' : Math.round(w) + ' min') + '</span>' : '–') +
       row('Auslastung', run ? Math.round((l.util || 0) * 100) + ' %' : '–') +
-      row('Kapazität', d.cap.toLocaleString('de-DE') + ' P/h · ' + d.ride + ' min');
+      row('Kapazität', Math.round(3600 / d.gap * (l.places || d.places)).toLocaleString('de-DE') + ' P/h · ' + (l.places || d.places) + ' Plätze alle ' + d.gap + ' s · ' + d.ride + ' min');
     if (l.repairLeft > 0) h += row('Reparatur', 'noch ' + fmtDur(l.repairLeft));
     h += '<div class="a">';
     if (!l.build) h += btn('tog:lift:' + id, l.open ? 'Schließen' : 'Öffnen', { p: !l.open });
