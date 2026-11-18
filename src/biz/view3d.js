@@ -237,6 +237,8 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       h += btn('repair:' + id, 'Reparieren ' + eur(q.cost), { p: true, tip: fmtDur(q.min) }) + btn('repair:' + id + ':x', 'Express ' + eur(qx.cost), { tip: fmtDur(qx.min) });
     }
     if (!l.build) h += btn('insp:' + id, serviced(G, l) ? 'Revision erledigt' : 'Revision ' + eur(D.inspect.cost), { off: !!(l.broken || serviced(G, l)) });
+    const up = Object.keys(D.build.projects).find(k => D.build.projects[k].cab === id && !B.done(G, k) && !/^erst /.test(B.check(G, k)));
+    if (up) h += '</div><div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">' + projBody(up, true);
     return h + '</div>';
   }
 

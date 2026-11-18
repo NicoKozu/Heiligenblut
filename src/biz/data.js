@@ -217,7 +217,6 @@ export const D = {
       p12: { label: 'Piste 12 Muldenabfahrt', price: 35000, life: 25, needs: ['fleissbahn'], pistes: ['12'], info: 'rot · 2,2 km · Fleißbahn Berg → Fleißalm' },
       hochfleiss: { label: 'Sessellift Hochfleiß', price: 170000, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
       p11a: { label: 'Piste 11a Gratabfahrt', price: 55000, life: 25, needs: ['hochfleiss'], pistes: ['11a'], info: 'rot · 3,6 km · Hochfleiß → Fleißalm' },
-      rossbach10: { label: 'Gondel Rossbach 6er-Kabinen', price: 300000, life: 20, places: { rossbach: 6 }, info: '6 statt 4 Plätze je Kabine, +50 % Kapazität am Zubringer.' },
       'hut:rossbach': { label: 'Ausbau Rossbach Alm', price: 60000, life: 25, seats: { rossbach: 120 }, info: '+120 Sitzplätze' },
       'hut:schareck': { label: 'Ausbau Panoramarestaurant', price: 60000, life: 25, needs: ['new:schareck'], seats: { schareck: 120 }, info: '+120 Sitzplätze' },
       'hut:spatzl': { label: 'Ausbau Spatzl Alm', price: 60000, life: 25, needs: ['new:spatzl'], seats: { spatzl: 120 }, info: '+120 Sitzplätze' },
@@ -292,3 +291,11 @@ export const D = {
 };
 
 for (const l of D.lifts) l.cap = Math.round(3600 / l.gap * l.places);
+export const cabId = (lid, n) => lid === 'rossbach' && n === 6 ? 'rossbach10' : 'cab:' + lid + ':' + n;
+for (const l of D.lifts) {
+  const base = l.proj ? D.build.projects[l.proj].price : 300000;
+  for (let n = l.places + 2; n <= 20; n += 2) {
+    const prev = n - 2 > l.places ? [cabId(l.id, n - 2)] : l.proj ? [l.proj] : [];
+    D.build.projects[cabId(l.id, n)] = { label: l.name + ' ' + n + 'er-Kabinen', price: Math.round(base * (1 + 0.4 * (n - l.places - 2) / 2) / 5000) * 5000, life: 20, needs: prev.length ? prev : undefined, places: { [l.id]: n }, from: n - 2, cab: l.id, info: n + ' statt ' + (n - 2) + ' Plätze je Kabine, +' + Math.round(200 / (n - 2)) + ' % Kapazität.' };
+  }
+}
