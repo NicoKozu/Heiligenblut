@@ -309,8 +309,10 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     render(true);
   });
   const clickable = e => on && e.target.tagName === 'CANVAS' && !document.body.classList.contains('menu') && (mgr || e.altKey);
+  let dx0 = 0, dy0 = 0;
+  addEventListener('mousedown', e => { dx0 = e.clientX; dy0 = e.clientY; });
   addEventListener('click', e => {
-    if (!clickable(e) || e.button) return;
+    if (!clickable(e) || e.button || Math.hypot(e.clientX - dx0, e.clientY - dy0) > 5) return;
     const o = pick(e.clientX, e.clientY);
     cx = e.clientX; cy = e.clientY;
     sel = o;

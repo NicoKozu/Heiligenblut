@@ -20,17 +20,14 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat) keys.push('tab'); }
     else if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') keys.push('+');
     else if (e.key === '-' || e.code === 'NumpadSubtract') keys.push('-');
-    else if (!e.repeat && e.code === 'KeyV') keys.push('v');
     else if (!e.repeat && e.code === 'KeyH') keys.push('h');
     else if (!e.repeat && e.code === 'KeyO') keys.push('o');
   });
   const v3 = createView3d({ scene, cam, terrain, lift, pistes, scenery, act: a => action(a) });
   function mgr(on) {
-    if (on === v3.mgr || (on && cam.mode === 'fly')) return;
-    if (on) { cam.startMgr(); if (hold && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) ui.close(); }
-    else cam.endMgr();
+    if (on === v3.mgr) return;
+    if (on && hold && ['prep', 'daily', 'season', 'summer'].includes(ui.view)) ui.close();
     v3.setMgr(on);
-    note(on ? 'Manager-Kamera' : 'Fahrer-Ansicht', 1.2);
   }
 
   function note(t, s = 2.5) { player.state.note = t; player.state.noteT = s; }
@@ -144,11 +141,11 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
 
   function update(dt) {
     if (!active) return;
+    mgr(cam.mode === 'fly');
     while (keys.length) {
       const k = keys.shift();
       if (k === '+' || k === '-') { const f = S.setFactor(G, k === '+' ? 1 : -1); note(f < 1 ? 'Zeitfaktor Echtzeit' : 'Zeitfaktor ×' + f, 1.2); }
       else if (k === 'tab') ui.togglePanel();
-      else if (k === 'v') mgr(!v3.mgr);
       else if (k === 'h') note(v3.toggleIcons() ? 'Symbole an' : 'Symbole aus', 1.2);
       else if (k === 'o') { const m = v3.cycle(); if (m) note('Pisten-Overlay: ' + m, 1.5); }
     }
@@ -184,7 +181,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
 
     v3.update(G, dt);
     if (v3.mgr) {
-      const t = '<b>Manager-Kamera</b> · WASD/Rand verschieben · Rad Höhe · rechte Maus drehen · Klick Objekt · Doppelklick hinfliegen · O Overlay · H Symbole · V zurück' + (hold && !ui.view ? ' · <b>Enter ' + ({ prep: 'Tag starten', daily: 'nächster Tag', season: 'weiter', summer: 'Saison starten' }[hv] || '') + '</b>' : '');
+      const t = '<b>Flugmodus</b> · WASD/Leertaste/Shift fliegen · Maus ziehen schauen · Rad Tempo · Klick Objekt · Doppelklick hinfliegen · O Overlay · H Symbole · F landen' + (hold && !ui.view ? ' · <b>Enter ' + ({ prep: 'Tag starten', daily: 'nächster Tag', season: 'weiter', summer: 'Saison starten' }[hv] || '') + '</b>' : '');
       if (t !== htxt) { htxt = t; v3.hint(t); }
     }
     acc += dt;
