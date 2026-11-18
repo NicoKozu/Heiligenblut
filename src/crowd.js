@@ -595,8 +595,8 @@ export function createCrowd(terrain, pistes, lift, assets) {
   function ground(m, x, z, y) { m.pos.set(x, y ?? terrain.heightAt(x, z), z); }
   function local(m, h, lx, lz, y) { ground(m, h.x + h.dz * lx + h.dx * lz, h.z - h.dx * lx + h.dz * lz, y); }
   function queueAt(m, sec, rev, rank) {
-    const [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1, !rev && sec.qbig), ox = rev ? sec.dx : -sec.dx, oz = rev ? sec.dz : -sec.dz;
-    const bx = rev ? sec.b[0] : sec.a[0], bz = rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
+    const f = sec.qf?.[rev ? 'b' : 'a'], [al, sd, fa, fs] = queueSpot(rank, sec.qside?.[rev ? 'b' : 'a'] ?? 1, !rev && sec.qbig), ox = f ? f[2] : rev ? sec.dx : -sec.dx, oz = f ? f[3] : rev ? sec.dz : -sec.dz;
+    const bx = f ? f[0] : rev ? sec.b[0] : sec.a[0], bz = f ? f[1] : rev ? sec.b[1] : sec.a[1], a = al + m.lane * 0.08, d = sd + Math.sin(m.jph) * 0.1;
     ground(m, bx + ox * a - oz * d, bz + oz * a + ox * d);
     stand(m, Math.atan2(ox * fa - oz * fs, oz * fa + ox * fs) + m.lane * 0.2, !rev && !!sec.qbig);
   }
