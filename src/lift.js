@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { materials, worldUV } from './textures.js';
 import { consume, down } from './input.js';
 import { D } from './biz/data.js';
 
@@ -132,7 +133,7 @@ export function createLift(terrain, pistes, exp) {
     new THREE.BoxGeometry(0.3, 0.8, 0.3).translate(-GAUGE, -0.35, 0)
   ]);
   const padGeo = new THREE.CylinderGeometry(1.35, 1.35, 2.2, 10).translate(0, 1.1, 0);
-  const wheelGeo = new THREE.CylinderGeometry(GAUGE + 0.2, GAUGE + 0.2, 0.4, 20);
+  const wheelGeo = mergeGeometries([new THREE.CylinderGeometry(GAUGE + 0.2, GAUGE + 0.2, 0.4, 20, 1, true), new THREE.CylinderGeometry(GAUGE - 0.1, GAUGE - 0.1, 0.15, 20), ...[0, 1, 2, 3].map(i => new THREE.BoxGeometry(GAUGE * 2, 0.12, 0.25).rotateY(i * Math.PI / 4))]);
   const body = new THREE.BoxGeometry(1.9, 1.05, 1.9).translate(0, -0.55, 0);
   const glass = new THREE.BoxGeometry(1.86, 0.95, 1.86).translate(0, 0.45, 0);
   const frame = mergeGeometries([
@@ -141,7 +142,7 @@ export function createLift(terrain, pistes, exp) {
     new THREE.BoxGeometry(0.12, 0.12, 1.0).translate(0, 3.55, -0.45),
     new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0, 3.65, 0)
   ]);
-  const wood = mat(0x7a5236, { roughness: 0.85 });
+  const tx = materials(), wood = tx.plank;
   const concrete = mat(0xb9b4ab, { roughness: 0.95 });
   const roofMat = mat(0x3c4650, { roughness: 0.7 });
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), yAx = new THREE.Vector3(0, 1, 0);
@@ -156,6 +157,7 @@ export function createLift(terrain, pistes, exp) {
         const w = new THREE.Mesh(wheelGeo, steel);
         w.position.set(x, y + 0.3, z);
         g.add(w);
+        (sec.wheels ||= []).push(w);
       }
     }
     const tw = sec.towers.map(t => ({ ...t, sec }));
@@ -202,7 +204,7 @@ export function createLift(terrain, pistes, exp) {
     plat.position.y = 0.3 - depth / 2;
     const roof = new THREE.Mesh(new THREE.BoxGeometry(st.hw * 2 + 1.5, 0.6, st.hl * 2 + 1.5), roofMat);
     roof.position.y = 7.9;
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 7.4, st.hl * 2), wood);
+    const wall = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.4, 7.4, st.hl * 2), 1.5), wood);
     wall.position.set(-st.hw, 4, 0);
     g.add(plat, roof, wall);
     for (const a of [-1, 1]) {
@@ -325,6 +327,7 @@ export function createLift(terrain, pistes, exp) {
       const want = stop.has(sec.name) ? 0 : ride && ride.sec === sec && down('KeyW', 'ArrowUp') ? base * FAST : base;
       sec.speed = want >= sec.speed || want > 0 ? want : Math.max(0, sec.speed - Math.max(1.2, sec.speed * 1.5) * dt);
       sec.phase += sec.speed * dt;
+      for (const w of sec.wheels || []) w.rotation.y += sec.speed * dt / (GAUGE + 0.2);
     }
     if (ride && ride.tunnel) {
       const sec = ride.sec, why = stop.get(sec.name), fast = down('KeyW', 'ArrowUp');
@@ -458,6 +461,6 @@ export function createLift(terrain, pistes, exp) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  const api = { group, sections, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
+  const api = { group, sections, all, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
   return api;
 }

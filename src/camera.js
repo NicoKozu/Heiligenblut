@@ -13,9 +13,21 @@ export function createFollowCamera(terrain) {
   let mode = 'follow', fov = 65, eye = 1.6;
   let yaw = 0, pitch = 0, zoom = 1, drag = false, idle = 9, mx = 0, my = 0;
   let prev = 'follow', fy = 0, fp = 0, fv = 40;
+  const mg = { x: 0, z: 0, gx: 0, gz: 0, h: 1200, gh: 1200, yaw: 0, pitch: 0.95, go: false, rot: false, ex: 0, ey: 0, y: 0, in: false };
+  addEventListener('mousedown', e => { if (mode === 'mgr' && e.button === 2 && e.target.tagName === 'CANVAS') { mg.rot = true; mx = e.clientX; my = e.clientY; } });
+  addEventListener('mouseup', e => { if (e.button === 2) mg.rot = false; });
+  addEventListener('mousemove', e => {
+    mg.ex = e.clientX; mg.ey = e.clientY; mg.in = e.target.tagName === 'CANVAS';
+    if (mode !== 'mgr' || !mg.rot) return;
+    if (!(e.buttons & 2)) { mg.rot = false; return; }
+    mg.yaw -= (e.clientX - mx) * 0.005;
+    mg.pitch = Math.max(0.35, Math.min(1.45, mg.pitch + (e.clientY - my) * 0.004));
+    mx = e.clientX; my = e.clientY;
+  });
+  addEventListener('mouseout', e => { if (!e.relatedTarget) mg.in = false; });
 
   addEventListener('contextmenu', e => { if (e.target.tagName === 'CANVAS') e.preventDefault(); });
-  addEventListener('mousedown', e => { if (e.button === 0 && e.target.tagName === 'CANVAS') { drag = true; mx = e.clientX; my = e.clientY; e.preventDefault(); } });
+  addEventListener('mousedown', e => { if (e.button === 0 && mode !== 'mgr' && !e.altKey && e.target.tagName === 'CANVAS') { drag = true; mx = e.clientX; my = e.clientY; e.preventDefault(); } });
   addEventListener('mouseup', e => { if (e.button === 0) drag = false; });
   addEventListener('blur', () => { drag = false; });
   addEventListener('mousemove', e => {
@@ -31,6 +43,7 @@ export function createFollowCamera(terrain) {
   });
   addEventListener('wheel', e => {
     if (e.target.tagName !== 'CANVAS') return;
+    if (mode === 'mgr') { mg.gh = Math.max(300, Math.min(4000, mg.gh * Math.exp(e.deltaY * 0.0012))); return; }
     if (mode === 'fly') { fv = Math.max(5, Math.min(400, fv * Math.exp(-e.deltaY * 0.001))); return; }
     zoom = Math.max(0.45, Math.min(3, zoom * Math.exp(e.deltaY * 0.001)));
   }, { passive: true });
@@ -99,6 +112,40 @@ export function createFollowCamera(terrain) {
     camera.lookAt(look.copy(p).add(gaze));
   }
 
+  function mgr(dt) {
+    const fw = (down('KeyW', 'ArrowUp') ? 1 : 0) - (down('KeyS', 'ArrowDown') ? 1 : 0) + (mg.in && mg.ey < 10 ? 1 : 0) - (mg.in && mg.ey > innerHeight - 10 ? 1 : 0);
+    const sd = (down('KeyD', 'ArrowRight') ? 1 : 0) - (down('KeyA', 'ArrowLeft') ? 1 : 0) + (mg.in && mg.ex > innerWidth - 10 ? 1 : 0) - (mg.in && mg.ex < 10 ? 1 : 0);
+    const v = mg.h * 0.9 * dt * (down('ShiftLeft', 'ShiftRight') ? 2.5 : 1);
+    if (fw || sd) mg.go = false;
+    const sy = Math.sin(mg.yaw), cy = Math.cos(mg.yaw);
+    let nx = mg.gx + (sy * fw - cy * sd) * v, nz = mg.gz + (cy * fw + sy * sd) * v;
+    if (terrain.inside(nx, nz)) { mg.gx = nx; mg.gz = nz; }
+    const k = 1 - Math.exp(-dt * (mg.go ? 2.5 : 8));
+    mg.x += (mg.gx - mg.x) * k; mg.z += (mg.gz - mg.z) * k;
+    mg.h += (mg.gh - mg.h) * (1 - Math.exp(-dt * 6));
+    mg.y += (terrain.heightAt(mg.x, mg.z) - mg.y) * (1 - Math.exp(-dt * 3));
+    const off = mg.h / Math.tan(mg.pitch), p = camera.position;
+    p.set(mg.x - sy * off, mg.y + mg.h, mg.z - cy * off);
+    p.y = Math.max(p.y, terrain.heightAt(p.x, p.z) + 30);
+    camera.lookAt(look.set(mg.x, mg.y, mg.z));
+  }
+
+  function startMgr() {
+    if (mode === 'mgr') return;
+    if (mode !== 'fly') prev = mode;
+    mode = 'mgr';
+    camera.getWorldDirection(tmp);
+    mg.yaw = Math.atan2(tmp.x, tmp.z);
+    const p = camera.position;
+    mg.x = mg.gx = p.x + Math.sin(mg.yaw) * 300; mg.z = mg.gz = p.z + Math.cos(mg.yaw) * 300;
+    if (!terrain.inside(mg.x, mg.z)) { mg.x = mg.gx = p.x; mg.z = mg.gz = p.z; }
+    mg.y = terrain.heightAt(mg.x, mg.z);
+    mg.h = 200; mg.gh = 1200; mg.go = false;
+  }
+
+  function endMgr() { mode = prev; yaw = 0; pitch = 0; }
+  function goTo(x, z, h) { mg.gx = x; mg.gz = z; mg.go = true; if (h) mg.gh = h; }
+
   function startFly() {
     if (mode === 'fly') return;
     prev = mode;
@@ -116,6 +163,11 @@ export function createFollowCamera(terrain) {
   }
 
   function update(target, dir, dt, snap = false, opt = {}) {
+    if (mode === 'mgr') {
+      mgr(dt);
+      if (Math.abs(camera.fov - 55) > 0.05) { camera.fov = fov = 55; camera.updateProjectionMatrix(); }
+      return;
+    }
     if (mode === 'fly') {
       fly(dt);
       const f = 70;
@@ -132,10 +184,10 @@ export function createFollowCamera(terrain) {
   }
 
   function toggle() {
-    if (mode === 'fly') return mode;
+    if (mode === 'fly' || mode === 'mgr') return mode;
     mode = mode === 'ego' ? 'follow' : 'ego';
     return mode;
   }
 
-  return { camera, update, toggle, startFly, endFly, get mode() { return mode; } };
+  return { camera, update, toggle, startFly, endFly, startMgr, endMgr, goTo, get focus() { return look; }, get mode() { return mode; } };
 }

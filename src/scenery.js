@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { materials, worldUV } from './textures.js';
 
 const CHUNK = 500;
 const NEAR = 1300;
@@ -100,23 +101,45 @@ function signTex(text) {
   return t;
 }
 
+function flagTex() {
+  const c = document.createElement('canvas');
+  c.width = 96; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c8102e'; g.fillRect(0, 0, 96, 64);
+  g.fillStyle = '#fff'; g.fillRect(0, 21, 96, 22);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function buildHut(o, mats) {
   const g = new THREE.Group(), on = new THREE.Group(), off = new THREE.Group();
   off.visible = false;
   const { w, l, h } = o;
   const glass = mats.glass.clone();
   let to = g;
-  const box = (sx, sy, sz, m, x, y, z) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
+  const box = (sx, sy, sz, m, x, y, z, tile) => {
+    const geo = new THREE.BoxGeometry(sx, sy, sz);
+    if (tile) worldUV(geo, tile);
+    const b = new THREE.Mesh(geo, m);
     b.position.set(x, y, z);
     to.add(b);
     return b;
   };
-  box(w + 0.6, 4, l + 0.6, mats.stone, 0, -1.2, 0);
-  box(w, h, l, mats.wood(o.color), 0, 0.8 + h / 2, 0);
+  box(w + 0.6, 4, l + 0.6, mats.tx.stone, 0, -1.2, 0, 1.6);
+  box(w, h, l, mats.tx.log, 0, 0.8 + h / 2, 0, 2.4);
+  const rows = Math.round(h / 0.3), ends = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.15, 0.55, 7).rotateX(Math.PI / 2), mats.tx.logDark, rows * 8);
+  const em = new THREE.Matrix4(), rq = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+  let ei = 0;
+  for (let i = 0; i < rows; i++) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const y = 0.95 + i * h / rows;
+    ends.setMatrixAt(ei++, em.makeTranslation(sx * w / 2, y, sz * (l / 2 + 0.2)));
+    ends.setMatrixAt(ei++, em.copy(rq).setPosition(sx * (w / 2 + 0.2), y + 0.12, sz * l / 2));
+  }
+  g.add(ends);
   const rh = w * 0.38, top = 0.8 + h;
   const gable = new THREE.Shape([new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), new THREE.Vector2(0, rh)]);
-  const gm = new THREE.Mesh(new THREE.ExtrudeGeometry(gable, { depth: l, bevelEnabled: false }), mats.wood(o.color));
+  const gm = new THREE.Mesh(worldUV(new THREE.ExtrudeGeometry(gable, { depth: l, bevelEnabled: false }), 1.6), mats.tx.plankDark);
   gm.position.set(0, top, -l / 2);
   g.add(gm);
   const ow = w / 2 + 1.1, slope = Math.atan2(rh, w / 2), span = ow / Math.cos(slope);
@@ -124,60 +147,131 @@ function buildHut(o, mats) {
     const roof = new THREE.Group();
     roof.position.set(0, top + rh + 0.15, 0);
     roof.rotation.z = -s * slope;
-    const r = new THREE.Mesh(new THREE.BoxGeometry(span, 0.3, l + 2), mats.roof);
+    const r = new THREE.Mesh(worldUV(new THREE.BoxGeometry(span, 0.3, l + 2), 1.8, true), mats.tx.shingle);
     r.position.x = s * span / 2;
-    const sn = new THREE.Mesh(new THREE.BoxGeometry(span - 0.2, 0.35, l + 1.8), mats.snow);
-    sn.position.set(s * span / 2, 0.3, 0);
-    roof.add(r, sn);
+    const sn = new THREE.Mesh(new THREE.BoxGeometry(span - 0.6, 0.4, l + 1.6), mats.snow);
+    sn.position.set(s * (span / 2 - 0.15), 0.32, 0);
+    const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, l + 1.6, 6).rotateX(Math.PI / 2), mats.snow);
+    lip.position.set(s * (span - 0.45), 0.28, 0);
+    const fasc = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, l + 2.05), mats.tx.plankDark);
+    fasc.position.set(s * span, -0.05, 0);
+    roof.add(r, sn, lip, fasc);
+    for (const z of [-1, 1]) {
+      const bd = new THREE.Mesh(new THREE.BoxGeometry(span, 0.35, 0.14), mats.tx.plankDark);
+      bd.position.set(s * span / 2, -0.05, z * (l / 2 + 1.02));
+      roof.add(bd);
+    }
     g.add(roof);
   }
-  box(0.9, 2.4, 0.9, mats.stone, w * 0.22, top + rh, -l * 0.2);
-  box(0.95, 0.3, 0.95, mats.snow, w * 0.22, top + rh + 1.3, -l * 0.2);
+  const chim = [w * 0.22, top + rh, -l * 0.2];
+  box(0.9, 2.4, 0.9, mats.tx.stone, chim[0], chim[1], chim[2], 1);
+  box(1.1, 0.12, 1.1, mats.stone, chim[0], chim[1] + 1.2, chim[2]);
+  box(0.95, 0.3, 0.95, mats.snow, chim[0], chim[1] + 1.36, chim[2]);
+  const win = (s, z, ww, hh, side) => {
+    const y = 0.8 + h * 0.55;
+    if (side) {
+      box(0.12, hh, ww, glass, s * (w / 2 + 0.03), y, z);
+      box(0.16, hh + 0.2, 0.1, mats.frame, s * (w / 2 + 0.05), y, z - ww / 2 - 0.02);
+      box(0.16, hh + 0.2, 0.1, mats.frame, s * (w / 2 + 0.05), y, z + ww / 2 + 0.02);
+      box(0.16, 0.1, ww + 0.2, mats.frame, s * (w / 2 + 0.05), y + hh / 2 + 0.05, z);
+      box(0.3, 0.1, ww + 0.3, mats.frame, s * (w / 2 + 0.12), y - hh / 2 - 0.05, z);
+      box(0.16, hh, 0.05, mats.frame, s * (w / 2 + 0.06), y, z);
+      box(0.16, 0.05, ww, mats.frame, s * (w / 2 + 0.06), y + hh * 0.1, z);
+      box(0.3, 0.22, ww * 0.9, mats.tx.plankDark, s * (w / 2 + 0.25), y - hh / 2 - 0.2, z);
+    } else {
+      box(ww, hh, 0.12, glass, s, y, l / 2 + 0.03);
+      box(ww + 0.2, 0.1, 0.16, mats.frame, s, y + hh / 2 + 0.05, l / 2 + 0.05);
+      box(ww + 0.3, 0.1, 0.3, mats.frame, s, y - hh / 2 - 0.05, l / 2 + 0.12);
+      box(0.05, hh, 0.16, mats.frame, s, y, l / 2 + 0.06);
+    }
+  };
   const nWin = Math.max(2, Math.floor(l / 3.5));
   for (const s of [-1, 1]) for (let i = 0; i < nWin; i++) {
-    const z = -l / 2 + (i + 0.5) * l / nWin;
-    box(0.12, 1.1, 0.9, glass, s * (w / 2 + 0.03), 0.8 + h * 0.55, z);
+    const z = -l / 2 + (i + 0.5) * l / nWin, y = 0.8 + h * 0.55;
+    win(s, z, 0.9, 1.1, true);
     to = on;
-    box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), 0.8 + h * 0.55, z - 0.65);
-    box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), 0.8 + h * 0.55, z + 0.65);
+    box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), y, z - 0.68);
+    box(0.08, 1.2, 0.35, mats.shutter, s * (w / 2 + 0.06), y, z + 0.68);
     to = off;
-    box(0.1, 1.25, 1.0, mats.shutter, s * (w / 2 + 0.09), 0.8 + h * 0.55, z);
+    box(0.1, 1.25, 1.0, mats.shutter, s * (w / 2 + 0.11), y, z);
     to = g;
   }
   box(1.3, 2.2, 0.15, mats.door, 0, 0.8 + 1.1, l / 2 + 0.05);
-  for (const s of [-1, 1]) box(0.9, 1.1, 0.12, glass, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.03);
+  box(1.5, 0.15, 0.25, mats.frame, 0, 0.8 + 2.25, l / 2 + 0.1);
+  for (const s of [-1, 1]) win(s * w * 0.28, 0, 0.9, 1.1, false);
   to = off;
-  for (const s of [-1, 1]) box(1.0, 1.25, 0.1, mats.shutter, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.09);
-  box(1.4, 2.3, 0.1, mats.shutter, 0, 0.8 + 1.15, l / 2 + 0.13);
-  for (const s of [-1, 1]) box(1.8, 0.9, 0.9, mats.deck, s * w * 0.25, 1.25, l / 2 + 1.2);
+  for (const s of [-1, 1]) box(1.0, 1.25, 0.1, mats.shutter, s * w * 0.28, 0.8 + h * 0.55, l / 2 + 0.12);
+  box(1.4, 2.3, 0.1, mats.shutter, 0, 0.8 + 1.15, l / 2 + 0.16);
+  for (const s of [-1, 1]) box(1.8, 0.9, 0.9, mats.tx.plank, s * w * 0.25, 1.25, l / 2 + 1.2, 1);
   to = g;
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.8, 7), Math.min(w * 0.8, 7) / 4), new THREE.MeshLambertMaterial({ map: signTex(o.name) }));
   sign.position.set(0, top + rh * 0.4, l / 2 + 0.05);
   g.add(sign);
-  const deck = 6;
-  box(w + 2, 0.5, deck, mats.deck, 0, 0.55, l / 2 + deck / 2);
+  const deck = 6, dz = l / 2 + deck / 2;
+  box(w + 2, 0.5, deck, mats.tx.plank, 0, 0.55, dz, 1.5);
+  for (const s of [-1, 1]) {
+    box(0.1, 0.1, deck, mats.tx.plankDark, s * (w / 2 + 0.95), 1.75, dz);
+    box(0.1, 0.1, deck, mats.tx.plankDark, s * (w / 2 + 0.95), 1.25, dz);
+    box((w + 2) / 2 - 1.2, 0.1, 0.1, mats.tx.plankDark, s * ((w + 2) / 4 + 0.6), 1.75, l / 2 + deck - 0.05);
+    box((w + 2) / 2 - 1.2, 0.1, 0.1, mats.tx.plankDark, s * ((w + 2) / 4 + 0.6), 1.25, l / 2 + deck - 0.05);
+  }
+  const posts = [];
+  for (const s of [-1, 1]) for (let k = 0; k <= 6; k++) posts.push([s * (w / 2 + 0.95), l / 2 + k * deck / 6]);
+  for (let k = 0; k <= 8; k++) { const x = -w / 2 - 0.95 + k * (w + 1.9) / 8; if (Math.abs(x) > 0.9) posts.push([x, l / 2 + deck - 0.05]); }
+  const pm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), mats.tx.plankDark, posts.length);
+  posts.forEach(([x, z], i) => pm.setMatrixAt(i, em.makeTranslation(x, 1.3, z)));
+  g.add(pm);
   to = on;
   for (const s of [-1, 1]) {
-    const tx = s * w * 0.25, tz = l / 2 + deck / 2;
-    box(1.8, 0.08, 0.8, mats.deck, tx, 1.55, tz);
+    const tx = s * w * 0.25, tz = dz;
+    box(1.8, 0.08, 0.8, mats.tx.plank, tx, 1.55, tz);
     box(0.12, 0.75, 0.12, mats.deck, tx, 1.2, tz);
-    box(1.8, 0.08, 0.35, mats.deck, tx, 1.25, tz - 0.8);
-    box(1.8, 0.08, 0.35, mats.deck, tx, 1.25, tz + 0.8);
+    box(1.8, 0.08, 0.35, mats.tx.plank, tx, 1.25, tz - 0.8);
+    box(1.8, 0.08, 0.35, mats.tx.plank, tx, 1.25, tz + 0.8);
     box(0.06, 2.4, 0.06, mats.shutter, tx, 2, tz);
     const um = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 8, 1, true), mats.parasol);
     um.position.set(tx, 3.2, tz);
     on.add(um);
   }
+  const ski = new THREE.BoxGeometry(0.08, 1.7, 0.03);
+  const skis = new THREE.InstancedMesh(ski, mats.ski, 10);
+  const sc = new THREE.Color(), sq = new THREE.Quaternion(), sv = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), ax = new THREE.Vector3(1, 0, 0);
+  const SK = [0xd62828, 0x1d4ed8, 0xf2f2f2, 0x111111, 0xf59e0b];
+  for (let i = 0; i < 10; i++) {
+    sq.setFromAxisAngle(ax, -0.22);
+    skis.setMatrixAt(i, em.compose(sv.set(-w / 2 - 1.6 + (i >> 1) * 0.35 + (i & 1) * 0.1, 1.1, l / 2 + 0.6), sq, one));
+    skis.setColorAt(i, sc.setHex(SK[(i >> 1) % SK.length]));
+  }
+  on.add(skis);
+  box(2, 0.08, 0.08, mats.tx.plankDark, -w / 2 - 0.9, 1.75, l / 2 + 0.85);
   to = g;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 8, 6), mats.frame);
+  pole.position.set(w / 2 + 2.2, 4.4, l / 2 + deck - 0.5);
+  g.add(pole);
+  const fgeo = new THREE.PlaneGeometry(1.8, 1.2, 12, 4).translate(0.9, 0, 0);
+  const flag = new THREE.Mesh(fgeo, mats.flag);
+  flag.position.set(w / 2 + 2.25, 7.7, l / 2 + deck - 0.5);
+  g.add(flag);
+  const fx0 = Float32Array.from(fgeo.attributes.position.array);
+  const piles = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 5), mats.snow, 6);
+  [[-w / 2 - 0.9, -l / 3], [w / 2 + 0.9, -l / 3], [-w / 2 - 0.9, 0], [w / 2 + 0.9, l / 6], [-w / 3, -l / 2 - 0.9], [w / 4, -l / 2 - 0.9]].forEach(([x, z], i) => piles.setMatrixAt(i, em.compose(sv.set(x, 0.8, z), sq.identity(), new THREE.Vector3(1.4 + (i % 3) * 0.3, 0.55, 1.1))));
+  g.add(piles);
   g.add(on, off);
   g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  flag.castShadow = false;
   const bulbs = [];
   for (let i = 0; i <= 8; i++) bulbs.push(new THREE.Vector3(-w / 2 - 1 + (w + 2) * i / 8, 2.9 - Math.sin(i / 8 * Math.PI) * 0.5, l / 2 + deck - 0.2));
   const lamp = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 6, 4), mats.bulb, bulbs.length);
   bulbs.forEach((p, i) => lamp.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)));
   on.add(lamp);
-  const cord = new THREE.Line(new THREE.BufferGeometry().setFromPoints(bulbs), mats.cord);
-  on.add(cord);
+  on.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(bulbs), mats.cord));
+  const SM = 14, puffs = [];
+  for (let i = 0; i < SM; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: mats.smoke, color: 0xd8d8d8, transparent: true, depthWrite: false, opacity: 0 }));
+    s.position.set(chim[0], chim[1] + 1.5, chim[2]);
+    puffs.push({ s, t: i / SM, r: Math.random() });
+    g.add(s);
+  }
   let open = true;
   const setOpen = v => {
     if (v === open) return;
@@ -186,7 +280,26 @@ function buildHut(o, mats) {
     off.visible = !v;
     glass.emissive.setHex(v ? 0x6a4a1a : 0x000000);
   };
-  return { group: g, setOpen, hl: l / 2 + 0.3, hw: w / 2 + 0.3, top: top + rh, reach: Math.max(w + 2, l + deck * 2) / 2 + 3 };
+  const fp = fgeo.attributes.position;
+  const tick = (t, dt, wind) => {
+    for (let i = 0; i < fp.count; i++) {
+      const x = fx0[i * 3], y = fx0[i * 3 + 1], k = x / 1.8;
+      fp.setZ(i, Math.sin(x * 3.2 - t * (4 + wind * 4)) * 0.22 * k + Math.sin(y * 4 + t * 3) * 0.04 * k);
+      fp.setY(i, y - k * k * 0.25 * (1 - wind));
+    }
+    fp.needsUpdate = true;
+    fgeo.computeVertexNormals();
+    for (const p of puffs) {
+      p.t += dt / 7;
+      if (p.t > 1) { p.t -= 1; p.r = Math.random(); }
+      const u = p.t, sz = 0.8 + u * 4.5;
+      p.s.position.set(chim[0] + u * (2 + wind * 9) + (p.r - 0.5) * u * 2, chim[1] + 1.6 + u * 9 * (1 - wind * 0.5), chim[2] + (p.r - 0.5) * u * 3);
+      p.s.scale.set(sz, sz, 1);
+      p.s.material.opacity = open ? Math.sin(Math.min(1, u * 4) * Math.PI / 2) * (1 - u) * 0.55 : 0;
+      p.s.material.rotation = p.r * 6 + u;
+    }
+  };
+  return { group: g, setOpen, tick, hl: l / 2 + 0.3, hw: w / 2 + 0.3, top: top + rh, reach: Math.max(w + 2, l + deck * 2) / 2 + 3 };
 }
 
 export function detailMaterials(assets) {
@@ -216,7 +329,12 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     deck: new THREE.MeshLambertMaterial({ color: 0x9a7350 }),
     parasol: new THREE.MeshLambertMaterial({ color: 0xc8302a, side: THREE.DoubleSide }),
     bulb: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
-    cord: new THREE.LineBasicMaterial({ color: 0x222222 })
+    cord: new THREE.LineBasicMaterial({ color: 0x222222 }),
+    frame: new THREE.MeshLambertMaterial({ color: 0xede6da }),
+    ski: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    flag: new THREE.MeshLambertMaterial({ map: flagTex(), side: THREE.DoubleSide }),
+    smoke: new THREE.TextureLoader().load('public/textures/smoke.webp'),
+    tx: materials()
   };
 
   const huts = [];
@@ -370,8 +488,11 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     detU.set(px, pz, DET, 0);
   }
 
+  let last = performance.now() / 1000;
   function update(camera) {
-    const px = camera.position.x, pz = camera.position.z;
+    const px = camera.position.x, pz = camera.position.z, now = performance.now() / 1000, dt = Math.min(0.1, now - last);
+    last = now;
+    for (const h of huts) if (Math.hypot(h.x - px, h.z - pz) < 1500) h.tick(now, dt, wind);
     if (Math.hypot(px - lx, pz - lz) > 10) refresh(px, pz);
     for (const c of chunks) {
       const d = Math.hypot(c.center.x - px, c.center.y - pz) - CHUNK * 0.7;
@@ -422,5 +543,6 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
   }
 
   const setHut = (name, open) => huts.find(h => h.name === name)?.setOpen(open);
-  return { group, update, collide, huts, setHut, treeCount: N };
+  let wind = 0.2;
+  return { group, update, collide, huts, setHut, treeCount: N, set wind(v) { wind = Math.max(0, Math.min(1, v)); } };
 }

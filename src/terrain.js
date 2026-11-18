@@ -45,7 +45,7 @@ float tnN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(tnH(i), tnH(i + vec2(1, 0)), f.x), mix(tnH(i + vec2(0, 1)), tnH(i + vec2(1, 1)), f.x), f.y); }
 vec3 tnH3(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }`;
 
-function snowMaterial(bump, sat, forest, rect, surf) {
+function snowMaterial(bump, sat, forest, rect, surf, tint) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0, bumpMap: bump, bumpScale: 0.05 });
   mat.customProgramCacheKey = () => 'snow';
   mat.onBeforeCompile = s => {
@@ -53,8 +53,10 @@ function snowMaterial(bump, sat, forest, rect, surf) {
     s.uniforms.forMap = { value: forest };
     s.uniforms.satR = { value: rect };
     s.uniforms.pSurf = { value: surf };
-    s.vertexShader = 'attribute vec3 pist;\nuniform vec3 pSurf[' + SURF + '];\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+    s.uniforms.pTint = { value: tint };
+    s.vertexShader = 'attribute vec3 pist;\nuniform vec3 pSurf[' + SURF + '];\nuniform vec4 pTint[' + SURF + '];\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec4 vTint;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vTw = (modelMatrix * vec4(transformed, 1.0)).xyz;
+  vTint = pTint[int(pist.z + 0.5)];
   vPist = pist.xy;
   vSurf = pSurf[int(pist.z + 0.5)];`);
     const bumpPars = THREE.ShaderChunk.bumpmap_pars_fragment.replace('vec2 dHdxy_fwd()', 'vec2 dHdxy_tex()') + `
@@ -78,6 +80,7 @@ function snowMaterial(bump, sat, forest, rect, surf) {
       .replace('#include <common>', `#include <common>
 varying vec2 vPist;
 varying vec3 vSurf;
+varying vec4 vTint;
 varying vec3 vTw;
 uniform sampler2D satMap, forMap;
 uniform vec4 satR;
@@ -106,7 +109,8 @@ ${NOISE}`)
   float tWo = tPm * vSurf.y;
   diffuseColor.rgb *= 1.0 - tWo * (0.05 + 0.07 * tnN(vTw.xz * vec2(0.9, 0.35)));
   float tAp = tPm * vSurf.z * smoothstep(0.35, 0.65, tnN(vTw.xz * 0.06) * 0.6 + tnN(vTw.xz * 0.4) * 0.4 + vSurf.z * 0.5 - 0.25);
-  diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.23, 0.2, 0.13), vec3(0.3, 0.32, 0.18), tnN(vTw.xz * 0.7)), tAp);`)
+  diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.23, 0.2, 0.13), vec3(0.3, 0.32, 0.18), tnN(vTw.xz * 0.7)), tAp);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vTint.rgb, smoothstep(0.05, 0.6, vPist.x) * vTint.a);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   roughnessFactor = mix(roughnessFactor, 0.72, tPm * tSnow);
   roughnessFactor = mix(0.95, roughnessFactor, tSnow);
@@ -238,7 +242,8 @@ export async function loadTerrain() {
 
   const bump = snowBumpTexture();
   const surf = Array.from({ length: SURF }, () => new THREE.Vector3(1, 0, 0));
-  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth), surf);
+  const tints = Array.from({ length: SURF }, () => new THREE.Vector4(0, 0, 0, 0));
+  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth), surf, tints);
   const mesh = new THREE.Group();
   const chunks = [];
   for (let j0 = 0; j0 < NZ - 1; j0 += CHUNK) {
@@ -310,5 +315,6 @@ export async function loadTerrain() {
 
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
   const surface = (i, cord, worn, aper) => { if (i > 0 && i < SURF) surf[i].set(cord, worn, aper); };
-  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta, surface };
+  const tint = (i, c, a) => { if (i > 0 && i < SURF) tints[i].set(c ? c.r : 0, c ? c.g : 0, c ? c.b : 0, c ? a : 0); };
+  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta, surface, tint };
 }
