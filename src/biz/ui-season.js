@@ -43,8 +43,8 @@ export function seasonView(G, h) {
     tr('Ø Wartezeit an den Liften', dec(s.wait, 1) + ' min' + dl(s.wait, o?.wait, v => dec(v, 1), false)) +
     tr('Störungen', s.faults + (s.rescued >= 1 ? ' · ' + num(s.rescued) + ' Gäste geborgen' : '') + dl(s.faults, o?.faults, num, false)) +
     tr('Ø Schneehöhe Pisten', dec(s.snow, 0) + ' cm') + '</table>' +
-    '<h2>Verlauf über die Saison</h2><div class="cap">Ø Gäste je Betriebstag (Wochen)</div><canvas data-sc="guests" data-sy="' + s.sy + '" width="620" height="120"></canvas>' +
-    '<div class="cap">Ø Tagesergebnis (Wochen)</div><canvas data-sc="result" data-sy="' + s.sy + '" width="620" height="120"></canvas>' +
+    '<h2>Verlauf über die Saison</h2><div class="cap">Ø Gäste je Betriebstag</div><canvas data-sc="guests" data-sy="' + s.sy + '" width="620" height="120"></canvas>' +
+    '<div class="cap">Ø Tagesergebnis</div><canvas data-sc="result" data-sy="' + s.sy + '" width="620" height="120"></canvas>' +
     '<div class="cap">Ruf und Zufriedenheit</div><canvas data-sc="rep" data-sy="' + s.sy + '" width="620" height="120"></canvas>' +
     '<h2>Beste und schlechteste Tage</h2><table>' + day('Meiste Gäste', s.best) + day('Wenigste Gäste', s.worst) + day('Bestes Ergebnis', s.bestR) + day('Schlechtestes Ergebnis', s.worstR) + '</table>' +
     '<h2>Erlöse</h2><table>' + rev.map(([k, v]) => tr(lb(k), eur(v) + ' <small style="opacity:.6">' + pc(v / s.R * 100) + '</small>')).join('') + tr('<b>Summe</b>', '<b>' + eur(s.R) + '</b>', 'sum') + '</table>' +

@@ -79,3 +79,11 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 - Großglockner (47.074 N, 12.694 E) liegt im Panorama-DEM bei (−11300/−3900), DEM 3.777 m (offiziell 3.798 m).
 - Panorama: Kacheln z12 (Mitte) und z11 (Fern), gleiche Projektion (x = Δlon·111320·cos 47,0395°, z = −Δlat·111132), Abgleich mit Nah-DEM: Versatz 0, RMS 4,8 m. Skript im Scratchpad, nicht im Repo.
 - Neu generieren: Python-Skript nicht im Repo (Scratchpad); Kacheln `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/14/{x}/{y}.png`, Höhe = R·256 + G + B/256 − 32768.
+
+## Kurzsaison (nach Etappe 24)
+- Nutzerwunsch: Bauzeiten weg, Inspektion ohne Stillstand, günstigere Investitionen, Saison ≈ 20 Tage.
+- `D.dayStep` 6 (Kalendersprung je Spieltag), Wetter-Vorhersage im selben Takt, Zinsen je Spieltag `rate·6/365`, AfA 1/20 je Betriebstag, Insolvenz nach 3 Tagen, Saisonverlauf je Spieltag.
+- Bau: Winteraufträge fertig in der nächsten Nacht, Sommeraufträge zum Saisonstart, keine Sperren mehr (`close`/`closeHut` entfernt, alte Flags in `initBuild` bereinigt).
+- Inspektion: in der Vorbereitung sofort, sonst über Nacht, kein Liftstillstand.
+- Geld ÷6: Projekte, Startkasse 250k, Kredit 1 Mio, Startanlagen, Pistengerät 32k, Kanone 3,7k, Leitung 20k/km, Verleih 16k, Kampagnen einmalig, Sommer-Verwaltung 4 Tage. Reparatur Antrieb 8–16 h, Seil 16–32 h Betriebszeit.
+- Simtest (5 Seeds): vern S1 11,6k/+0,08 · S2 20,8k/+0,35 · S3 24k/+0,30 · S5 34,6k/+0,57 Mio; investor baut alles in S1; gierig wird ab S3 insolvent.

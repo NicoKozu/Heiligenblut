@@ -274,14 +274,13 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
 
   function projBody(id, sub) {
     const p = D.build.projects[id], why = B.check(G, id), j = B.job(G, id), done = B.done(G, id);
-    let h = (sub ? '<b>' + p.label + '</b><br>' : '') + '<small>' + p.info + '</small>' + row('Kosten', eur(p.price)) + row('Bauzeit', p.days + ' Tage');
+    let h = (sub ? '<b>' + p.label + '</b><br>' : '') + '<small>' + p.info + '</small>' + row('Kosten', eur(p.price)) + row('Bauzeit', 'über Nacht');
     if (done) return h + row('Status', '<span style="color:#7be07b">fertig</span>');
-    if (j) return h + row('Status', j.left == null ? 'im Sommer' : j.left === 0 ? 'fertig, wartet' : 'im Bau · noch ' + j.left + ' Tage') + (j.left ? bar((1 - j.left / j.days) * 100, '#ffd84a') : '');
+    if (j) return h + row('Status', j.left == null ? 'bis Saisonstart' : j.left === 0 ? 'fertig, wartet' : 'fertig morgen früh');
     h += '<div class="a">';
     if (G.summer && !why) h += btn('build:' + id + ':s', 'Bis Saisonstart bauen', { p: true });
-    else if (why && !B.check(G, id, true)) h += '<small style="color:#ffd84a;width:100%">' + why + '</small>' + btn('build:' + id + ':s', 'Im Sommer');
     else if (why) h += '<small style="color:#ff6b5a;width:100%">' + why + '</small>';
-    else h += btn('build:' + id, 'Bauen · ' + p.days + ' Tage', { p: true }) + btn('build:' + id + ':s', 'Im Sommer');
+    else h += btn('build:' + id, 'Bauen · über Nacht', { p: true });
     return h + '</div>';
   }
 

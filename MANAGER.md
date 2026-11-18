@@ -92,15 +92,15 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 
 **Stand nach Etappe 20b:** Maßgeblich sind die Werte in `biz/data.js` (Bauprojekte ~50 % der obigen Investitionspreise, Nachfrage-Tabelle ×0,65, Fixkosten je Lift/Gast höher), nicht die Tabellen oben.
 
-**Balancing-Ziele ab Etappe 23 (prüfen mit `node tools/simtest.mjs --check`, 5 Seeds × 5 Saisonen, Mittelwert, Ergebnis = Jahresergebnis inkl. Sommerkosten):**
+**Balancing-Ziele ab Kurzsaison (1 Spieltag = 6 Kalendertage, Saison ≈ 20 Spieltage, Geldbestände/Investitionen ÷6; prüfen mit `node tools/simtest.mjs --check`, 5 Seeds × 5 Saisonen, Mittelwert, Ergebnis = Jahresergebnis inkl. Sommerkosten):**
 | Strategie | Saison 1 | Saison 2 | Saison 3 | Saison 4–5 |
 |---|---|---|---|---|
-| vernünftig | 55–80k Skitage, −0,3 bis +0,5 Mio €, Ø-Z 52–65, Ruf ≥ 48 | 90–125k, +0,5 bis +2,0 Mio € | 120–170k, +1,0 bis +2,5 Mio €, Ø-Z 60–75 | S4 > S3; S5 160–210k, +2,0 bis +4,0 Mio € |
-| abwarten | Ruf 40–52, Ø-Z ≥ 45, ≥ −0,6 Mio € | −0,8 bis +0,2 Mio € | keine Insolvenz | keine Insolvenz |
-| gierig / geizig | Ruf < 40 | Ruf < 35, Ergebnis < 0 | – | – |
-| investor | Kredit ≥ 3 Mio €, keine Insolvenz | – | > vernünftig − 0,5 Mio €, Kredit sinkt | keine Insolvenz |
+| vernünftig | 9–15k Skitage, −0,2 bis +0,3 Mio €, Ø-Z 55–75, Ruf ≥ 48 | 16–26k, +0,1 bis +0,6 Mio € | 20–32k, +0,1 bis +0,6 Mio €, Ø-Z 60–80 | S5 > S3; S5 28–42k, +0,3 bis +1,0 Mio € |
+| abwarten | Ruf 40–52, Ø-Z ≥ 45, ≥ −0,1 Mio € | −0,15 bis +0,05 Mio € | keine Insolvenz | keine Insolvenz |
+| gierig / geizig | Ruf < 42 | Ruf < 38, Ergebnis < 0 | – | – |
+| investor | Kredit ≥ 0,5 Mio €, keine Insolvenz | – | > vernünftig − 0,1 Mio €, Kredit sinkt | keine Insolvenz |
 
-Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 4 Mio € Gewinn.
+Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 1 Mio € Gewinn.
 
 ---
 

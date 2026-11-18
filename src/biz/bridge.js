@@ -89,7 +89,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     }
     for (const id in D.build.projects) {
       const j = active && B.job(G, id), p = D.build.projects[id];
-      for (const lid of [...(p.lifts || []), ...(p.close || [])]) lift.site(lid, !!(j && j.left != null));
+      for (const lid of p.lifts || []) lift.site(lid, !!(j && j.left != null));
     }
     lift.shut.clear();
     for (const s of lift.sections) {

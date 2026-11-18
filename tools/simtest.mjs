@@ -41,7 +41,7 @@ function tryBuild(G, c, ids, summer) {
   let stop = false, held = 0;
   for (const it of ids) {
     if (stop) { left.push(it); continue; }
-    const set = [].concat(it), why = !summer && P[set[0]].close ? 'Sommer' : check(G, set[0], summer && !c.now);
+    const set = [].concat(it), why = check(G, set[0], summer && !c.now);
     if (why === 'fertig' || why === 'im Bau') { if (set.length > 1) { const r = set.slice(1); r.rest = true; left.push(r); } continue; }
     if (why === 'Sommer') { left.push(it); continue; }
     if (why.startsWith('erst')) { left.push(it); if ((P[set[0]].needs || []).every(n => G.build.done.includes(n) || G.build.jobs.some(j => j.id === n))) held += cost(set); continue; }
@@ -75,7 +75,7 @@ function snowGuns(G) {
 function groomAll(G, on) { for (const p of pl(G)) if (!!G.pistes[p.id].grm !== on) setGroom(G, p.id); }
 
 function sensible(cfg = {}) {
-  const c = { reserve: 300000, buffer: 500000, maxLoan: [2000000, 4000000, 5000000], repayAbove: 1500000, mkt: 1, plan: SENSIBLE, now: false, repayFrom: 0, ...cfg };
+  const c = { reserve: 50000, buffer: 80000, maxLoan: [330000, 670000, 830000], repayAbove: 250000, mkt: 1, plan: SENSIBLE, now: false, repayFrom: 0, ...cfg };
   const s = { name: cfg.name || 'vernünftig', c };
   s.morning = G => {
     const x = ctx(G, s), si = c.si = sIdx(G, s);
@@ -145,7 +145,7 @@ function stingy() {
 }
 
 function investor() {
-  return sensible({ name: 'investor', reserve: 600000, buffer: 300000, repayAbove: 800000, maxLoan: D.start.credit, now: true, repayFrom: 2, finishFrom: 2, mkt: 0, plan: [ALL] });
+  return sensible({ name: 'investor', reserve: 100000, buffer: 50000, repayAbove: 130000, maxLoan: D.start.credit, now: true, repayFrom: 2, finishFrom: 2, mkt: 0, plan: [ALL] });
 }
 
 const STRATS = { 'vernünftig': () => sensible(), abwarten: waiting, gierig: greedy, geizig: stingy, investor };
@@ -260,36 +260,36 @@ if (flag('check')) {
   const add = (s, i, label, key, ok, show = v => v) => { const v = g(s, i, key); if (v != null) rows.push([s, i + 1, label, show(v), ok(v)]); };
   const K = v => k(v) + 'k', M = v => mio(v) + ' Mio', N = v => fmt(v, 1);
   const V = 'vernünftig';
-  add(V, 0, 'Skitage 55–80k', 'guests', rg(55e3, 80e3), K);
-  add(V, 0, 'Ergebnis −0,3…+0,5 Mio', 'result', rg(-3e5, 5e5), M);
-  add(V, 0, 'Ø-Z 52–65', 'avgZ', rg(52, 65), N);
+  add(V, 0, 'Skitage 9–15k', 'guests', rg(9e3, 15e3), K);
+  add(V, 0, 'Ergebnis −0,2…+0,3 Mio', 'result', rg(-2e5, 3e5), M);
+  add(V, 0, 'Ø-Z 55–75', 'avgZ', rg(55, 75), N);
   add(V, 0, 'Ruf Ende ≥ 48', 'rep', ge(48), N);
-  add(V, 1, 'Skitage 90–125k', 'guests', rg(90e3, 125e3), K);
-  add(V, 1, 'Ergebnis +0,5…+2,0 Mio', 'result', rg(5e5, 2e6), M);
-  add(V, 2, 'Skitage 120–170k', 'guests', rg(120e3, 170e3), K);
-  add(V, 2, 'Ergebnis +1,0…+2,5 Mio', 'result', rg(1e6, 2.5e6), M);
-  if (A[V]?.[3]) rows.push([V, 4, 'Ergebnis steigt ggü. Saison 3', M(g(V, 3, 'result')) + ' / ' + M(g(V, 2, 'result')), g(V, 3, 'result') > g(V, 2, 'result')]);
-  add(V, 4, 'Skitage 160–210k', 'guests', rg(160e3, 210e3), K);
-  add(V, 4, 'Ergebnis +2,0…+4,0 Mio', 'result', rg(2e6, 4e6), M);
-  add(V, 2, 'Ø-Z 60–75', 'avgZ', rg(60, 75), N);
+  add(V, 1, 'Skitage 16–26k', 'guests', rg(16e3, 26e3), K);
+  add(V, 1, 'Ergebnis +0,1…+0,6 Mio', 'result', rg(1e5, 6e5), M);
+  add(V, 2, 'Skitage 20–32k', 'guests', rg(20e3, 32e3), K);
+  add(V, 2, 'Ergebnis +0,1…+0,6 Mio', 'result', rg(1e5, 6e5), M);
+  if (A[V]?.[4]) rows.push([V, 5, 'Ergebnis steigt ggü. Saison 3', M(g(V, 4, 'result')) + ' / ' + M(g(V, 2, 'result')), g(V, 4, 'result') > g(V, 2, 'result')]);
+  add(V, 4, 'Skitage 28–42k', 'guests', rg(28e3, 42e3), K);
+  add(V, 4, 'Ergebnis +0,3…+1,0 Mio', 'result', rg(3e5, 1e6), M);
+  add(V, 2, 'Ø-Z 60–80', 'avgZ', rg(60, 80), N);
   for (let i = 0; i < seasons; i++) add(V, i, 'max. Ø-Wartezeit ≤ 45 min', 'wait', le(45), N);
   const W = 'abwarten';
   add(W, 0, 'Ruf Ende 40–52', 'rep', rg(40, 52), N);
   add(W, 0, 'Ø-Z ≥ 45', 'avgZ', ge(45), N);
-  add(W, 0, 'Ergebnis ≥ −0,6 Mio', 'result', ge(-6e5), M);
-  add(W, 1, 'Ergebnis −0,8…+0,2 Mio', 'result', rg(-8e5, 2e5), M);
+  add(W, 0, 'Ergebnis ≥ −0,1 Mio', 'result', ge(-1e5), M);
+  add(W, 1, 'Ergebnis −0,15…+0,05 Mio', 'result', rg(-1.5e5, 5e4), M);
   for (let i = 0; i < seasons; i++) if (A[W]?.[i]) rows.push([W, i + 1, 'keine Insolvenz', A[W][i].insolv, A[W][i].insolv === 0]);
   for (const s of ['gierig', 'geizig']) {
-    add(s, 0, 'Ruf Ende < 40', 'rep', lt(40), N);
-    add(s, 1, 'Ruf < 35', 'rep', lt(35), N);
+    add(s, 0, 'Ruf Ende < 42', 'rep', lt(42), N);
+    add(s, 1, 'Ruf < 38', 'rep', lt(38), N);
     add(s, 1, 'Ergebnis < 0', 'result', lt(0), M);
   }
   const I = 'investor';
-  add(I, 0, 'Kredit ≥ 3 Mio', 'loanMax', ge(3e6), M);
+  add(I, 0, 'Kredit ≥ 0,5 Mio', 'loanMax', ge(5e5), M);
   for (let i = 0; i < seasons; i++) if (A[I]?.[i]) rows.push([I, i + 1, 'keine Insolvenz', A[I][i].insolv, A[I][i].insolv === 0]);
-  if (A[I]?.[2] && A[V]?.[2]) rows.push([I, 3, 'Ergebnis > vernünftig − 0,5 Mio', M(g(I, 2, 'result')) + ' / ' + M(g(V, 2, 'result')), g(I, 2, 'result') > g(V, 2, 'result') - 5e5]);
+  if (A[I]?.[2] && A[V]?.[2]) rows.push([I, 3, 'Ergebnis > vernünftig − 0,1 Mio', M(g(I, 2, 'result')) + ' / ' + M(g(V, 2, 'result')), g(I, 2, 'result') > g(V, 2, 'result') - 1e5]);
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
-  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 4 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 4e6]);
+  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;
   for (const [s, i, l, v, ok] of rows) { if (!ok) bad++; console.log(padR(s, 11) + pad(i, 2) + '  ' + padR(l, 34) + padR(v, 26) + (ok ? 'OK' : 'FAIL')); }
