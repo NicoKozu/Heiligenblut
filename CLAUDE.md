@@ -9,6 +9,7 @@
 
 ## Arbeitsweise
 - Genau eine Etappe pro Durchgang. Danach Branch `etappe-XX`, Commit, Push, PR nach `main`, selbst mergen. Stoppen, 3–5 Zeilen Zusammenfassung + Testhinweise.
+- **Immer mergen:** Jede Änderung (auch kleine Zusätze außerhalb von Etappen) per PR nach `main` und selbst mergen, ohne Rückfrage.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
 - Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
 - Prüfen: `node --check` + `node tools/simtest.mjs --check` (~100 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Kein Playwright (Nutzerwunsch).
