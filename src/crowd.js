@@ -694,7 +694,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
   }
   function stepV(sec, V, pace) {
     if (!secs.includes(sec)) { V.q.length = V.b.length = 0; return; }
-    const run = !lift.stop.has(sec.name), k = Math.max(1, pace * 60), dt = fdt * k;
+    const run = !lift.stop.has(sec.name), k = Math.max(1, pace * 7.5), dt = fdt * k;
     if (!run) V.c = 0;
     V.c = Math.min(V.c, 40);
     const want = Math.min(QV, V.T + Math.floor(V.c));
