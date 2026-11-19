@@ -3,7 +3,7 @@ import { built } from './area.js';
 import { int, next as rand } from './rng.js';
 import { hit } from './satisfaction.js';
 import { techFactor, riskFactor } from './staff.js';
-import { out } from './people.js';
+import { rescue } from './flow.js';
 
 const F = D.fault;
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -75,12 +75,8 @@ function breakLift(G, l, ev) {
   G.today.faults = (G.today.faults || 0) + 1;
   hit(G, 'fault');
   log(G, 'Störung ' + l.name + ' (' + t.label + ')', 'bad');
-  const f = G.flow, r = f && f.ride[l.id];
-  const n = r ? sum(r) : 0;
+  const n = rescue(G, l);
   if (n >= 1) {
-    r.fill(0);
-    out(f, 'r:' + l.id, n);
-    f.queue[l.id] += n;
     G.today.rescued = (G.today.rescued || 0) + n;
     hit(G, 'rescue');
     log(G, 'Bergung ' + l.name + ': ' + Math.round(n) + ' Gäste aus Kabinen', 'bad');

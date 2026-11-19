@@ -1,44 +1,28 @@
-export const out = (f, key, v) => {
-  if (!(v > 0)) return;
-  if (!f.out) f.out = {};
-  f.out[key] = (f.out[key] || 0) + v;
-};
+const IDX = new WeakMap();
 
-function parts(f, cb) {
-  const o = f.out || {};
-  for (const k in f.queue || {}) cb('q', k, [f.queue[k]], o['q:' + k] || 0);
-  cb('hold', 'tal', [f.hold || 0], o.hold || 0);
-  cb('cash', 'tal', [f.cashQ || 0], o.cash || 0);
-  for (const k in f.ride || {}) cb('r', k, f.ride[k], o['r:' + k] || 0);
-  for (const k in f.run || {}) cb('p', k, f.run[k], o['p:' + k] || 0);
-  for (const k in f.hutQ || {}) cb('hq', k, [f.hutQ[k]], o['hq:' + k] || 0);
-  for (const k in f.hut || {}) cb('h', k, f.hut[k], o['h:' + k] || 0);
+export function grp(f) {
+  let m = IDX.get(f);
+  if (!m || m.list !== f.g) {
+    m = new Map();
+    for (const g of f.g || []) if (!g.x) m.set(g.i, g);
+    m.list = f.g;
+    IDX.set(f, m);
+  }
+  return m;
 }
 
-const first = a => Math.ceil(a - 0.5);
-
 export function count(f) {
-  if (!f) return 0;
+  if (!Array.isArray(f?.g)) return 0;
   let n = 0;
-  parts(f, (kind, id, arr, o) => {
-    let m = 0;
-    for (const x of arr) if (x > 0) m += x;
-    n += first(o + m) - first(o);
-  });
+  for (const g of f.g) if (!g.x) n += g.n;
   return n;
 }
 
 export function each(f, cb) {
-  if (!f) return;
-  parts(f, (kind, id, arr, o) => {
-    const k0 = first(o);
-    let a = o;
-    for (let j = 0; j < arr.length; j++) {
-      const m = arr[j];
-      if (!(m > 0)) continue;
-      const b = a + m;
-      for (let k = first(a), e = first(b); k < e; k++) cb(kind, id, k, j, (k + 0.5 - a) / m, arr.length, k - k0);
-      a = b;
-    }
-  });
+  if (!Array.isArray(f?.g)) return;
+  const M = grp(f), ahead = new Map(), rank = list => { let a = 0; for (const i of list) { const g = M.get(i); if (!g) continue; ahead.set(g.i, a); a += g.n; } };
+  rank(f.CQ || []);
+  for (const k in f.Q || {}) rank(f.Q[k]);
+  for (const k in f.HQ || {}) rank(f.HQ[k]);
+  for (const g of f.g) if (!g.x) cb(g, ahead.get(g.i) || 0);
 }
