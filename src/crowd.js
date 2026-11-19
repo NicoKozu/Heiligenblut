@@ -646,8 +646,8 @@ export function createCrowd(terrain, pistes, lift, assets) {
     m.heading = Math.atan2(dx, dz);
     let x = M.x, z = M.z;
     const rem = P.len - d;
-    if (P.walk === Infinity && rem < 40 && nextPt(g, m.j, src, T0)) {
-      const w = smooth(1 - rem / 40), tx = x + (T0.x - x) * w, tz = z + (T0.z - z) * w;
+    if (P.walk === Infinity && rem < 12 && nextPt(g, m.j, src, T0)) {
+      const w = smooth(1 - rem / 12), tx = x + (T0.x - x) * w, tz = z + (T0.z - z) * w;
       if (w > 0.3 && Math.hypot(T0.x - tx, T0.z - tz) > 0.5) m.heading = Math.atan2(T0.x - tx, T0.z - tz);
       x = tx;
       z = tz;
