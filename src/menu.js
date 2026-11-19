@@ -33,6 +33,7 @@ export function createMenu() {
     '<div class="sec free"><h2>Start</h2><div class="starts"></div></div>' +
     '<div class="row go free"><button class="primary" data-act="start" disabled>Losfahren ⏎</button></div>' +
     '<div class="row go mgr"><button class="primary" data-act="cont" disabled>Weiterspielen ⏎</button><button data-act="new" disabled>Neues Spiel</button></div>' +
+    '<div class="row go mgr file"><button data-act="exp">💾 Spielstand sichern</button><button data-act="imp">📂 Spielstand laden</button><input type="file" accept=".json,application/json" hidden></div>' +
     '<div class="row go"><button data-act="resume" hidden>Weiter (Esc)</button></div>' +
     '<div style="font-size:11px;opacity:.55;margin-top:10px">Gelände: Mapzen/EU-DEM · Pisten/Lifte: © OpenStreetMap-Mitwirkende · Bilder: Contains modified Copernicus Sentinel data 2021 · Bäume: Quaternius (CC0) · Figur: three.js-Beispielmodell (Mixamo)</div>' +
     '<details><summary>Steuerung</summary><dl>' + KEYS.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('') + '</dl></details>' +
@@ -40,8 +41,9 @@ export function createMenu() {
     '</div>';
   document.body.appendChild(root);
   const $ = s => root.querySelector(s);
-  const status = $('.status'), starts = $('.starts'), startBtn = $('[data-act=start]'), resumeBtn = $('[data-act=resume]'), contBtn = $('[data-act=cont]'), newBtn = $('[data-act=new]');
-  let items = [], open = true, running = false, onStart = () => {}, onResume = () => {};
+  const status = $('.status'), starts = $('.starts'), startBtn = $('[data-act=start]'), resumeBtn = $('[data-act=resume]'), contBtn = $('[data-act=cont]'), newBtn = $('[data-act=new]'), expBtn = $('[data-act=exp]'), impBtn = $('[data-act=imp]'), file = $('input[type=file]');
+  let items = [], open = true, running = false, onStart = () => {}, onResume = () => {}, onImport = () => {};
+  try { navigator.storage?.persist?.(); } catch (e) {}
 
   function persist() {
     try { localStorage.setItem('hb-menu', JSON.stringify(choice)); } catch (e) {}
@@ -52,7 +54,8 @@ export function createMenu() {
     root.querySelectorAll('[data-game]').forEach(b => b.classList.toggle('on', b.dataset.game === choice.game));
     const mgr = choice.game === 'manager', g = saved();
     root.querySelectorAll('.free').forEach(e => { e.hidden = mgr; });
-    root.querySelector('.mgr').hidden = !mgr;
+    root.querySelectorAll('.mgr').forEach(e => { e.hidden = !mgr; });
+    expBtn.disabled = !g;
     contBtn.hidden = !g;
     contBtn.textContent = g ? 'Weiterspielen · ' + g.date.split('-').reverse().join('.') + ' ⏎' : '';
     newBtn.classList.toggle('primary', !g);
@@ -74,6 +77,28 @@ export function createMenu() {
     persist();
     hide();
     onStart({ game, mode: choice.mode, start: game === 'free' ? items[choice.start].k : -1 });
+  }
+
+  function exportSave() {
+    const g = saved();
+    if (!g) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([localStorage.getItem(SAVE)], { type: 'application/json' }));
+    a.download = 'heiligenblut-' + g.date + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    status.textContent = 'Spielstand gesichert: ' + a.download;
+  }
+
+  async function importSave(f) {
+    let g = null;
+    try { g = JSON.parse(await f.text()); } catch (e) {}
+    if (!g || !g.date || !g.version || !Array.isArray(g.lifts)) { status.textContent = 'Keine gültige Spielstand-Datei.'; return; }
+    if (saved() && !confirm('Spielstand vom ' + g.date.split('-').reverse().join('.') + ' laden? Der aktuelle Spielstand wird überschrieben.')) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(g)); } catch (e) { status.textContent = 'Speichern fehlgeschlagen.'; return; }
+    if (running) { status.textContent = 'Spielstand geladen – lade neu …'; onImport(); return; }
+    status.textContent = 'Spielstand geladen.';
+    render();
   }
 
   const enter = () => go(choice.game === 'free' ? 'free' : saved() ? 'continue' : 'new');
@@ -106,6 +131,9 @@ export function createMenu() {
   contBtn.addEventListener('click', () => go('continue'));
   newBtn.addEventListener('click', () => go('new'));
   resumeBtn.addEventListener('click', resume);
+  expBtn.addEventListener('click', exportSave);
+  impBtn.addEventListener('click', () => file.click());
+  file.addEventListener('change', () => { if (file.files[0]) importSave(file.files[0]); file.value = ''; });
 
   addEventListener('keydown', e => {
     if (!open) return;
@@ -129,6 +157,7 @@ export function createMenu() {
     ready() { startBtn.disabled = contBtn.disabled = newBtn.disabled = false; status.textContent = ''; render(); },
     onStart(f) { onStart = f; },
     onResume(f) { onResume = f; },
+    onImport(f) { onImport = f; },
     get open() { return open; }
   };
 }

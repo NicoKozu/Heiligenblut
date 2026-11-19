@@ -121,6 +121,7 @@ async function start() {
 
   menu.onStart(c => { pending = c; audio.init(); audio.pause(false); });
   menu.onResume(() => { audio.init(); audio.pause(false); flush(); });
+  menu.onImport(() => { biz = null; location.reload(); });
   menu.ready();
   document.addEventListener('visibilitychange', () => { if (document.hidden && !menu.open) pause(); });
   addEventListener('pagehide', () => biz?.save());
