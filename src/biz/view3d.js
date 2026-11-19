@@ -131,7 +131,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     if (!o?.own) return null;
     if (!o.open) return { k: 'lock' };
     if (G.phase !== 'open') return null;
-    return { k: 'wait', w: G.flow?.hutWait?.[h.id] || 0, n: sum(G.flow?.hut?.[h.id]) + (G.flow?.hutQ?.[h.id] || 0) };
+    return { k: 'wait', w: G.flow?.hutWait?.[h.id] || 0, n: (G.flow?.hut?.[h.id] || 0) + (G.flow?.hutQ?.[h.id] || 0) };
   };
   const SYM = { build: ['🏗', '#ffb14a'], tool: ['🔧', '#ff6b5a'], wind: ['💨', '#9fd3ff'], lock: ['🔒', '#c8ccd4'] };
   function show(key, pos, st, near) {
@@ -165,7 +165,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       if (!mode) { pistes.setTint(p.id, null); continue; }
       if (!o.open) { pistes.setTint(p.id, GREY, 0.75); continue; }
       const dp = D.pistes.find(x => x.id === p.id);
-      const t = mode === 1 ? (o.cond - 40) / 50 : mode === 2 ? ((o.snow || 0) - D.cover.minOpen) / 70 : 1 - (G.phase === 'open' ? sum(G.flow?.run?.[p.id]) / dp.km : 0) / 45;
+      const t = mode === 1 ? (o.cond - 40) / 50 : mode === 2 ? ((o.snow || 0) - D.cover.minOpen) / 70 : 1 - (G.phase === 'open' ? (G.flow?.run?.[p.id] || 0) / dp.km : 0) / 45;
       pistes.setTint(p.id, ramp(t, tc), 0.6);
     }
     for (const [s, ln] of plans) ln.visible = mgr && !built(s);
@@ -244,7 +244,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
 
   function pisteCard(id) {
     const o = G.pistes[id], d = D.pistes.find(x => x.id === id), lb = N.label(o), sc = N.score(G, id);
-    const crowd = G.phase === 'open' ? sum(G.flow?.run?.[id]) / d.km : 0, can = N.cannons(G)[id];
+    const crowd = G.phase === 'open' ? (G.flow?.run?.[id] || 0) / d.km : 0, can = N.cannons(G)[id];
     let h = '<h4>Piste ' + id + ' ' + d.name + '<button data-act="x">✕</button></h4>' +
       row('Status', o.open ? '<span style="color:#7be07b">offen</span>' : '<span style="color:#ff6b5a">gesperrt</span>') +
       row('Schwierigkeit · Länge', d.level + ' · ' + d.km.toLocaleString('de-DE') + ' km') +
@@ -263,7 +263,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     const o = G.side.huts[id], d = X.HUT[id], live = G.phase === 'open', w = live ? G.flow?.hutWait?.[id] || 0 : 0, lv = D.side.levels;
     let h = '<h4>' + d.name + '<button data-act="x">✕</button></h4>' +
       row('Status', o.build ? '<span style="color:#ffb14a">Umbau</span>' : o.open ? '<span style="color:#7be07b">offen</span>' : '<span style="color:#c8ccd4">geschlossen</span>') +
-      row('Plätze', Math.round(X.seats(G, id)) + (live ? ' · belegt ' + Math.round(sum(G.flow?.hut?.[id])) : '')) +
+      row('Plätze', Math.round(X.seats(G, id)) + (live ? ' · belegt ' + Math.round(G.flow?.hut?.[id] || 0) : '')) +
       row('Wartezeit', live ? '<span style="color:' + wcol(w) + '">' + (w < 0.5 ? '–' : Math.round(w) + ' min') + '</span>' : '–') +
       row('Preisniveau', lv[o.level]?.label || o.level) +
       row('Personal nötig', X.hutNeed(G, id));

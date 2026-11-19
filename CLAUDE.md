@@ -13,7 +13,7 @@
 - **Immer mergen:** Jede Änderung (auch kleine Zusätze außerhalb von Etappen) per PR nach `main` und selbst mergen, ohne Rückfrage.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
 - Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
-- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~100 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen).
+- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~70 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen; jsdelivr ist gesperrt → three@0.170.0 per npm in den Scratchpad und per `page.route` ausliefern; SwiftShader ~0,2 FPS).
 - Spiel muss nach jeder Etappe lauffähig bleiben; Freies Fahren lädt keinen `biz`-Code; alte Spielstände laden (`migrate()` in `sim.js`).
 - Pro Etappe neuen Chat starten (spart Tokens).
 
@@ -38,6 +38,7 @@
 - Kabinen-Ausbau (Zusatz): je Lift Bauprojekte in 2er-Schritten bis 20 Plätze (`data.js` Schleife nach `cap`, `cabId`, Ids `rossbach10` bzw. `cab:<lift>:<n>`, Preis Basis × (1 + 0,4·Stufe), Basis = Liftprojekt bzw. 300k), Kette über `needs`; Bau-Tab zeigt nur nächste Stufe, Objektkarte Lift bietet nächste Stufe an.
 - Mittelstation (Zusatz): Plateau um Halle (`station.js` `plaza`), Straßen/Parkplatz im Umkreis 135 m entfernt (`village.js` `CLEAR`), Schareck-Wartebereich seitlich an der Hallenwand mit Durchgang (`lift.js` `midAt`/`doorAt`, Queue-Rahmen `sec.qf` auch in `crowd.queueAt`).
 - Spielstand-Datei (Zusatz): Startmenü (Manager) „Spielstand sichern/laden“ exportiert/importiert `hb-biz-v1` als JSON (`menu.js`, Import im laufenden Spiel → `onImport` → Reload ohne Speichern); `navigator.storage.persist()`.
+- Gäste als Agenten (Zusatz): `flow.js` Gruppen 1–4 (`G.flow.g`, Zustände c/a/q/r/p/hq/h/w), Entscheidung 0,5–1 min vor dem Knoten (`decide`, `g.nx`), FIFO-Schlangen je Kabinentakt (`f.Q`, Sim-Kabine `g.cb`), Hütten in `side.js` `hutStep`; 3D je Figur fester Gast, Anzeige 1 min hinter Sim mit Vorzustand (`mark`), weiche Übergänge. Simtest ~70 s.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
@@ -59,7 +60,7 @@
 **Manager (`src/biz/`, kein DOM/three.js außer bridge/ui)** – alle Zahlen in `data.js`, Zufall nur `rng.js` (Seed in `G`), Spielstand `G` JSON in localStorage `hb-biz-v1`.
 - `sim.js` `newGame, startDay, tick, nextDay, nextDate, forecast, setPrice, report, prev, setFactor, save, load, clock`; `G` {date, season, day, phase prep/open/closed, min, factor, cash, loan, rep, prices, lifts[], pistes{}, flow, today{costs, revenue, guests, …}, history[], log[]}
 - `calendar.js` Datum/Ostern/Saison/Nachfragephase · `demand.js` N = B·P·R·O·Wetter·Schnee·Marketing·K·word je Zielgruppe (`offerF`, `segOffer`, `expW`)
-- `flow.js` Flussmodell pro Minute (Kassa, Queue, Lift, Piste, Hütte), bucht Tickets + `guestCost` · `people.js` `out, count, each`
+- `flow.js` Agentenmodell (Gruppen, Kassa, Schlange, Lift, Piste, Hütte), bucht Tickets + `guestCost`, `rescue`, `mark` · `people.js` `grp, count, each`
 - `assets.js` `pay, log, running, status, liftMinute, dayStart, overnight, repair, inspect, setOpen` · `satisfaction.js` Teilnoten, `offerScore`, `endDay` (Ruf), `hit`
 - `weather.js` · `snow.js` (`night, setGroom, setGun, groomPlan, gunPlan, nightTemp`) · `staff.js` (`needs, hire, fire, setWage, bonus, seasonEnd`) · `marketing.js` (`act`, Konkurrenz `G.comp`) · `side.js` (Hütten, Verleih, Schule, Parkplatz)
 - `build.js` `check(G, id, summer), order, buildDay, borrow, repay, depreciate, solvency, groomer, cannon, pipe, seasonPL, benefit` · `area.js` `pl(G), DIRS, keys, baseKm`

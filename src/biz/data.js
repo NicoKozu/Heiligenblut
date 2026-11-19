@@ -47,7 +47,21 @@ export const D = {
     cardVisits: 14,
     densityRef: 2500,
     pulkWait: 5,
-    wait: [5, 15]
+    wait: [5, 15],
+    group: { fam: [0.05, 0.15, 0.4, 0.4], sport: [0.45, 0.45, 0.1, 0], day: [0.25, 0.45, 0.2, 0.1], week: [0.15, 0.4, 0.25, 0.2] },
+    tempo: [0.85, 1.2],
+    over: 0.12,
+    under: 0.05,
+    lead: [0.5, 1],
+    eatHalf: 0.3,
+    lateLunch: 60,
+    stay: [0.75, 1.25],
+    backW: 0.3,
+    destMin: 0.15,
+    homeW: 8,
+    hungryW: 6,
+    variety: 0.6,
+    look: 10
   },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 2000,
@@ -195,7 +209,7 @@ export const D = {
       normal: { label: 'normal', price: 1, goods: 1, draw: 1, sat: 0 },
       upscale: { label: 'gehoben', price: 1.3, goods: 1.12, draw: 0.85, sat: -18 }
     },
-    spendEl: 0.8, priceK: 0.6, seatsPerStaff: 36, hutFix: 700, maxWait: 25, giveUp: 0.08, wait: [5, 30], miss: 100,
+    spendEl: 0.8, priceK: 0.6, seatsPerStaff: 36, hutFix: 700, maxWait: 25, giveUp: 0.08, eatTau: 20, wait: [5, 30], miss: 100,
     score: { lunch: 0.6, staff: 0.4 },
     areas: { tickets: { label: 'Tickets', color: '#5aa2ff' }, gastro: { label: 'Gastro', color: '#ffb14a' }, rental: { label: 'Verleih', color: '#7be07b' }, school: { label: 'Skischule', color: '#ff6b5a' }, parking: { label: 'Parkplatz', color: '#b48cff' } }
   },

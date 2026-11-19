@@ -72,7 +72,7 @@ export function startDay(G) {
   const dm = demand(G, G.date, demandExtra(G, G.date));
   G.today.expected = dm.n;
   G.today.expSeg = dm.seg;
-  G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half, dm.seg);
+  G.flow = newFlow(dm.n * (1 - D.mix.half), dm.n * D.mix.half, dm.seg, (G.seed ^ Math.imul(Number(G.date.replace(/-/g, '')), 2654435761)) | 0);
   mktDay(G);
   dayStart(G);
   sideStart(G);

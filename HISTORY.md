@@ -88,3 +88,13 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 - Geld ÷6: Projekte, Startkasse 250k, Kredit 1 Mio, Startanlagen, Pistengerät 32k, Kanone 3,7k, Leitung 20k/km, Verleih 16k, Kampagnen einmalig, Sommer-Verwaltung 4 Tage. Reparatur Antrieb 8–16 h, Seil 16–32 h Betriebszeit.
 - Simtest (5 Seeds): vern S1 11,6k/+0,08 · S2 20,8k/+0,35 · S3 24k/+0,30 · S5 34,6k/+0,57 Mio; investor baut alles in S1; gierig wird ab S3 insolvent.
 - Vereinfachung Personal/Wartung: Personal wird täglich automatisch nach Bedarf eingeteilt (nur Kosten, Moral fix 70). Lift-Verschleiß ohne Nacht-Erholung, Revision einmal je Saison 10.000 € je Lift → Zustand 100 % (Winter sofort, Sommer für kommende Saison). Simtest --check alle Ziele OK.
+
+## Gäste als Agenten (nach Etappe 24)
+- Nutzerwunsch: kein Verteilen an Knoten mehr, jeder Gast entscheidet einzeln und schon vor dem Knoten, flüssige Übergänge.
+- `flow.js`: Gruppen (1–4 Personen, `D.flow.group` je Zielgruppe) in `G.flow.g` mit eigenem Können, Tempo, Mittags- und Heimgehzeit. Zustände `c` Kassa, `a` bedient, `q` Schlange (FIFO `f.Q`), `r` Lift, `p` Piste, `hq`/`h` Hütte, `w` warten. Zeit in Minuten mit Bruchteilen, Ereignisse innerhalb der Minute sortiert.
+- Entscheidung `decide` 0,5–1 min vor Ankunft (`g.nx`, `D.flow.lead`), am Knoten nur geprüft (`valid`). Gewichte: Lift-Wartezeit exp(−W/12) × Zielwert (`dest`, beste passende Piste oben), Piste nach `pref[Können]`, Abwechslung (`variety`), Hunger zu Hüttenknoten (`hungryW`), ab Heimgehzeit Richtung Tal (`homeW`, BFS `homeDist`). Netz je Minute gecacht (`network`).
+- Kabinen: je Kabinentakt FIFO mit Vorausschau (`look` 10) bis `places`; Wartezeit gemessen. `g.cb`/`g.cs` = gemeinsame Sim-Kabine/Sitz für 3D. `mark` speichert Vorzustand (`ps, pa, p0, p1`).
+- Hütten (`side.js` `pickHut`, `hutStep`): hungrige Gäste essen mit exp(−Wartezeit/20), sonst weiter; Aufgeben nach `maxWait`. Umsatz wie bisher je Gast.
+- Eigener Zufall je Tag (`f.rng` aus Seed+Datum), Wetter/Defekte unverändert. Alte Spielstände: laufender Tag startet ohne anwesende Gäste weiter.
+- 3D (`crowd.js`): jede Figur = fester Gast (`g.i`, Mitglied `j`), Anzeige 1 Spielminute hinter der Sim (`now = G.min − 1 + frac`), vor `t0` Vorzustand. Übergänge geblendet (`arm`/`fin`), Schlangen-Ränge weich (`ease`), Pistenende läuft auf nächstes Ziel zu (`nextPt`), Gruppen fahren versetzt. Talstation: Schlange mit Identität, bereits eingestiegene rücken vor, Kabinen nach Sim-Kabine bzw. auffüllen (`seatGroups`), Kabine bis zur Bergstation (`rideRender`).
+- Simtest 5 Seeds: alle Ziele OK, ~70 s.

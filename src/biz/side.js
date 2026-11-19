@@ -1,7 +1,8 @@
 import { D } from './data.js';
 import { pay, log } from './assets.js';
 import { duty } from './staff.js';
-import { out } from './people.js';
+import { grp } from './people.js';
+import { mark } from './flow.js';
 
 const X = D.side;
 export const HUTS = X.huts.map(h => h.id);
@@ -22,8 +23,9 @@ export function initSide(G) {
 }
 
 export function sideFlow(f) {
-  if (!f.hut || !f.hutQ || Object.keys(f.hut).some(k => !HUT[k])) {
-    f.hut = Object.fromEntries(HUTS.map(id => [id, new Array(D.flow.lunch.dur).fill(0)]));
+  if (!f.hut || !f.HQ || Object.keys(f.hut).some(k => !HUT[k] || typeof f.hut[k] !== 'number')) {
+    f.hut = Object.fromEntries(HUTS.map(id => [id, 0]));
+    f.HQ = Object.fromEntries(HUTS.map(id => [id, []]));
     f.hutQ = Object.fromEntries(HUTS.map(id => [id, 0]));
     f.hutWait = Object.fromEntries(HUTS.map(id => [id, 0]));
   }
@@ -91,53 +93,72 @@ export function lunchRate(G, f, node) {
   return 0.8 * sum(hs.filter(h => G.side.huts[h.id].own).map(h => h.seats)) / SEATMAX * Math.exp(-w / 20);
 }
 
-export function lunch(G, f, node, h) {
+export function pickHut(G, f, node, n, rnd) {
+  if (!NODES.has(node)) return null;
+  const hs = X.huts.filter(h => h.node === node && G.side.huts[h.id].own);
+  if (!hs.length) return null;
+  const q = sum(hs.map(h => f.hutQ[h.id])), w = q > 0 ? sum(hs.map(h => f.hutQ[h.id] * f.hutWait[h.id])) / q : 0;
+  if (rnd() >= Math.exp(-w / X.eatTau)) return null;
+  bump(G, 'lunchWant', n);
   const opts = X.huts.filter(o => o.node === node && seatsEff(G, o.id) > 0).map(o => ({ id: o.id, w: seats(G, o.id) * o.draw * X.levels[G.side.huts[o.id].level].draw * Math.exp(-(f.hutWait[o.id] || 0) / 15) }));
-  bump(G, 'lunchWant', h);
-  if (!opts.length) { bump(G, 'lunchMiss', h); return h; }
-  const W = sum(opts.map(o => o.w));
-  for (const o of opts) f.hutQ[o.id] += h * o.w / W;
-  return 0;
+  if (!opts.length) { bump(G, 'lunchMiss', n); return null; }
+  let x = rnd() * sum(opts.map(o => o.w));
+  for (const o of opts) if ((x -= o.w) <= 0) return o.id;
+  return opts[opts.length - 1].id;
 }
 
-export function hutsOut(G, f, at) {
-  for (const id of HUTS) {
-    const a = f.hut[id], o = a.shift();
-    a.push(0);
-    out(f, 'h:' + id, o);
-    at[HUT[id].node] += o;
-    const q = f.hutQ[id];
-    if (q <= 0) continue;
-    const g = seatsEff(G, id) <= 0 ? q : f.hutWait[id] > X.maxWait ? q * X.giveUp : 0;
-    if (g > 0) { f.hutQ[id] -= g; out(f, 'hq:' + id, g); at[HUT[id].node] += g; bump(G, 'lunchMiss', g); }
-  }
-}
+export const hutAt = (G, node) => X.huts.some(h => h.node === node && seatsEff(G, h.id) > 0);
 
-export function hutsIn(G, f) {
-  const dur = D.flow.lunch.dur;
+export function queueHut(f, id, gi) { f.HQ[id].push(gi); }
+
+export function hutStep(G, f, t, back, rnd) {
+  const dur = D.flow.lunch.dur, st = D.flow.stay;
   let pk = 0;
+  const M = grp(f);
   for (const id of HUTS) {
-    const a = f.hut[id], eff = seatsEff(G, id), q = f.hutQ[id];
-    const adm = Math.max(0, Math.min(q, eff - sum(a)));
-    if (adm > 0) {
-      a[dur - 1] += adm;
-      f.hutQ[id] -= adm;
-      out(f, 'hq:' + id, adm);
-      const v = adm * spend(G, id);
+    const Q = f.HQ[id], eff = seatsEff(G, id);
+    if (Q.length && (eff <= 0 || f.hutWait[id] > X.maxWait)) {
+      for (let j = 0; j < Q.length; j++) {
+        const g = M.get(Q[j]);
+        if (!g) { Q.splice(j--, 1); continue; }
+        if (eff > 0 && rnd() >= X.giveUp) continue;
+        Q.splice(j--, 1);
+        bump(G, 'lunchMiss', g.n);
+        g.lt = -1;
+        back(g, HUT[id].node);
+      }
+    }
+    while (Q.length) {
+      const g = M.get(Q[0]);
+      if (!g) { Q.shift(); continue; }
+      if (f.hut[id] + g.n > eff) break;
+      Q.shift();
+      f.hut[id] += g.n;
+      const v = g.n * spend(G, id);
       earn(G, 'gastro', v);
       pay(G, 'goods', v * goodsShare(G, id));
-      bump(G, 'lunch', adm);
+      bump(G, 'lunch', g.n);
       bump(G, 'h_' + id, v);
+      f.lunched = (f.lunched || 0) + g.n;
+      g.t1 = Math.max(g.t0, t);
+      mark(g);
+      g.e = 1;
+      g.s = 'h';
+      g.t0 = Math.max(g.t0, t);
+      g.t1 = g.t0 + dur * (st[0] + (st[1] - st[0]) * rnd());
+      g.nx = null;
     }
-    if (f.hutQ[id] < 1e-6) f.hutQ[id] = 0;
-    f.hutWait[id] = eff > 0 ? f.hutQ[id] / (eff / dur) : 0;
+    let q = 0;
+    for (const i of Q) q += M.get(i)?.n || 0;
+    f.hutQ[id] = q;
+    f.hutWait[id] = eff > 0 ? q / (eff / dur) : 0;
     pk = Math.max(pk, f.hutWait[id]);
   }
   const s = G.today.side || (G.today.side = {});
   s.hutPeak = Math.max(s.hutPeak || 0, pk);
 }
 
-export const inHuts = f => f && f.hut ? sum(HUTS.map(id => sum(f.hut[id]) + (f.hutQ[id] || 0))) : 0;
+export const inHuts = f => f && f.hut ? sum(HUTS.map(id => (f.hut[id] || 0) + (f.hutQ[id] || 0))) : 0;
 export const hutWaitNow = f => { if (!f?.hutQ) return 0; const q = sum(HUTS.map(id => f.hutQ[id])); return q > 0 ? sum(HUTS.map(id => f.hutQ[id] * f.hutWait[id])) / q : 0; };
 
 export function gastroScore(G) {
@@ -172,7 +193,7 @@ export function evening(G) {
 }
 
 export function endFlow(f) {
-  for (const id of HUTS) { f.hut[id].fill(0); f.hutQ[id] = 0; f.hutWait[id] = 0; }
+  for (const id of HUTS) { f.hut[id] = 0; f.HQ[id] = []; f.hutQ[id] = 0; f.hutWait[id] = 0; }
   f.cars = 0;
   f.school = 0;
 }
