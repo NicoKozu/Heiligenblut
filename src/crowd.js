@@ -822,18 +822,29 @@ export function createCrowd(terrain, pistes, lift, assets) {
     frame++;
     K = Math.max(1, (src.pace || 0) * 60);
     const now = NOW = src.now ?? 0;
+    const list = [], pre = {}, off = {}, pr = new Map(), QS = { q: 1, c: 1, hq: 1 };
     each(src.f, (g, ahead) => {
       const v = view(g, now);
+      list.push(g, v, ahead);
+      if (v && v !== g && QS[v.s]) (pre[v.s + v.at] || (pre[v.s + v.at] = [])).push(g);
+    });
+    for (const k in pre) {
+      let a = 0;
+      for (const g of pre[k].sort((x, y) => x.p1 - y.p1 || x.i - y.i)) { pr.set(g, a); a += g.n; }
+      off[k] = a;
+    }
+    for (let x = 0; x < list.length; x += 3) {
+      const g = list[x], v = list[x + 1], ahead = v === g ? list[x + 2] + (QS[g.s] ? off[g.s + g.at] || 0 : 0) : pr.get(g) || 0;
       for (let j = 0; j < g.n; j++) {
         const id = g.i * 8 + j;
         let m = folk.get(id);
         if (!m) { m = guest(mul(hash('g' + g.i + '.' + j))); m.j = j; m.shown = false; m.sk = ''; m.vb = null; m.ride = null; folk.set(id, m); }
         m.seen = frame;
         m.g = g;
-        if (v) own(m, v, (v === g ? ahead : 0) + j, src, now);
+        if (v) own(m, v, ahead + j, src, now);
         else if (m.vb?.state !== 'board') { if (m.vb) leaveV(m); if (m.ride) free(m); m.shown = false; }
       }
-    });
+    }
     for (const [id, m] of folk) if (m.seen !== frame) { if (m.vb) leaveV(m); if (m.ride) free(m); folk.delete(id); }
     for (const [sec, V] of vq) stepV(sec, V, src);
   }
@@ -843,9 +854,9 @@ export function createCrowd(terrain, pistes, lift, assets) {
     const pl = src.places?.(sec.id) || CAP;
     const jt = m => m.g.s === 'r' && m.g.ps === 'q' ? m.g.p0 : m.g.t0;
     V.add.sort((a, b) => jt(a) - jt(b) || a.g.i - b.g.i || a.j - b.j);
-    for (const m of V.add) {
-      const j = V.q.length;
-      m.qd = m.shown ? Math.max(rowD(j >> 1), LANE_IN + 3) : rowD(j >> 1);
+    for (let n = 0; n < V.add.length; n++) {
+      const m = V.add[n], j = V.q.length;
+      m.qd = m.shown ? Math.max(rowD(j >> 1), LANE_IN + 3 + n * 0.9) : rowD(j >> 1);
       m.qv = 0;
       m.qsv = 0;
       m.sc = 0;
