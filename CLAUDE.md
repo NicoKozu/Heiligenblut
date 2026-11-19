@@ -38,7 +38,7 @@
 - Kabinen-Ausbau (Zusatz): je Lift Bauprojekte in 2er-Schritten bis 20 Plätze (`data.js` Schleife nach `cap`, `cabId`, Ids `rossbach10` bzw. `cab:<lift>:<n>`, Preis Basis × (1 + 0,4·Stufe), Basis = Liftprojekt bzw. 300k), Kette über `needs`; Bau-Tab zeigt nur nächste Stufe, Objektkarte Lift bietet nächste Stufe an.
 - Mittelstation (Zusatz): Plateau um Halle (`station.js` `plaza`), Straßen/Parkplatz im Umkreis 135 m entfernt (`village.js` `CLEAR`), Schareck-Wartebereich seitlich an der Hallenwand mit Durchgang (`lift.js` `midAt`/`doorAt`, Queue-Rahmen `sec.qf` auch in `crowd.queueAt`).
 - Spielstand-Datei (Zusatz): Startmenü (Manager) „Spielstand sichern/laden“ exportiert/importiert `hb-biz-v1` als JSON (`menu.js`, Import im laufenden Spiel → `onImport` → Reload ohne Speichern); `navigator.storage.persist()`.
-- Gäste als Agenten (Zusatz): `flow.js` Gruppen 1–4 (`G.flow.g`, Zustände c/a/q/r/p/hq/h/w), Entscheidung 0,5–1 min vor dem Knoten (`decide`, `g.nx`), FIFO-Schlangen je Kabinentakt (`f.Q`, Sim-Kabine `g.cb`), Hütten in `side.js` `hutStep`; 3D je Figur fester Gast, Anzeige 1 min hinter Sim mit Vorzustand (`mark`), weiche Übergänge. Simtest ~70 s.
+- Gäste als Agenten (Zusatz): `flow.js` Gruppen 1–4 (`G.flow.g`, Zustände c/a/q/r/p/hq/h/w), Entscheidung ~1 s vor dem Knoten (`lead`) (`decide`, `g.nx`), FIFO-Schlangen je Kabinentakt (`f.Q`, Sim-Kabine `g.cb`), Hütten in `side.js` `hutStep`; 3D je Figur fester Gast, Anzeige 1 min hinter Sim mit Vorzustand (`mark`), weiche Übergänge. Simtest ~70 s.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur

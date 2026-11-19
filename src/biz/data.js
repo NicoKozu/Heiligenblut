@@ -52,7 +52,7 @@ export const D = {
     tempo: [0.85, 1.2],
     over: 0.12,
     under: 0.05,
-    lead: [0.5, 1],
+    lead: [0.0167, 0.0167],
     eatHalf: 0.3,
     lateLunch: 60,
     stay: [0.75, 1.25],
