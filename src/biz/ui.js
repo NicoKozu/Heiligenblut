@@ -12,6 +12,7 @@ import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, deman
 import * as X from './side.js';
 import { finTab, buildTab, overView } from './ui-build.js';
 import { seasonView, summerView, drawSeason } from './ui-season.js';
+import { curvesView, CURVE_CSS } from './ui-price.js';
 import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
@@ -163,7 +164,7 @@ const segLegend = (o, f = v => num(v)) => '<div class="biz-legend">' + SEGS.map(
 const pct = f => (f >= 1 ? '+' : '−') + dec(Math.abs(f - 1) * 100) + ' %';
 export function createUI(h) {
   const style = document.createElement('style');
-  style.textContent = CSS;
+  style.textContent = CSS + CURVE_CSS;
   document.head.appendChild(style);
   const panel = document.createElement('div');
   panel.id = 'biz-panel';
@@ -178,6 +179,8 @@ export function createUI(h) {
   toastEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) h.action(b.dataset.act); });
 
   over.addEventListener('pointerdown', e => {
+    const sv = e.target.closest('svg[data-curve]');
+    if (sv && !e.button) { const r = sv.getBoundingClientRect(), u = (e.clientX - r.left) / r.width * 260; h.price(sv.dataset.curve, Math.max(0, Math.min(1, (u - 6) / 248)) * Number(sv.dataset.max)); return; }
     const b = e.target.closest('button');
     if (!b || b.disabled || e.button) return;
     e.preventDefault();
@@ -293,6 +296,7 @@ export function createUI(h) {
       tr('Preisfaktor Nachfrage', '×' + priceFactor(G.prices).toFixed(2)) +
       (x => tr('Wetter · Schnee ' + fmtDate(fc.date).slice(0, 9), '×' + x.weather.toFixed(2) + ' · ×' + x.snow.toFixed(2)))(demandExtra(G, fc.date)) +
       tr('Erwartete Gäste ' + fmtDate(fc.date), '<span class="fc">' + num(fc.n) + '</span>') + '</table>' +
+      curvesView(G, fc.date, demandExtra(G, fc.date), edit, { eur, num }) +
       (edit ? '<p class="note">Saisonkarten werden vor Saisonbeginn verkauft; ' + dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' % der Gäste fahren mit Saisonkarte (nächste Saison abhängig vom Ruf). Der Erlös wird je Besuch verbucht (Preis ÷ ' + D.flow.cardVisits + ' Skitage).</p>' : '<p class="note">Preise sind während des Betriebs gesperrt.</p>');
   }
 
