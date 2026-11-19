@@ -39,6 +39,7 @@
 - Mittelstation (Zusatz): Plateau um Halle (`station.js` `plaza`), Straßen/Parkplatz im Umkreis 135 m entfernt (`village.js` `CLEAR`), Schareck-Wartebereich seitlich an der Hallenwand mit Durchgang (`lift.js` `midAt`/`doorAt`, Queue-Rahmen `sec.qf` auch in `crowd.queueAt`).
 - Spielstand-Datei (Zusatz): Startmenü (Manager) „Spielstand sichern/laden“ exportiert/importiert `hb-biz-v1` als JSON (`menu.js`, Import im laufenden Spiel → `onImport` → Reload ohne Speichern); `navigator.storage.persist()`.
 - Gäste als Agenten (Zusatz): `flow.js` Gruppen 1–4 (`G.flow.g`, Zustände c/a/q/r/p/hq/h/w), Entscheidung ~1 s vor dem Knoten (`lead`) (`decide`, `g.nx`), FIFO-Schlangen je Kabinentakt (`f.Q`, Sim-Kabine `g.cb`), Hütten in `side.js` `hutStep`; 3D je Figur fester Gast, Anzeige 1 min hinter Sim mit Vorzustand (`mark`), weiche Übergänge. Simtest ~70 s.
+- Preiskurven (Zusatz): `ui-price.js` im Tab Preise je Ticket (Tag/Jugend/Kind/Halbtag) Kurve Gäste + Ticketerlös − Gästebetrieb über Preis (Prognose nächster Tag, `expectedSeg`), Optimum + aktueller Punkt, Klick setzt Preis.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
