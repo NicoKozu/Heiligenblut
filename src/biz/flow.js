@@ -169,9 +169,10 @@ function network(G) {
   return { P, L, ex, dst, run, hut, hold, home: null };
 }
 
-function homeDist(G) {
-  if (net.home) return net.home;
-  const d = { tal: 0 }, q = ['tal'];
+function homeDist(G, to = 'tal') {
+  if (to === 'tal' && net.home) return net.home;
+  if (to !== 'tal' && net.to?.[to]) return net.to[to];
+  const d = { [to]: 0 }, q = [to];
   while (q.length) {
     const n = q.shift();
     for (const a in net.P) {
@@ -179,19 +180,36 @@ function homeDist(G) {
       if (net.P[a].some(p => p.to === n) || net.L[a].some(x => x.to === n)) { d[a] = d[n] + 1; q.push(a); }
     }
   }
+  if (to !== 'tal') return (net.to || (net.to = {}))[to] = d;
   return net.home = d;
+}
+
+function hutGoal(G, f, g, node) {
+  if (g.hu && SD.seatsEff(G, g.hu) > 0 && homeDist(G, SD.HUT[g.hu].node)[node] != null) return SD.HUT[g.hu].node;
+  const o = [];
+  for (const id of SD.HUTS) {
+    const w = SD.lure(G, f, id), d = w > 0 ? homeDist(G, SD.HUT[id].node)[node] : null;
+    if (d != null) o.push({ id, w: w * Math.pow(F.hutDist, d) });
+  }
+  g.hu = o.length ? pick(f, o).id : null;
+  return g.hu ? SD.HUT[g.hu].node : null;
 }
 
 function decide(G, f, g, node, t) {
   const home = t >= g.ht;
   if (node === 'tal' && home) return 'o';
-  let hungry = false;
+  let hungry = false, hd = null;
   if (!home && g.lt >= 0 && !g.e && t >= g.lt) {
     if (t > F.lunch.to + F.lateLunch) g.lt = -1;
-    else { const h = SD.pickHut(G, f, node, g.n, () => R(f)); if (h) return 'h:' + h; hungry = true; }
+    else {
+      const gn = hutGoal(G, f, g, node);
+      if (!gn || gn === node || t > F.lunch.to) { const h = SD.pickHut(G, f, node, g.n, () => R(f)); if (h) return 'h:' + h; }
+      hungry = true;
+      if (gn && gn !== node) hd = homeDist(G, gn);
+    }
   }
-  const dn = home ? homeDist(G) : null, here = dn?.[node] ?? Infinity;
-  const toward = to => (dn && (dn[to] ?? Infinity) < here ? F.homeW : 1) * (hungry && net.hut[to] ? F.hungryW : 1);
+  const dn = home ? homeDist(G) : null, here = dn?.[node] ?? Infinity, hh = hd?.[node] ?? Infinity;
+  const toward = to => (dn && (dn[to] ?? Infinity) < here ? F.homeW : 1) * (hungry && (hd ? (hd[to] ?? Infinity) < hh : net.hut[to]) ? F.hungryW : 1);
   const o = [];
   for (const s of net.L[node] || []) {
     if (!net.ex[s.to]) continue;

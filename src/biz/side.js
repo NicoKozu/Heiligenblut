@@ -93,6 +93,8 @@ export function lunchRate(G, f, node) {
   return 0.8 * sum(hs.filter(h => G.side.huts[h.id].own).map(h => h.seats)) / SEATMAX * Math.exp(-w / 20);
 }
 
+export const lure = (G, f, id) => seatsEff(G, id) > 0 ? seats(G, id) * HUT[id].draw * X.levels[G.side.huts[id].level].draw * Math.exp(-(f.hutWait[id] || 0) / 15) : 0;
+
 export function pickHut(G, f, node, n, rnd) {
   if (!NODES.has(node)) return null;
   const hs = X.huts.filter(h => h.node === node && G.side.huts[h.id].own);
@@ -100,7 +102,7 @@ export function pickHut(G, f, node, n, rnd) {
   const q = sum(hs.map(h => f.hutQ[h.id])), w = q > 0 ? sum(hs.map(h => f.hutQ[h.id] * f.hutWait[h.id])) / q : 0;
   if (rnd() >= Math.exp(-w / X.eatTau)) return null;
   bump(G, 'lunchWant', n);
-  const opts = X.huts.filter(o => o.node === node && seatsEff(G, o.id) > 0).map(o => ({ id: o.id, w: seats(G, o.id) * o.draw * X.levels[G.side.huts[o.id].level].draw * Math.exp(-(f.hutWait[o.id] || 0) / 15) }));
+  const opts = X.huts.filter(o => o.node === node && seatsEff(G, o.id) > 0).map(o => ({ id: o.id, w: lure(G, f, o.id) }));
   if (!opts.length) { bump(G, 'lunchMiss', n); return null; }
   let x = rnd() * sum(opts.map(o => o.w));
   for (const o of opts) if ((x -= o.w) <= 0) return o.id;

@@ -60,6 +60,7 @@ export const D = {
     destMin: 0.15,
     homeW: 8,
     hungryW: 6,
+    hutDist: 0.8,
     variety: 0.6,
     look: 10
   },
@@ -202,7 +203,7 @@ export const D = {
       { id: 'rossbach', name: 'Rossbach Alm', node: 'rossbach', seats: 180, draw: 1 },
       { id: 'schareck', name: 'Panoramarestaurant Schareck', node: 'schareck', seats: 240, draw: 1.2 },
       { id: 'spatzl', name: 'Spatzl Alm', node: 'schareck', seats: 100, draw: 0.8 },
-      { id: 'fleiss', name: 'Skihütte Fleißalm', node: 'rossbach', seats: 80, draw: 0.5 }
+      { id: 'fleiss', name: 'Skihütte Fleißalm', node: 'fleissalm', seats: 80, draw: 0.5 }
     ],
     levels: {
       cheap: { label: 'günstig', price: 0.8, goods: 1, draw: 1.15, sat: 8 },
