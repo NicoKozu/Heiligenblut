@@ -158,6 +158,7 @@ function network(G) {
   for (const p of D.pistes) if (pisteOpen(G, p.id)) P[p.from].push(p);
   for (const l of G.lifts) if (running(l)) for (const k of keys(l)) { run[k] = 1; L[LIFT[k].from].push(LIFT[k]); }
   const ex = Object.fromEntries(nodes.map(n => [n, P[n].length > 0 || L[n].length > 0]));
+  for (const n of nodes) P[n] = P[n].filter(p => p.to === 'tal' || ex[p.to]);
   const dst = Object.fromEntries(nodes.map(n => [n, LV.map(c => {
     let b = 0;
     for (const p of P[n]) b = Math.max(b, F.pref[c][p.level]);

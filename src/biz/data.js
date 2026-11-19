@@ -38,8 +38,8 @@ export const D = {
     skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 },
     pref: {
       leicht: { leicht: 1, mittel: 0.15, schwer: 0 },
-      mittel: { leicht: 0.5, mittel: 1, schwer: 0.2 },
-      schwer: { leicht: 0.2, mittel: 0.8, schwer: 1 }
+      mittel: { leicht: 0.5, mittel: 1, schwer: 0.35 },
+      schwer: { leicht: 0.2, mittel: 0.6, schwer: 1 }
     },
     liftW: 1,
     queueTau: 12,
