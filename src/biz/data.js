@@ -110,7 +110,7 @@ export const D = {
   easterHolidays: [-8, 1],
   seasonEnd: { month: 4, day: 6 },
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
-  groom: { price: 32000, perHour: 190, hoursPerKm: 1.3, start: 1 },
+  groom: { price: 32000, perHour: 190, hoursPerKm: 1.3, start: 1, mid: { from: 690, to: 810, hoursPerKm: 0.5, target: 85 } },
   snow: { perM3: 4.2, price: 3700, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 10, pistes: ['10'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
   groomNight: { shift: 8 },
   staff: {
@@ -135,7 +135,7 @@ export const D = {
   },
   cover: {
     natural: [25, 0.04], cannonStart: 30, minOpen: 12, thin: 30, melt: 1.6, meltBy: { sun: 1.3, foehn: 1.6 }, rainAt: 1.5, rainMelt: 0.35,
-    wear: 0.012, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45,
+    wear: 0.016, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45, wearKm: 2, floor: 0, rough: 1.5,
     groomed: 92, groomedHard: 82, powder: 62, newSnow: 5, refreeze: 0, settle: 0.5, compact: 0.012,
     q: { pulvrig: 1.0, griffig: 1.0, sulzig: 0.82, eisig: 0.68, abgefahren: 0.85 },
     qLabels: { pulvrig: 'pulvrig', griffig: 'griffig', eisig: 'eisig', sulzig: 'sulzig', abgefahren: 'abgefahren' },

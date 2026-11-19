@@ -44,7 +44,43 @@ export function initSnow(G, fresh) {
 export function wear(G, id, n) {
   const o = G.pistes[id];
   if (!o || n <= 0) return;
-  o.cond = Math.max(0, o.cond - n * C.wear * (C.wearBy[o.q] || 1));
+  const k = C.wearKm / (PISTE[id]?.km || C.wearKm), f = Math.max(0, (o.cond - C.floor) / (C.groomed - C.floor));
+  o.cond = Math.max(0, o.cond - n * C.wear * k * f * (C.wearBy[o.q] || 1) * (o.groomed === false ? C.rough : 1));
+}
+
+const MID = D.groom.mid;
+export function midPlan(G) {
+  const cap = G.groom.machines * (MID.to - MID.from) / 60;
+  let hours = 0;
+  const list = [];
+  for (const p of pl(G)) {
+    if (!G.pistes[p.id].mid) continue;
+    const h = p.km * MID.hoursPerKm;
+    if (hours + h > cap + 1e-6) continue;
+    hours += h;
+    list.push(p.id);
+  }
+  return { cap, hours, list, cost: hours * D.groom.perHour };
+}
+
+export function setMid(G, id) {
+  const o = G.pistes[id];
+  if (!o) return false;
+  o.mid = !o.mid;
+  return true;
+}
+
+function midMinute(G) {
+  if (G.min === MID.from) {
+    const m = midPlan(G);
+    G.today.mid = m.list.filter(id => G.pistes[id].open);
+    if (G.today.mid.length) pay(G, 'groom', G.today.mid.reduce((a, id) => a + PISTE[id].km * MID.hoursPerKm, 0) * D.groom.perHour);
+  }
+  if (G.min < MID.from || G.min >= MID.to || !G.today.mid) return;
+  for (const id of G.today.mid) {
+    const o = G.pistes[id];
+    if (o.cond < MID.target) o.cond += (MID.target - o.cond) / (MID.to - G.min);
+  }
 }
 
 export function snowFactor(G, day) {
@@ -155,6 +191,7 @@ export function night(G, date) {
 }
 
 export function minute(G) {
+  midMinute(G);
   const a = G.weather?.aval || 1;
   if (a < 4) return;
   for (const id of avalClose(G)) {

@@ -51,6 +51,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (a.startsWith('drop:')) ui.drop(a.slice(5));
     else if (a.startsWith('grm:')) { if (N.setGroom(G, a.slice(4))) save(); }
     else if (a.startsWith('gun:')) { const [, id, d] = a.split(':'); if (N.setGun(G, id, Number(d))) save(); }
+    else if (a.startsWith('mid:')) { if (N.setMid(G, a.slice(4))) save(); }
     else if (a.startsWith('mkt:')) { const id = a.slice(4); if (M.act(G, id)) { save(); note(D.mkt.campaigns[id].label + (D.mkt.campaigns[id].kind === 'weekly' ? (G.mkt.on[id] ? ' gestartet' : ' gestoppt') : ' gebucht'), 2); } }
     else if (a === 'tab:assets') ui.open(ui.view || 'office', 'assets');
     else if (a.startsWith('build:')) { const m = a.slice(6), w = m.endsWith(':s') ? 's' : '', id = w ? m.slice(0, -2) : m; if (B.order(G, id, w === 's')) { save(); note(D.build.projects[id].label + ' beauftragt', 2.5); } }
