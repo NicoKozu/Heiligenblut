@@ -111,7 +111,7 @@ export const D = {
   seasonEnd: { month: 4, day: 6 },
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
   groom: { price: 32000, perHour: 190, hoursPerKm: 1.3, start: 1, mid: { from: 690, to: 810, hoursPerKm: 0.5, target: 85 } },
-  snow: { perM3: 4.2, price: 3700, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 10, pistes: ['10'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
+  snow: { perM3: 2.2, price: 9000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 10, pistes: ['10'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
   groomNight: { shift: 8 },
   staff: {
     groups: {
@@ -246,7 +246,7 @@ export const D = {
       { id: 'rossbach', label: 'Gondel Rossbach', cost: 500000, val: 233000, life: 20 },
       { id: 'p10', label: 'Piste 10 Talabfahrt', cost: 55000, val: 33000, life: 25 },
       { id: 'groomer', label: 'Pistengeräte', cost: 32000, val: 16000, life: 8, n: 1 },
-      { id: 'cannon', label: 'Schneekanonen', cost: 37000, val: 18000, life: 10, n: 10 },
+      { id: 'cannon', label: 'Schneekanonen', cost: 90000, val: 43000, life: 10, n: 10 },
       { id: 'pipe', label: 'Beschneiungsleitungen', cost: 37000, val: 20000, life: 20 },
       { id: 'huts', label: 'Rossbach Alm', cost: 75000, val: 42000, life: 25 }
     ]

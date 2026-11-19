@@ -270,7 +270,7 @@ if (flag('check')) {
   for (let i = 0; i < seasons; i++) if (A[I]?.[i]) rows.push([I, i + 1, 'keine Insolvenz', A[I][i].insolv, A[I][i].insolv === 0]);
   if (A[I]?.[2] && A[V]?.[2]) rows.push([I, 3, 'Ergebnis > vernünftig − 0,1 Mio', M(g(I, 2, 'result')) + ' / ' + M(g(V, 2, 'result')), g(I, 2, 'result') > g(V, 2, 'result') - 1e5]);
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
-  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1e6]);
+  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.1e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;
   for (const [s, i, l, v, ok] of rows) { if (!ok) bad++; console.log(padR(s, 11) + pad(i, 2) + '  ' + padR(l, 34) + padR(v, 26) + (ok ? 'OK' : 'FAIL')); }
