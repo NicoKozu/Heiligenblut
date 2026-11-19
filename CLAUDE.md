@@ -41,6 +41,7 @@
 - Gäste als Agenten (Zusatz): `flow.js` Gruppen 1–4 (`G.flow.g`, Zustände c/a/q/r/p/hq/h/w), Entscheidung ~1 s vor dem Knoten (`lead`) (`decide`, `g.nx`), FIFO-Schlangen je Kabinentakt (`f.Q`, Sim-Kabine `g.cb`), Hütten in `side.js` `hutStep`; 3D je Figur fester Gast, Anzeige 1 min hinter Sim mit Vorzustand (`mark`), weiche Übergänge. Simtest ~70 s.
 - Preiskurven (Zusatz): `ui-price.js` im Tab Preise je Ticket (Tag/Jugend/Kind/Halbtag) Kurve Gäste + Ticketerlös − Gästebetrieb über Preis (Prognose nächster Tag, `expectedSeg`), Optimum + aktueller Punkt, Klick setzt Preis.
 - Pistenpflege (Zusatz): Abnutzung je Abfahrt × `wearKm`/km × Zustand/`groomed` (proportional, lange Pisten nutzen langsamer ab), unpräpariert × `rough`; Mittagspräparierung je Piste (`o.mid`, `snow.js` `midPlan/setMid`, 11:30–13:30 zurück auf 85 %, Kapazität Geräte × 2 h, `D.groom.mid`), Buttons im Schnee-Tab + Objektkarte.
+- Beschneiung (Zusatz): Kanone 9.000 € (Start 10 Stk. 90k), Beschneien 2,2 €/m³ (vorher 3.700 €/4,2 €); Simtest-Obergrenze Gewinn 1,1 Mio.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur

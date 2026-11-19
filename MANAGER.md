@@ -100,7 +100,7 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 | gierig / geizig | Ruf < 42 | Ruf < 38, Ergebnis < 0 | – | – |
 | investor | Kredit ≥ 0,5 Mio €, keine Insolvenz | – | > vernünftig − 0,1 Mio €, Kredit sinkt | keine Insolvenz |
 
-Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 1 Mio € Gewinn.
+Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 1,1 Mio € Gewinn.
 
 ---
 
