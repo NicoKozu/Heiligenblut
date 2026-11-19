@@ -37,6 +37,7 @@
 - Vereinfachung (Zusatz): Personal automatisch (`staff.js` `staffAuto` beim Tagesstart nach `needs`), nur Lohnkosten; kein Einstellen/Kündigen/Lohn/Moral/Krank. Lifte nutzen sich ab (keine Nacht-Erholung); einmal je Saison Revision 10k/Lift → 100 % (`assets.js` `inspect`, `l.svc`, im Sommer für nächste Saison), alte Inspektion/Sommer-Revision entfallen.
 - Kabinen-Ausbau (Zusatz): je Lift Bauprojekte in 2er-Schritten bis 20 Plätze (`data.js` Schleife nach `cap`, `cabId`, Ids `rossbach10` bzw. `cab:<lift>:<n>`, Preis Basis × (1 + 0,4·Stufe), Basis = Liftprojekt bzw. 300k), Kette über `needs`; Bau-Tab zeigt nur nächste Stufe, Objektkarte Lift bietet nächste Stufe an.
 - Mittelstation (Zusatz): Plateau um Halle (`station.js` `plaza`), Straßen/Parkplatz im Umkreis 135 m entfernt (`village.js` `CLEAR`), Schareck-Wartebereich seitlich an der Hallenwand mit Durchgang (`lift.js` `midAt`/`doorAt`, Queue-Rahmen `sec.qf` auch in `crowd.queueAt`).
+- Spielstand-Datei (Zusatz): Startmenü (Manager) „Spielstand sichern/laden“ exportiert/importiert `hb-biz-v1` als JSON (`menu.js`, Import im laufenden Spiel → `onImport` → Reload ohne Speichern); `navigator.storage.persist()`.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
