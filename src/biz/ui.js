@@ -8,7 +8,7 @@ import { status, repairQuote, fmtDur, serviced } from './assets.js';
 import { live, stars } from './satisfaction.js';
 import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
 import { GROUPS, duty, needs, wages, heads, dayCost } from './staff.js';
-import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra } from './snow.js';
+import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra, midPlan } from './snow.js';
 import * as X from './side.js';
 import { finTab, buildTab, overView } from './ui-build.js';
 import { seasonView, summerView, drawSeason } from './ui-season.js';
@@ -301,22 +301,23 @@ export function createUI(h) {
   }
 
   function snow(G) {
-    const t = nightTotals(G), g = t.groom;
+    const t = nightTotals(G), g = t.groom, m = midPlan(G);
     return '<h2>Wetter</h2>' + weatherTable(G) +
       '<h2>Nacht-Aufträge</h2><table>' + pl(G).map(p => {
         const o = G.pistes[p.id], q = gunPlan(G, p.id), lb = qLabel(o), sc = score(G, p.id);
         const gun = q.n ? '<span class="price"><button data-act="gun:' + p.id + ':-' + D.snow.hStep + '">−</button><b style="min-width:44px;text-align:center">' + o.gun + ' h</b><button data-act="gun:' + p.id + ':' + D.snow.hStep + '">+</button></span>' +
           '<span style="opacity:.7;font-size:12px">' + q.n + ' Kanonen' + (o.gun ? ' · ' + num(q.m3) + ' m³ · +' + dec(q.cm) + ' cm · ' + eur(q.cost) : '') + (q.cold ? '' : ' · <span class="biz-warn">zu warm (' + fmtT(nightTemp(G, p)) + ')</span>') + '</span>' : '<span style="opacity:.5;font-size:12px">keine Kanonen</span>';
         return '<tr><td><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i> <b>' + p.id + ' ' + p.name + '</b><br><span style="opacity:.8;font-size:13px"><span class="' + stone(o.snow) + '">' + Math.round(o.snow) + ' cm</span> · ' + D.cover.qLabels[lb] + ' · Zustand <span class="' + tone(o.cond, 75, 50) + '">' + Math.round(o.cond) + ' %</span> · Qualität <span class="' + tone(sc, 70, 50) + '">' + Math.round(sc) + '</span>' + (o.aper ? ' · <span class="biz-bad">apert aus</span>' : '') + '</span></td>' +
-          '<td><div class="acts" style="align-items:center"><button class="btn' + (o.grm ? ' primary' : '') + '" data-act="grm:' + p.id + '">' + (o.grm ? (g.list.includes(p.id) ? 'präparieren ✓' : 'keine Kapazität') : 'nicht präparieren') + '</button>' + gun + '</div></td></tr>';
+          '<td><div class="acts" style="align-items:center"><button class="btn' + (o.grm ? ' primary' : '') + '" data-act="grm:' + p.id + '">' + (o.grm ? (g.list.includes(p.id) ? 'präparieren ✓' : 'keine Kapazität') : 'nicht präparieren') + '</button><button class="btn' + (o.mid ? ' primary' : '') + '" data-act="mid:' + p.id + '">' + (o.mid ? (m.list.includes(p.id) ? 'Mittag ✓' : 'Mittag: keine Kapazität') : 'Mittag nachpräparieren') + '</button>' + gun + '</div></td></tr>';
       }).join('') + '</table>' +
       '<h2>Bedarf heute Nacht</h2><table>' +
       tr('Gerätestunden', dec(g.hours) + ' / ' + dec(g.cap) + ' h' + (g.want > g.cap + 1e-6 ? ' <span class="biz-warn">(Bedarf ' + dec(g.want) + ' h)</span>' : '')) +
       tr('Pistengeräte · Fahrer', G.groom.machines + ' Geräte · ' + g.drivers + ' / ' + duty(G, 'groomer') + ' Fahrer im Einsatz') +
       tr('Präparierung', eur(g.cost)) +
+      tr('Mittagspräparierung (täglich)', dec(m.hours) + ' / ' + dec(m.cap) + ' h · ' + eur(m.cost)) +
       tr('Beschneiung', num(t.gun.m3) + ' m³ Schnee · ' + num(t.gun.water) + ' m³ Wasser · ' + num(t.gun.kwh) + ' kWh') +
       tr('Kosten Beschneiung', eur(t.gun.cost)) + tr('Summe Nacht', eur(t.total), 'sum') + '</table>' +
-      '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h, je Fahrer max. ' + D.groomNight.shift + ' h. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
+      '<p class="note">Aufträge gelten jede Nacht, bis du sie änderst. Präparieren: ' + D.groom.hoursPerKm.toLocaleString('de-DE') + ' h je km, ' + eur(D.groom.perHour) + '/h, je Fahrer max. ' + D.groomNight.shift + ' h. Mittagspräparierung ' + Math.floor(D.groom.mid.from / 60) + ':' + String(D.groom.mid.from % 60).padStart(2, '0') + '–' + Math.floor(D.groom.mid.to / 60) + ':' + String(D.groom.mid.to % 60).padStart(2, '0') + ': ' + D.groom.mid.hoursPerKm.toLocaleString('de-DE') + ' h je km, bringt den Zustand im Betrieb zurück auf ' + D.groom.mid.target + ' %. Beschneien nur bei ≤ ' + D.snow.maxTemp + ' °C (Nacht), ' + D.snow.m3PerHour + ' m³/h je Kanone, ' + D.snow.perM3.toLocaleString('de-DE') + ' €/m³. Unter ' + D.cover.minOpen + ' cm apert eine Piste aus und wird gesperrt.</p>';
   }
 
   function mkt(G) {

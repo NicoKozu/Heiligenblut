@@ -31,7 +31,7 @@ export function needs(G, n) {
   return {
     lift: Math.ceil(G.lifts.filter(l => !l.build).reduce((x, l) => x + LIFT[l.id].staff, 0) * S.relief),
     tech: G.lifts.length * S.techPerLift + S.techBase,
-    groomer: Math.min(G.groom.machines, Math.ceil(want / D.groomNight.shift - 1e-6)),
+    groomer: Math.min(G.groom.machines, Math.max(Math.ceil(want / D.groomNight.shift - 1e-6), Math.ceil(pl(G).filter(p => G.pistes[p.id].mid).reduce((x, p) => x + p.km * D.groom.mid.hoursPerKm, 0) / ((D.groom.mid.to - D.groom.mid.from) / 60) - 1e-6))),
     patrol: Math.max(1, Math.ceil(pl(G).length / S.patrolPer)),
     cashier: Math.max(1, Math.ceil(peak * (1 - s) * (1 - S.cash.online) / S.cash.rate)),
     instructor: Math.max(1, Math.ceil(n * D.side.school.share / S.pupils)),
