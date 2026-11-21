@@ -34,7 +34,7 @@ const CSS = `
 #biz-panel.off{transform:translateX(calc(100% - 26px))}
 .biz-box h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.65;font-weight:600}
 .biz-box .big{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-.biz-box .big b{font-size:24px;font-variant-numeric:tabular-nums}
+.biz-box .big b{font-size:20px;font-variant-numeric:tabular-nums}
 .biz-box .row{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
 .biz-box .row span{opacity:.75}
 .biz-box .row b{font-variant-numeric:tabular-nums;font-weight:600}
@@ -247,6 +247,7 @@ export function createUI(h) {
       '<span class="tab">Tab</span>' +
       '<h3>Finanzen</h3>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
+      (g => '<div class="big"><span>Gewinn heute</span><b class="' + (g >= 0 ? 'biz-good' : 'biz-bad') + '">' + (g > 0 ? '+' : '') + eur(g) + '</b></div>')(sumv(G.today.revenue) - c) +
       (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > D.start.credit * 0.8 ? 'biz-bad' : '') : '') +
       (G.build?.jobs.length ? row('Baustellen', G.build.jobs.map(j => D.build.projects[j.id].label.replace(/ \(.*\)/, '') + ' ' + (j.left == null ? 'Sommer' : j.left + ' T.')).join(', ')) : '') +
       '<div class="sep"></div>' +

@@ -42,7 +42,7 @@
 - Preiskurven (Zusatz): `ui-price.js` im Tab Preise je Ticket (Tag/Jugend/Kind/Halbtag) Kurve Gäste + Ticketerlös − Gästebetrieb über Preis (Prognose nächster Tag, `expectedSeg`), Optimum + aktueller Punkt, Klick setzt Preis.
 - Pistenpflege (Zusatz): Abnutzung je Abfahrt × `wearKm`/km × Zustand/`groomed` (proportional, lange Pisten nutzen langsamer ab), unpräpariert × `rough`; Mittagspräparierung je Piste (`o.mid`, `snow.js` `midPlan/setMid`, 11:30–13:30 zurück auf 85 %, Kapazität Geräte × 2 h, `D.groom.mid`), Buttons im Schnee-Tab + Objektkarte.
 - Beschneiung (Zusatz): Kanone 9.000 € (Start 10 Stk. 90k), Beschneien 2,2 €/m³ (vorher 3.700 €/4,2 €); Simtest-Obergrenze Gewinn 1,1 Mio.
-- Panel-Aufteilung (Zusatz): `ui.js` vier `.biz-box`: `#biz-top` Datum/Phase/Zeitfaktor/Wetter, `#biz-left` Pisten & Lifte, `#biz-panel` (rechts) Finanzen, `#biz-bot` Zufriedenheit/Ruf/Gäste/Wartezeiten; Tab blendet alle aus (`biz-hide`); HUD-Werte im Manager links unten.
+- Panel-Aufteilung (Zusatz): `ui.js` vier `.biz-box`: `#biz-top` Datum/Phase/Zeitfaktor/Wetter, `#biz-left` Pisten & Lifte, `#biz-panel` (rechts) Finanzen inkl. „Gewinn heute“ (grün/rot), `#biz-bot` Zufriedenheit/Ruf/Gäste/Wartezeiten; Tab blendet alle aus (`biz-hide`); HUD-Werte im Manager links unten.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
