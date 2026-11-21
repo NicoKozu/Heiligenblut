@@ -16,16 +16,30 @@ import { curvesView, CURVE_CSS } from './ui-price.js';
 import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
-#biz-panel{position:fixed;right:12px;top:12px;z-index:3;width:280px;box-sizing:border-box;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px);transition:transform .25s}
+.biz-box{position:fixed;z-index:3;box-sizing:border-box;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px)}
+#biz-panel{right:12px;top:12px;width:250px;max-height:calc(100vh - clamp(140px,22vw,240px) - 36px);overflow:auto;transition:transform .25s}
+#biz-left{left:12px;top:12px;width:260px;max-height:calc(100vh - 210px);overflow:auto}
+#biz-top{top:12px;left:284px;right:274px;margin:0 auto;width:fit-content;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 16px;padding:6px 14px}
+#biz-bot{bottom:12px;left:284px;right:calc(clamp(140px,22vw,240px) + 24px);margin:0 auto;width:fit-content;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 16px;padding:8px 14px}
+.biz-box .kv{display:flex;flex-direction:column;line-height:1.2}
+.biz-box .kv span{font-size:11px;opacity:.65;white-space:nowrap}
+.biz-box .kv b{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+#biz-top .clock{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+#biz-top .vsep,#biz-bot .vsep{width:1px;align-self:stretch;background:rgba(255,255,255,.15)}
+#biz-bot .segs{min-width:220px}
+#biz-bot .satb{width:auto;margin:0}
+#biz-bot .parts{flex-basis:100%;order:-1}
+.biz-box[hidden]{display:none}
+.biz-hide #biz-left,.biz-hide #biz-top,.biz-hide #biz-bot{display:none}
 #biz-panel.off{transform:translateX(calc(100% - 26px))}
-#biz-panel h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.65;font-weight:600}
-#biz-panel .big{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-#biz-panel .big b{font-size:24px;font-variant-numeric:tabular-nums}
-#biz-panel .row{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
-#biz-panel .row span{opacity:.75}
-#biz-panel .row b{font-variant-numeric:tabular-nums;font-weight:600}
-#biz-panel .sep{height:1px;background:rgba(255,255,255,.12);margin:6px 0}
-#biz-panel .keys{margin-top:6px;font-size:11px;opacity:.55}
+.biz-box h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.65;font-weight:600}
+.biz-box .big{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.biz-box .big b{font-size:24px;font-variant-numeric:tabular-nums}
+.biz-box .row{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.biz-box .row span{opacity:.75}
+.biz-box .row b{font-variant-numeric:tabular-nums;font-weight:600}
+.biz-box .sep{height:1px;background:rgba(255,255,255,.12);margin:6px 0}
+.biz-box .keys{margin-top:6px;font-size:11px;opacity:.55}
 #biz-panel .tab{display:none;position:absolute;left:6px;top:8px;font-size:11px;writing-mode:vertical-rl}
 #biz-panel.off .tab{display:block;opacity:.9}
 .biz-good{color:#7be07b}.biz-warn{color:#ffd84a}.biz-bad{color:#ff6b5a}
@@ -55,13 +69,13 @@ const CSS = `
 #biz-over .price button{font:inherit;width:30px;height:28px;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer}
 #biz-over .price input{font:inherit;width:64px;height:26px;text-align:right;color:#fff;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:0 6px}
 #biz-over .fc{font-size:22px;font-weight:700}
-#biz-panel .lift{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:2px 0}
-#biz-panel .lift span{opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#biz-panel .lift b.st{font-size:12px}
-#biz-panel .lift b{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
-#biz-panel .as{display:grid;grid-template-columns:10px 1fr 46px 40px;align-items:center;gap:6px;padding:2px 0;font-size:13px}
-#biz-panel .as span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
-#biz-panel .as b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;font-size:12px}
+.biz-box .lift{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:2px 0}
+.biz-box .lift span{opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.biz-box .lift b.st{font-size:12px}
+.biz-box .lift b{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
+.biz-box .as{display:grid;grid-template-columns:10px 1fr 46px 40px;align-items:center;gap:6px;padding:2px 0;font-size:13px}
+.biz-box .as span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+.biz-box .as b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;font-size:12px}
 .biz-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#7be07b}
 .biz-dot.warn{background:#ffd84a}.biz-dot.bad{background:#ff6b5a}
 .biz-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
@@ -73,7 +87,7 @@ const CSS = `
 .biz-sw{font:inherit;font-size:11px;font-weight:600;padding:1px 0;width:40px;border-radius:9px;cursor:pointer;color:#fff;border:1px solid rgba(255,255,255,.25);background:#2fae5e88}
 .biz-sw.off{background:#c0392b88}
 .biz-sw[disabled]{opacity:.4;cursor:default}
-#biz-toast{position:fixed;left:260px;right:304px;top:12px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+#biz-toast{position:fixed;left:284px;right:274px;top:64px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 #biz-toast .t{width:100%;max-width:460px;box-sizing:border-box}
 @media (max-width:820px){#biz-toast{left:12px;right:12px;top:auto;bottom:12px}}
 #biz-toast .t{pointer-events:auto;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(120,24,20,.92);border:1px solid #ff6b5a;border-radius:9px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.35)}
@@ -85,13 +99,16 @@ const CSS = `
 #biz-over .log{font-size:13px;opacity:.85;max-height:160px;overflow:auto}
 #biz-over .log div{padding:1px 0}
 body.menu #biz-toast{display:none}
-body.biz #hud-panel{right:auto;left:12px}
+body.biz #hud-panel{right:auto;top:auto;left:12px;bottom:44px}
 body.biz #fps{top:auto;bottom:12px}
-body.menu #biz-panel,body.menu #biz-over{display:none}
-#biz-panel .satb{display:flex;align-items:center;gap:10px;width:100%;font:inherit;color:#fff;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 8px;margin:4px 0 6px;cursor:pointer;text-align:left}
-#biz-panel .satb b{font-size:28px;font-variant-numeric:tabular-nums;line-height:1}
-#biz-panel .satb span{flex:1;font-size:12px;opacity:.75;line-height:1.25}
-#biz-panel .satb em{font-style:normal;font-size:11px;opacity:.6}
+body.biz #hud-speed{bottom:110px}
+body.biz #hud-hint{bottom:190px}
+body.biz #biz-mgr{bottom:auto;top:64px}
+body.menu .biz-box,body.menu #biz-over{display:none}
+.biz-box .satb{display:flex;align-items:center;gap:10px;width:100%;font:inherit;color:#fff;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 8px;margin:4px 0 6px;cursor:pointer;text-align:left}
+.biz-box .satb b{font-size:28px;font-variant-numeric:tabular-nums;line-height:1}
+.biz-box .satb span{flex:1;font-size:12px;opacity:.75;line-height:1.25}
+.biz-box .satb em{font-style:normal;font-size:11px;opacity:.6}
 .biz-part{display:grid;grid-template-columns:104px 1fr 28px;align-items:center;gap:6px;padding:1px 0;font-size:12px}
 .biz-part span{opacity:.8;white-space:nowrap}
 .biz-part b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
@@ -166,15 +183,16 @@ export function createUI(h) {
   const style = document.createElement('style');
   style.textContent = CSS + CURVE_CSS;
   document.head.appendChild(style);
-  const panel = document.createElement('div');
-  panel.id = 'biz-panel';
+  const mk = id => { const e = document.createElement('div'); e.id = id; e.className = 'biz-box'; return e; };
+  const panel = mk('biz-panel'), left = mk('biz-left'), top = mk('biz-top'), bot = mk('biz-bot');
+  const boxes = [top, left, panel, bot];
   const over = document.createElement('div');
   over.id = 'biz-over';
   over.hidden = true;
   const toastEl = document.createElement('div');
   toastEl.id = 'biz-toast';
-  document.body.append(panel, over, toastEl);
-  let view = null, tab = 'over', last = '', satOpen = false;
+  document.body.append(...boxes, over, toastEl);
+  let view = null, tab = 'over', last = [], satOpen = false;
   const toasts = new Map();
   toastEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) h.action(b.dataset.act); });
 
@@ -194,55 +212,61 @@ export function createUI(h) {
     if (e.key === 'Enter') e.target.blur();
   });
   over.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') e.stopPropagation(); });
-  panel.addEventListener('pointerdown', e => {
-    if (panel.classList.contains('off')) { panel.classList.remove('off'); return; }
+  const onBox = e => {
+    if (panel.classList.contains('off')) { panel.classList.remove('off'); document.body.classList.remove('biz-hide'); return; }
     const b = e.target.closest('button');
     if (b && b.dataset.act === 'sat') { e.preventDefault(); satOpen = !satOpen; h.refresh(); }
     else if (b && !b.disabled && b.dataset.act) { e.preventDefault(); h.action(b.dataset.act); }
-  });
+  };
+  boxes.forEach(e => e.addEventListener('pointerdown', onBox));
 
+  const kv = (k, v, c = '') => '<div class="kv"><span>' + k + '</span><b class="' + c + '">' + v + '</b></div>';
+  const VS = '<i class="vsep"></i>';
   function renderPanel(G) {
-    const p = prev(G), c = costToday(G), open = G.phase === 'open', sat = live(G);
+    const p = prev(G), c = costToday(G), open = G.phase === 'open', sat = live(G), w = G.weather?.today;
     const pz = open ? G.sat?.z : G.history[G.history.length - 2]?.sat?.z;
-    const html =
-      '<span class="tab">Tab</span>' +
-      '<h3>Skigebiet Heiligenblut</h3>' +
-      '<div class="big"><span>' + fmtDate(G.date) + '</span><b>' + fmtClock(G.min) + '</b></div>' +
-      (sat ? '<button class="satb" data-act="sat">' + face(sat.z) + '<b class="' + ztone(sat.z) + '">' + Math.round(sat.z) + '</b>' + trend(sat.z, pz) + '<span>Zufriedenheit<br><em>' + (open ? 'live' : 'Tageswert') + ' · ' + (satOpen ? 'zuklappen' : 'Details') + '</em></span></button>' + (satOpen ? parts(sat) : '')
-        : '<button class="satb" data-act="sat"><b>–</b><span>Zufriedenheit<br><em>noch kein Betriebstag</em></span></button>') +
-      row('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) +
-      '<div class="sep"></div>' +
-      (G.weather ? row(wx(G.weather.today), fmtT(G.weather.today.tTal) + ' / ' + fmtT(G.weather.today.tBerg)) + row('Wind Berg · Lawine', '<span class="' + (stormy(G.weather.today) ? 'biz-bad' : '') + '">' + G.weather.today.wind + ' km/h</span> · <span class="' + atone(G.weather.aval) + '">' + G.weather.aval + '</span>') + row('Ø Schneehöhe', Math.round(avgSnow(G)) + ' cm', stone(avgSnow(G))) + '<div class="sep"></div>' : '') +
-      row('Phase', '<span class="biz-phase ' + G.phase + '">' + D.phaseLabels[G.phase] + '</span>') +
-      row('Zeitfaktor', (G.factor < 1 ? 'Echtzeit' : '×' + G.factor) + (G.phase === 'open' ? '' : ' (steht)')) +
-      '<div class="sep"></div>' +
-      row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
-      (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > D.start.credit * 0.8 ? 'biz-bad' : '') : '') +
-      (G.build?.jobs.length ? row('Baustellen', G.build.jobs.map(j => D.build.projects[j.id].label.replace(/ \(.*\)/, '') + ' ' + (j.left == null ? 'Sommer' : j.left + ' T.')).join(', ')) : '') +
-      row('Kosten heute', eur(c)) +
-      row('Umsatz heute', eur(sumv(G.today.revenue))) +
-      row('davon Nebengeschäfte', eur(sumv(G.today.revenue) - ticketSum(G.today.revenue))) +
-      (open ? row('Hütten · Parkplatz', (X.hutWaitNow(G.flow) >= 0.5 ? '<span class="' + wtone(X.hutWaitNow(G.flow)) + '">' + mins(X.hutWaitNow(G.flow)) + '</span> · ' : num(X.inHuts(G.flow)) + ' Gäste · ') + '<span class="' + (G.flow.cars >= G.side.park.cap - 0.5 ? 'biz-bad' : G.flow.cars > G.side.park.cap * 0.85 ? 'biz-warn' : '') + '">' + num(G.flow.cars) + '/' + num(G.side.park.cap) + '</span>') : '') +
-      '<div class="sep"></div>' +
-      row('Gäste jetzt / heute', num(count(G.flow)) + ' / ' + num(G.today.guests)) +
-      (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) +
-      row('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
-      (open && G.flow.cashWait >= 0.5 ? row('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
-      '<div class="sep"></div>' +
-      row('Personal', heads(G) + ' Mitarbeiter') + row('Lohnkosten heute', eur(G.today.costs.staff || wages(G))) +
-      '<div class="sep"></div>' +
-      G.lifts.map(l => {
-        const st = status(l), on = open && st === 'run', w = on ? G.flow.wait[l.id] : 0;
-        return '<div class="lift"><span><i class="biz-dot ' + DOT[st] + '"></i> ' + l.name + '</span><b class="st ' + (on ? wtone(w) : st === 'run' ? '' : 'biz-' + (DOT[st] || 'warn')) + '">' + (on ? mins(w) : st === 'run' ? '–' : st === 'repair' ? 'Reparatur' : D.liftStatus[st]) + '</b><b>' + (on ? Math.round(l.util * 100) + ' %' : '') + '</b></div>' +
-          '<div class="as"><span></span>' + bar(l.cond) + '<b>' + Math.round(l.cond) + ' %</b>' + sw('lift', l.id, l.open) + '</div>';
-      }).join('') +
+    const hw = X.hutWaitNow(G.flow);
+    const ht = [
+      kv(fmtDate(G.date), '<span class="clock">' + fmtClock(G.min) + '</span>') +
+      kv('Phase', '<span class="biz-phase ' + G.phase + '">' + D.phaseLabels[G.phase] + '</span>') +
+      kv('Zeitfaktor', (G.factor < 1 ? 'Echtzeit' : '×' + G.factor) + (open ? '' : ' (steht)')) +
+      (w ? VS + kv('Wetter', wx(w)) + kv('Tal / Berg', fmtT(w.tTal) + ' / ' + fmtT(w.tBerg)) + kv('Wind Berg', w.wind + ' km/h', stormy(w) ? 'biz-bad' : '') + kv('Lawinenstufe', G.weather.aval, atone(G.weather.aval)) : ''),
+      '<h3>Pisten & Anlagen</h3>' +
+      row('Ø Schneehöhe', Math.round(avgSnow(G)) + ' cm', stone(avgSnow(G))) +
       '<div class="sep"></div>' +
       pl(G).map(p => {
         const o = G.pistes[p.id];
         return '<div class="as"><i class="biz-dot ' + (o.open ? '' : 'bad') + '"></i><span>' + p.id + ' ' + p.name + '</span><b class="' + stone(o.snow) + '">' + Math.round(o.snow) + ' cm</b>' + sw('piste', p.id, o.open, o.aper) + '</div>';
       }).join('') +
-      '<div class="keys">+/− Zeit · B Büro · Tab Panel</div>';
-    if (html !== last) { last = html; panel.innerHTML = html; }
+      '<div class="sep"></div>' +
+      G.lifts.map(l => {
+        const st = status(l), on = open && st === 'run', w = on ? G.flow.wait[l.id] : 0;
+        return '<div class="lift"><span><i class="biz-dot ' + DOT[st] + '"></i> ' + l.name + '</span><b class="st ' + (on ? wtone(w) : st === 'run' ? '' : 'biz-' + (DOT[st] || 'warn')) + '">' + (on ? mins(w) : st === 'run' ? '–' : st === 'repair' ? 'Reparatur' : D.liftStatus[st]) + '</b><b>' + (on ? Math.round(l.util * 100) + ' %' : '') + '</b></div>' +
+          '<div class="as"><span></span>' + bar(l.cond) + '<b>' + Math.round(l.cond) + ' %</b>' + sw('lift', l.id, l.open) + '</div>';
+      }).join(''),
+      '<span class="tab">Tab</span>' +
+      '<h3>Finanzen</h3>' +
+      row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
+      (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > D.start.credit * 0.8 ? 'biz-bad' : '') : '') +
+      (G.build?.jobs.length ? row('Baustellen', G.build.jobs.map(j => D.build.projects[j.id].label.replace(/ \(.*\)/, '') + ' ' + (j.left == null ? 'Sommer' : j.left + ' T.')).join(', ')) : '') +
+      '<div class="sep"></div>' +
+      row('Umsatz heute', eur(sumv(G.today.revenue))) +
+      row('davon Nebengeschäfte', eur(sumv(G.today.revenue) - ticketSum(G.today.revenue))) +
+      row('Kosten heute', eur(c)) +
+      row('davon Löhne', eur(G.today.costs.staff || wages(G))) +
+      row('Personal', heads(G) + ' Mitarbeiter') +
+      '<div class="keys">+/− Zeit · B Büro · Tab Panels</div>',
+      (sat ? '<button class="satb" data-act="sat">' + face(sat.z) + '<b class="' + ztone(sat.z) + '">' + Math.round(sat.z) + '</b>' + trend(sat.z, pz) + '<span>Zufriedenheit<br><em>' + (open ? 'live' : 'Tageswert') + ' · ' + (satOpen ? 'zuklappen' : 'Details') + '</em></span></button>'
+        : '<button class="satb" data-act="sat"><b>–</b><span>Zufriedenheit<br><em>noch kein Betriebstag</em></span></button>') +
+      kv('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) + VS +
+      kv('Gäste jetzt / heute', num(count(G.flow)) + ' / ' + num(G.today.guests)) +
+      '<div class="segs">' + (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) + '</div>' + VS +
+      kv('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
+      (open && G.flow.cashWait >= 0.5 ? kv('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
+      (open ? kv('Hütten', hw >= 0.5 ? '<span class="' + wtone(hw) + '">' + mins(hw) + '</span>' : num(X.inHuts(G.flow)) + ' Gäste') + kv('Parkplatz', num(G.flow.cars) + '/' + num(G.side.park.cap), G.flow.cars >= G.side.park.cap - 0.5 ? 'biz-bad' : G.flow.cars > G.side.park.cap * 0.85 ? 'biz-warn' : '') : '') +
+      (sat && satOpen ? '<div class="parts">' + parts(sat) + '</div>' : '')
+    ];
+    boxes.forEach((e, i) => { if (ht[i] !== last[i]) { last[i] = ht[i]; e.innerHTML = ht[i]; } });
   }
 
   const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee'], ['side', 'Gastro & Service'], ['fin', 'Finanzen'], ['build', 'Bau']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
@@ -508,7 +532,7 @@ export function createUI(h) {
     },
     close() { view = null; over.hidden = true; over.innerHTML = ''; },
     get view() { return view; },
-    togglePanel() { panel.classList.toggle('off'); },
-    show(on) { panel.hidden = !on; toastEl.hidden = !on; if (!on) { this.close(); this.drop(); } document.body.classList.toggle('biz', on); }
+    togglePanel() { document.body.classList.toggle('biz-hide', panel.classList.toggle('off')); },
+    show(on) { boxes.forEach(e => e.hidden = !on); toastEl.hidden = !on; if (!on) { this.close(); this.drop(); } document.body.classList.toggle('biz', on); }
   };
 }
