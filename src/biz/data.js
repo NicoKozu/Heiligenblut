@@ -339,3 +339,10 @@ for (const l of D.lifts.filter(x => !x.drag)) {
     D.build.projects[cabId(l.id, n)] = { label: l.name + ' ' + n + 'er-Kabinen', price: Math.round(base * (1 + 0.4 * (n - l.places - 2) / 2) / 5000) * 5000, life: 20, needs: prev.length ? prev : undefined, places: { [l.id]: n }, from: n - 2, cab: l.id, info: n + ' statt ' + (n - 2) + ' Plätze je Kabine, +' + Math.round(200 / (n - 2)) + ' % Kapazität.' };
   }
 }
+for (const l of D.lifts.filter(x => x.drag)) {
+  const base = D.build.projects[l.proj].price;
+  for (let k = 1; k <= 3; k++) {
+    const n = l.places * (k + 1), was = l.places * k;
+    D.build.projects[cabId(l.id, n)] = { label: l.name + ' Ausbau Stufe ' + k, price: Math.round(base * (0.6 + 0.4 * k) / 1000) * 1000, life: 20, needs: [k > 1 ? cabId(l.id, was) : l.proj], places: { [l.id]: n }, from: was, cab: l.id, info: 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s, +' + Math.round(100 / k) + ' % Kapazität.' };
+  }
+}
