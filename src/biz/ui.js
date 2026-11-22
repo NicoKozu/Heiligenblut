@@ -113,6 +113,16 @@ body.menu .biz-box,body.menu #biz-over{display:none}
 .biz-part span{opacity:.8;white-space:nowrap}
 .biz-part b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 #biz-over .biz-part{grid-template-columns:150px 1fr 36px;font-size:14px;padding:3px 0}
+#biz-bot .parts .sat-bars{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+.sat-sum{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin:6px 0 2px;font-size:12px;opacity:.9}
+.sat-sum b{font-variant-numeric:tabular-nums}
+.sat-sum .eq{margin-left:auto}
+.sat-segs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.sat-seg{background:rgba(255,255,255,.05);border-radius:6px;border-top:3px solid;padding:4px 8px;font-size:11px;line-height:1.3;min-width:0}
+.sat-seg b{font-size:18px;font-variant-numeric:tabular-nums;margin-right:4px}
+.sat-seg small{display:block;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#biz-over .sat-sum{font-size:14px}
+#biz-over .sat-seg{font-size:13px}
 #biz-over .satbig{display:flex;align-items:center;gap:14px;margin:6px 0}
 #biz-over .satbig b{font-size:34px}
 #biz-over .stars{color:#ffd84a;letter-spacing:2px}
@@ -156,13 +166,15 @@ function face(z, s = 30) {
   return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 30 30" style="flex:none"><circle cx="15" cy="15" r="14" fill="' + zcol(z) + '"/><circle cx="10.5" cy="12" r="1.8" fill="#13263a"/><circle cx="19.5" cy="12" r="1.8" fill="#13263a"/><path d="M9 19.5 Q15 ' + (19.5 + k).toFixed(1) + ' 21 19.5" stroke="#13263a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
 }
 function parts(sat) {
-  const w = sat.w || D.sat.w, L = D.sat.labels, row = (k, v, c = '') => '<div class="biz-part"><span>' + k + '</span><span></span><b class="' + c + '">' + v + '</b></div>';
-  return Object.entries(L).map(([k, v]) => '<div class="biz-part"><span>' + v + ' <em style="opacity:.55;font-style:normal">' + Math.round(w[k] * 100) + '%</em></span>' + bar(sat.parts[k]) + '<b>' + Math.round(sat.parts[k]) + '</b></div>').join('') +
-    (sat.avg != null ? row('Gewichteter Schnitt', Math.round(sat.avg)) : '') +
-    (sat.pen >= 0.5 ? row('Abzug schwächster Wert <em style="opacity:.55;font-style:normal">' + Math.round(D.sat.worst * 100) + '% des Abstands</em>', '−' + Math.round(sat.pen), 'biz-bad') : '') +
-    (sat.lost >= 1 ? row('Ohne Fahrt abgereist (' + num(sat.lost) + ')', sat.avg != null ? '−' + Math.round(Math.max(0, sat.avg - sat.pen - sat.z - (sat.ded || 0))) : num(sat.lost), 'biz-bad') : '') +
-    (sat.ded ? row('Ereignis-Abzug', '−' + Math.round(sat.ded), 'biz-bad') : '') +
-    (sat.low && sat.mix ? '<div style="margin-top:6px;opacity:.8;font-size:12px">Je Zielgruppe (Anteil · Note · schwächster Wert)</div>' + SEGS.map(sg => row('<i class="biz-dot" style="background:' + D.segs[sg].color + '"></i> ' + D.segs[sg].label + ' <em style="opacity:.55;font-style:normal">' + Math.round((sat.mix[sg] || 0) * 100) + '%</em>', '<span class="' + ztone(sat.seg[sg]) + '">' + Math.round(sat.seg[sg]) + '</span> <small style="opacity:.75;font-weight:400">· ' + L[sat.low[sg].k] + ' ' + Math.round(sat.low[sg].v) + '</small>')).join('') : '');
+  const w = sat.w || D.sat.w, L = D.sat.labels, it = (k, v, c = '') => '<span>' + k + ' <b class="' + c + '">' + v + '</b></span>';
+  const lostV = sat.avg != null ? Math.max(0, sat.avg - sat.pen - sat.z - (sat.ded || 0)) : 0;
+  return '<div class="sat-bars">' + Object.entries(L).map(([k, v]) => '<div class="biz-part"><span>' + v + ' <em style="opacity:.55;font-style:normal">' + Math.round(w[k] * 100) + '%</em></span>' + bar(sat.parts[k]) + '<b>' + Math.round(sat.parts[k]) + '</b></div>').join('') + '</div>' +
+    '<div class="sat-sum">' + (sat.avg != null ? it('Schnitt', Math.round(sat.avg)) : '') +
+    (sat.pen >= 0.5 ? it('schwächster Wert', '−' + Math.round(sat.pen), 'biz-bad') : '') +
+    (sat.lost >= 1 ? it('ohne Fahrt abgereist (' + num(sat.lost) + ')', lostV >= 0.5 ? '−' + Math.round(lostV) : '', 'biz-bad') : '') +
+    (sat.ded ? it('Ereignisse', '−' + Math.round(sat.ded), 'biz-bad') : '') +
+    '<span class="eq">= <b class="' + ztone(sat.z) + '">' + Math.round(sat.z) + '</b></span></div>' +
+    (sat.low && sat.mix ? '<div class="sat-segs">' + SEGS.map(sg => '<div class="sat-seg" style="border-color:' + D.segs[sg].color + '">' + D.segs[sg].label + ' <span style="opacity:.6">' + Math.round((sat.mix[sg] || 0) * 100) + '%</span><br><b class="' + ztone(sat.seg[sg]) + '">' + Math.round(sat.seg[sg]) + '</b><small>schwach: ' + L[sat.low[sg].k] + ' ' + Math.round(sat.low[sg].v) + '</small></div>').join('') + '</div>' : '');
 }
 const guestsN = G => G.phase === 'prep' ? forecast(G).n : Math.max(G.today.expected || 0, G.today.guests || 0);
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
