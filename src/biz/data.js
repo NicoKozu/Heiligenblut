@@ -49,6 +49,7 @@ export const D = {
     holdGiveUp: 0.008,
     speed: { leicht: 25, mittel: 32, schwer: 38 },
     pause: { leicht: 4, mittel: 3, schwer: 2 },
+    pauseKm: 1,
     skill: { leicht: 0.35, mittel: 0.45, schwer: 0.2 },
     pref: {
       leicht: { leicht: 1, mittel: 0.15, schwer: 0 },
