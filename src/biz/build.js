@@ -17,6 +17,8 @@ export function initBuild(G) {
   for (const h of Object.values(G.side?.huts || {})) if (h.build) { h.open = h.was !== false; delete h.build; delete h.was; }
   if (!G.pipes) G.pipes = [...D.snow.pistes];
   if (!G.fin) G.fin = { items: FN.start.map(x => ({ ...x })), insolv: 0, over: null };
+  G.build.done = G.build.done.filter(id => D.build.projects[id]);
+  G.build.jobs = G.build.jobs.filter(j => D.build.projects[j.id]);
   for (const id of G.build.done) applyDone(G, id);
 }
 

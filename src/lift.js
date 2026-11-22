@@ -42,7 +42,12 @@ function buildSection(sec, terrain, base, avoid) {
     S.push(s);
     G.push(Math.max(terrain.heightAt(x, z), terrain.heightAt(x + px * GAUGE, z + pz * GAUGE), terrain.heightAt(x - px * GAUGE, z - pz * GAUGE)));
   }
-  const tw = [{ s: 0, y: base[0] + ROPE, i: 0 }, { s: len, y: base[1] + ROPE, i: N }];
+  const hd = sec.h ?? 7, tw = sec.drag ? [{ s: 0, y: base[0] + hd * 0.8, i: 0 }] : [{ s: 0, y: base[0] + ROPE, i: 0 }, { s: len, y: base[1] + ROPE, i: N }];
+  if (sec.drag) {
+    const n = Math.max(1, Math.round(len / (hd < 3 ? 25 : 45)));
+    for (let k = 1; k < n; k++) { const i = Math.round(N * k / n); tw.push({ s: S[i], y: G[i] + hd, i }); }
+    tw.push({ s: len, y: base[1] + hd * 0.8, i: N });
+  }
   const lin = (k, s) => tw[k].y + (tw[k + 1].y - tw[k].y) * (s - tw[k].s) / (tw[k + 1].s - tw[k].s);
   const rope = s => {
     let k = 0;
@@ -50,7 +55,7 @@ function buildSection(sec, terrain, base, avoid) {
     const span = tw[k + 1].s - tw[k].s, t = (s - tw[k].s) / span;
     return lin(k, s) - span * 0.012 * 4 * t * (1 - t);
   };
-  for (let it = 0, changed = !sec.tunnel; changed && it < 80; it++) {
+  for (let it = 0, changed = !sec.tunnel && !sec.drag; changed && it < 80; it++) {
     changed = false;
     for (let k = 0; k < tw.length - 1 && !changed; k++) {
       let worst = 0, wi = -1;
@@ -176,6 +181,22 @@ export function createLift(terrain, pistes, exp) {
     const ea = (d.a[0] - h.c[0]) * h.dx + (d.a[1] - h.c[1]) * h.dz;
     return [ea - 5.8, Math.min(h.hl - 0.6, ea + 10.2)];
   };
+  const barMat = mat(0x3a3f45, { metalness: 0.5, roughness: 0.4 }), plateMat = mat(0xd8d02a, { roughness: 0.6 }), hutMat = mat(0x8a5a32, { roughness: 0.85 }), hutRoof = mat(0x5a5f66, { roughness: 0.6 });
+  const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 5).translate(0, -0.5, 0);
+  const tGeo = B(1.1, 0.07, 0.07, 0, 0, 0), plGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.05, 10).translate(0, 0, 0);
+  const hutGeo = B(3.6, 2.6, 3, 0, 1.3, 0), hutTop = B(4.2, 0.25, 3.6, 0, 2.75, 0);
+  function dressDrag(sec, g) {
+    const pl = RIDE[sec.id]?.places || 2;
+    const bp = new THREE.InstancedMesh(poleGeo, barMat, sec.count), bt = new THREE.InstancedMesh(pl > 1 ? tGeo : plGeo, pl > 1 ? barMat : plateMat, sec.count);
+    for (const m of [bp, bt]) { m.castShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
+    g.add(bp, bt);
+    sec.bars = [bp, bt];
+    q.setFromAxisAngle(yAx, sec.heading);
+    for (const [E, s] of [[sec.a, -1], [sec.b, 1]]) {
+      const x = E[0] + sec.dx * s * 5 + sec.px * 6, z = E[1] + sec.dz * s * 5 + sec.pz * 6, y = terrain.heightAt(x, z);
+      for (const [geo, m] of [[hutGeo, hutMat], [hutTop, hutRoof]]) { const h = new THREE.Mesh(geo, m); h.position.set(x, y - 0.2, z); h.quaternion.copy(q); h.castShadow = true; g.add(h); }
+    }
+  }
   function dress(sec) {
     const g = new THREE.Group();
     if (!sec.tunnel) {
@@ -190,13 +211,14 @@ export function createLift(terrain, pistes, exp) {
     }
     const tw = sec.towers.map(t => ({ ...t, sec }));
     if (tw.length) {
-      const padded = tw.filter(t => { const n = pistes.nearest(t.x, t.z, 80); return n && n.d < n.p.width / 2 + 4; });
+      const padded = sec.drag ? [] : tw.filter(t => { const n = pistes.nearest(t.x, t.z, 80); return n && n.d < n.p.width / 2 + 4; });
       const shaft = new THREE.InstancedMesh(shaftGeo, steel, tw.length);
       const head = new THREE.InstancedMesh(headGeo, steel, tw.length);
       q.setFromAxisAngle(yAx, sec.heading);
       tw.forEach((t, i) => {
-        shaft.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 2, t.z), q, sc.set(1, t.y - 0.9 - t.g + 2, 1)));
-        head.setMatrixAt(i, m4.compose(v.set(t.x, t.y - 0.35, t.z), q, sc.set(1, 1, 1)));
+        const w = sec.drag ? 0.35 : 1;
+        shaft.setMatrixAt(i, m4.compose(v.set(t.x, t.g - 2, t.z), q, sc.set(w, t.y - 0.9 - t.g + 2, w)));
+        head.setMatrixAt(i, m4.compose(v.set(t.x, t.y - 0.35, t.z), q, sc.set(1, w, w)));
       });
       shaft.castShadow = head.castShadow = true;
       g.add(shaft, head);
@@ -208,6 +230,7 @@ export function createLift(terrain, pistes, exp) {
       }
     }
     sec.tw = tw;
+    if (sec.drag) { dressDrag(sec, g); sec.mesh = g; group.add(g); return; }
     if (sec.count) {
       const cBody = new THREE.InstancedMesh(body, mat(sec.color ?? 0xc8202a, { roughness: 0.35, metalness: 0.15 }), sec.count);
       const cGlass = new THREE.InstancedMesh(glass, glassMat, sec.count);
@@ -244,7 +267,7 @@ export function createLift(terrain, pistes, exp) {
     if (!sec || sections.includes(sec)) return null;
     if (!added.has(id)) {
       dress(sec);
-      const hs = [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a), sec.from, { front: true }), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b), sec.to, { back: true })];
+      const hs = sec.drag ? [] : [hall({ c: sec.a, off: -4, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.a), sec.from, { front: true }), hall({ c: sec.b, off: 3, hl: 11, hw: 6.5 }, sec, terrain.heightAt(...sec.b), sec.to, { back: true })];
       for (const r of hs) sec.mesh.add(r.g);
       added.set(id, hs);
     }
@@ -308,7 +331,14 @@ export function createLift(terrain, pistes, exp) {
 
   let ride = null;
   const tmp = new THREE.Vector3();
-  const cabinAt = (sec, i, out) => sec.at(sec.phase + i * (sec.L / sec.count), out).setY(out.y - HANG);
+  const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const cabinAt = (sec, i, out) => {
+    const u = sec.phase + i * (sec.L / sec.count);
+    sec.at(u, out);
+    if (!sec.drag) return out.setY(out.y - HANG);
+    const w = ((u % sec.L) + sec.L) % sec.L, k = ss(2, 12, w) * (1 - ss(sec.upLen - 12, sec.upLen - 2, w));
+    return out.setY(out.y - 1.4 + (terrain.heightAt(out.x, out.z) + 0.9 - out.y + 1.4) * k);
+  };
 
   function exitTo(sec) {
     let best = null, bd = 150;
@@ -394,6 +424,18 @@ export function createLift(terrain, pistes, exp) {
     }
     consume('KeyE');
 
+    for (const sec of sections) {
+      if (!sec.bars) continue;
+      q.setFromAxisAngle(yAx, sec.heading);
+      const [bp, bt] = sec.bars;
+      for (let i = 0; i < sec.count; i++) {
+        sec.at(sec.phase + i * (sec.L / sec.count), tmp);
+        cabinAt(sec, i, v);
+        bp.setMatrixAt(i, m4.compose(tmp, q, sc.set(1, Math.max(0.1, tmp.y - v.y), 1)));
+        bt.setMatrixAt(i, m4.compose(v, q, sc.set(1, 1, 1)));
+      }
+      bp.instanceMatrix.needsUpdate = bt.instanceMatrix.needsUpdate = true;
+    }
     for (const sec of sections) {
       if (!sec.cabs) continue;
       q.setFromAxisAngle(yAx, sec.heading);

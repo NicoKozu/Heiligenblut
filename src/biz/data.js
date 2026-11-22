@@ -11,10 +11,15 @@ export const D = {
     { id: 'panorama', name: 'Panoramabahn', gap: 8, places: 4, kw: 220, staff: 3, maint: 2000, ride: 6, from: 'fallbichl', to: 'schareck', exposed: true, proj: 'panorama' },
     { id: 'tunnelbahn', name: 'Tunnelbahn Fleißalm', gap: 14, places: 4, kw: 240, staff: 2, maint: 800, ride: 5, from: 'rossbach', to: 'fleissalm', both: true, proj: 'tunnelbahn' },
     { id: 'fleissbahn', name: 'Fleißbahn', gap: 7, places: 4, kw: 320, staff: 3, maint: 1500, ride: 8, from: 'fleissalm', to: 'fleisstop', proj: 'fleissbahn' },
-    { id: 'hochfleiss', name: 'Hochfleiß', gap: 10, places: 4, kw: 160, staff: 2, maint: 1000, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, proj: 'hochfleiss' }
+    { id: 'hochfleiss', name: 'Schlepplift Hochfleiß', gap: 10, places: 4, kw: 160, staff: 2, maint: 1000, ride: 6, from: 'fleisstop', to: 'hochfleiss', exposed: true, drag: true, proj: 'hochfleiss' },
+    { id: 'tauernberg', name: 'Schlepplift Tauernberg', gap: 5, places: 2, kw: 110, staff: 2, maint: 600, ride: 6, from: 'tauern', to: 'seppen', drag: true, proj: 'tauernberg' },
+    { id: 'viehbuehel', name: 'Schlepplift Viehbühel', gap: 5, places: 2, kw: 90, staff: 2, maint: 500, ride: 4, from: 'fallbichl', to: 'vieh', exposed: true, drag: true, proj: 'viehbuehel' },
+    { id: 'ederfeld', name: 'Tellerlift Ederfeld', gap: 5, places: 1, kw: 45, staff: 1, maint: 300, ride: 3, from: 'fleissalm', to: 'eder', drag: true, proj: 'ederfeld' },
+    { id: 'schulwiese', name: 'Tellerlift Schulwiese', gap: 4, places: 1, kw: 20, staff: 1, maint: 200, ride: 2, from: 'tal', to: 'schule', drag: true, proj: 'schulwiese' },
+    { id: 'kidsworld', name: 'Seillift Kidsworld', gap: 3, places: 1, kw: 8, staff: 1, maint: 120, ride: 1, from: 'tal', to: 'kids', drag: true, proj: 'kidsworld' }
   ],
-  nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl', fleissalm: 'Fleißalm', fleisstop: 'Fleißbahn Berg', hochfleiss: 'Hochfleiß' },
-  nodeH: { tal: 1309, rossbach: 1750, schareck: 2556, fallbichl: 2219, fleissalm: 1808, fleisstop: 2470, hochfleiss: 2920 },
+  nodes: { tal: 'Talstation', rossbach: 'Rossbach', schareck: 'Schareck', fallbichl: 'Fallbichl', fleissalm: 'Fleißalm', fleisstop: 'Fleißbahn Berg', hochfleiss: 'Hochfleiß', tauern: 'Tauernberg Tal', seppen: 'Seppenalm', vieh: 'Viehbühel', eder: 'Ederfeld', schule: 'Schulwiese', kids: 'Kidsworld' },
+  nodeH: { tal: 1309, rossbach: 1750, schareck: 2556, fallbichl: 2219, fleissalm: 1808, fleisstop: 2470, hochfleiss: 2920, tauern: 1698, seppen: 2066, vieh: 2417, eder: 1916, schule: 1259, kids: 1244 },
   pistes: [
     { id: '4', name: 'Schareckabfahrt', level: 'mittel', km: 2.33, from: 'schareck', to: 'rossbach', proj: 'p4' },
     { id: '5', name: 'Kärntnerabfahrt', level: 'leicht', km: 2.86, from: 'schareck', to: 'rossbach', proj: 'p5' },
@@ -24,7 +29,15 @@ export const D = {
     { id: '10', name: 'Talabfahrt', level: 'mittel', km: 1.83, from: 'rossbach', to: 'tal' },
     { id: '11', name: 'Wiesenabfahrt', level: 'leicht', km: 2.38, from: 'fleisstop', to: 'fleissalm', proj: 'p11', exp: true },
     { id: '12', name: 'Muldenabfahrt', level: 'mittel', km: 2.15, from: 'fleisstop', to: 'fleissalm', proj: 'p12', exp: true },
-    { id: '11a', name: 'Gratabfahrt', level: 'mittel', km: 3.58, from: 'hochfleiss', to: 'fleissalm', proj: 'p11a', exp: true }
+    { id: '11a', name: 'Gratabfahrt', level: 'mittel', km: 3.58, from: 'hochfleiss', to: 'fleissalm', proj: 'p11a', exp: true },
+    { id: '2b', name: 'Tauernabfahrt', level: 'leicht', km: 3.73, from: 'schareck', to: 'rossbach', proj: 'p2b', exp: true },
+    { id: '2c', name: 'Seppenbaur', level: 'mittel', km: 1.2, from: 'seppen', to: 'tauern', proj: 'p2c', exp: true },
+    { id: '8', name: 'Viehbühel', level: 'leicht', km: 1.26, from: 'vieh', to: 'fallbichl', proj: 'p8', exp: true },
+    { id: 'S', name: 'Schulwiese', level: 'leicht', km: 0.25, from: 'schule', to: 'tal', proj: 'schulwiese', exp: true },
+    { id: 'K', name: 'Kidsworld', level: 'leicht', km: 0.13, from: 'kids', to: 'tal', proj: 'kidsworld', exp: true },
+    { id: '10o', name: 'Talabfahrt bis Tauernberg', level: 'mittel', km: 0.52, from: 'rossbach', to: 'tauern', proj: 'tauernberg', of: '10', upto: [723.2, -548.8] },
+    { id: '10t', name: 'Talabfahrt ab Tauernberg', level: 'mittel', km: 1.31, from: 'tauern', to: 'tal', proj: 'tauernberg', of: '10', at: [723.2, -548.8] },
+    { id: '11e', name: 'Wiesenabfahrt ab Ederfeld', level: 'leicht', km: 0.46, from: 'eder', to: 'fleissalm', proj: 'ederfeld', of: '11', at: [2451.2, -1514.2] }
   ],
   demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.6, 0.8], offer: [0.3, 0.7], expW: 1.7, eps: [0.9, 1.1] },
   flow: {
@@ -221,8 +234,15 @@ export const D = {
       p5: { label: 'Piste 5 Kärntnerabfahrt', price: 40000, life: 25, needs: ['schareck'], pistes: ['5'], info: 'blau · 2,9 km · Schareck → Rossbach, ideal für Familien' },
       p5a: { label: 'Piste 5a Kärntnerabfahrt Variante', price: 45000, life: 25, needs: ['schareck'], pistes: ['5a'], info: 'rot · 3,1 km · Schareck → Rossbach' },
       p2: { label: 'Piste 2 Seppenalmabfahrt', price: 42000, life: 25, needs: ['schareck'], pistes: ['2'], info: 'rot · 3,0 km · Schareck → Rossbach über die Seppenalm' },
+      p2b: { label: 'Piste 2b Tauernabfahrt', price: 48000, life: 25, needs: ['schareck'], pistes: ['2b'], info: 'blau · 3,7 km · Schareck → Rossbach, weiter Bogen über das Tauerntal' },
+      tauernberg: { label: 'Schlepplift Tauernberg', price: 80000, life: 20, needs: ['schareck'], lifts: ['tauernberg'], info: 'Schlepplift an der Talabfahrt (1.700 m) hinauf zur Seppenalm (2.070 m). Braucht Piste 2c.' },
+      p2c: { label: 'Piste 2c Seppenbaur', price: 25000, life: 25, needs: ['tauernberg'], pistes: ['2c'], info: 'rot · 1,2 km · Seppenalm → Tauernberg Tal, von dort Talabfahrt 10 ins Dorf' },
       panorama: { label: 'Panoramabahn', price: 220000, life: 20, needs: ['schareck'], lifts: ['panorama'], info: 'Fallbichl → Schareck. Sinnvoll erst mit Piste 1 Fallbichlabfahrt.' },
       p1: { label: 'Piste 1 Fallbichlabfahrt', price: 25000, life: 25, needs: ['panorama'], pistes: ['1'], info: 'schwarz · 1,4 km · Schareck → Fallbichl, für Sportliche' },
+      viehbuehel: { label: 'Schlepplift Viehbühel', price: 60000, life: 20, needs: ['panorama'], lifts: ['viehbuehel'], info: 'Fallbichl → Viehbühel (2.420 m). Windanfällig. Braucht Piste 8.' },
+      p8: { label: 'Piste 8 Viehbühel', price: 20000, life: 25, needs: ['viehbuehel'], pistes: ['8'], info: 'blau · 1,3 km · Viehbühel → Fallbichl' },
+      schulwiese: { label: 'Tellerlift Schulwiese', price: 22000, life: 20, lifts: ['schulwiese'], pistes: ['S'], info: 'Übungslift im Ort mit Piste (250 m). Für Anfänger und Skischule.' },
+      kidsworld: { label: 'Kidsworld (Seillift)', price: 14000, life: 20, lifts: ['kidsworld'], pistes: ['K'], info: 'Kinderland im Ort mit Seillift und Übungshang (130 m).' },
       'new:schareck': { label: 'Panoramarestaurant Schareck', price: 100000, life: 25, needs: ['schareck'], hut: 'schareck', info: 'Restaurant an der Bergstation, 240 Plätze' },
       'new:spatzl': { label: 'Spatzl Alm', price: 55000, life: 25, needs: ['schareck'], hut: 'spatzl', info: 'Hütte im Schareck-Gebiet, 100 Plätze' },
       tunnelbahn: { label: 'Tunnelbahn Fleißalm', price: 170000, life: 20, needs: ['schareck'], lifts: ['tunnelbahn'], info: 'Pendelbahn im Berg Rossbach ↔ Fleißalm, beide Richtungen. Erschließt das Fleißtal.' },
@@ -230,7 +250,8 @@ export const D = {
       fleissbahn: { label: 'Fleißbahn (Gondel)', price: 250000, life: 20, needs: ['tunnelbahn'], lifts: ['fleissbahn'], info: 'Fleißalm → Fleißbahn Berg (2.470 m). Braucht Piste 11 oder 12.' },
       p11: { label: 'Piste 11 Wiesenabfahrt', price: 35000, life: 25, needs: ['fleissbahn'], pistes: ['11'], info: 'blau · 2,4 km · Fleißbahn Berg → Fleißalm' },
       p12: { label: 'Piste 12 Muldenabfahrt', price: 35000, life: 25, needs: ['fleissbahn'], pistes: ['12'], info: 'rot · 2,2 km · Fleißbahn Berg → Fleißalm' },
-      hochfleiss: { label: 'Sessellift Hochfleiß', price: 170000, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
+      ederfeld: { label: 'Tellerlift Ederfeld', price: 40000, life: 20, needs: ['fleissbahn', 'p11'], lifts: ['ederfeld'], info: 'Fleißalm → Ederfeld (1.920 m), Übungsgelände am unteren Teil der Wiesenabfahrt 11.' },
+      hochfleiss: { label: 'Schlepplift Hochfleiß', price: 170000, life: 20, needs: ['fleissbahn'], lifts: ['hochfleiss'], info: 'Bis 2.920 m. Windanfällig. Braucht Piste 11a.' },
       p11a: { label: 'Piste 11a Gratabfahrt', price: 55000, life: 25, needs: ['hochfleiss'], pistes: ['11a'], info: 'rot · 3,6 km · Hochfleiß → Fleißalm' },
       'hut:rossbach': { label: 'Ausbau Rossbach Alm', price: 60000, life: 25, seats: { rossbach: 120 }, info: '+120 Sitzplätze' },
       'hut:schareck': { label: 'Ausbau Panoramarestaurant', price: 60000, life: 25, needs: ['new:schareck'], seats: { schareck: 120 }, info: '+120 Sitzplätze' },
@@ -307,7 +328,7 @@ export const D = {
 
 for (const l of D.lifts) l.cap = Math.round(3600 / l.gap * l.places);
 export const cabId = (lid, n) => lid === 'rossbach' && n === 6 ? 'rossbach10' : 'cab:' + lid + ':' + n;
-for (const l of D.lifts) {
+for (const l of D.lifts.filter(x => !x.drag)) {
   const base = l.proj ? D.build.projects[l.proj].price : 300000;
   for (let n = l.places + 2; n <= 20; n += 2) {
     const prev = n - 2 > l.places ? [cabId(l.id, n - 2)] : l.proj ? [l.proj] : [];
