@@ -234,7 +234,7 @@ function valid(G, f, g, node, d) {
 
 function runTime(f, g, p) {
   const d = LV.indexOf(p.level) - g.k, adj = d > 0 ? 1 - F.over * d * 2 : 1 + F.under * -d;
-  return p.km / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * span(f, [0.5, 1.5]);
+  return p.km / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * Math.min(1, p.km / F.pauseKm) * span(f, [0.5, 1.5]);
 }
 
 function drop(G, f, g, lost) {
