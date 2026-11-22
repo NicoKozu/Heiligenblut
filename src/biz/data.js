@@ -194,6 +194,8 @@ export const D = {
       radio: { label: 'Radio Kärnten', kind: 'weekly', cost: 9000, delay: 3, eff: 0.1, target: { day: 1, fam: 0.5, sport: 0.4, week: 0.1 }, info: 'Tagesgäste, ab 3 Tagen' },
       travel: { label: 'Reisebüros NL/DE', kind: 'once', cost: 5000, delay: 14, dur: 28, eff: 0.12, target: { week: 1, fam: 0.3, sport: 0, day: 0 }, info: 'Wochengäste, ab 14 Tagen für 4 Wochen' },
       poster: { label: 'Plakate Lienz/Spittal', kind: 'once', cost: 1200, delay: 5, dur: 14, eff: 0.05, target: { day: 1, fam: 1, sport: 0.5, week: 0 }, info: 'Region, ab 5 Tagen für 2 Wochen' },
+      sportmag: { label: 'Sportmagazine & Bergsport-Portale', kind: 'weekly', cost: 4000, delay: 3, eff: 0.18, target: { sport: 1, day: 0.15, fam: 0, week: 0.15 }, info: 'gezielt Sportliche, ab 3 Tagen' },
+      race: { label: 'Rennwochenende (Riesentorlauf/Skicross)', kind: 'once', cost: 7000, delay: 7, dur: 14, eff: 0.35, target: { sport: 1, day: 0.2, fam: 0, week: 0 }, info: 'Sportliche, ab 7 Tagen für 2 Wochen' },
       family: { label: 'Kinder gratis am Samstag', kind: 'weekly', cost: 0, delay: 2, eff: 0.25, sat: true, noWear: true, target: { fam: 1, sport: 0, day: 0, week: 0 }, info: 'Familien +25 % am Samstag, Kinderkarten gratis' },
       early: { label: 'Frühbucher-Saisonkarte', kind: 'pre', disc: 0.15, cards: 220, share: 0.02, eff: 0.03, info: 'nur vor Saisonstart: −15 %, mehr Stammgäste' }
     },
