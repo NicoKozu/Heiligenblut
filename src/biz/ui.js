@@ -10,6 +10,7 @@ import { label as wLabel, fmtT, stormy, avalClose } from './weather.js';
 import { GROUPS, duty, needs, wages, heads, dayCost } from './staff.js';
 import { label as qLabel, score, avgSnow, gunPlan, nightTotals, nightTemp, demandExtra, midPlan } from './snow.js';
 import * as X from './side.js';
+import * as B from './build.js';
 import { finTab, buildTab, overView } from './ui-build.js';
 import { seasonView, summerView, drawSeason } from './ui-season.js';
 import { curvesView, CURVE_CSS } from './ui-price.js';
@@ -304,7 +305,21 @@ export function createUI(h) {
     return L.length ? '<h2>Meldungen</h2><div class="log">' + L.map(e => '<div class="' + (e.lvl === 'bad' ? 'biz-bad' : e.lvl === 'good' ? 'biz-good' : '') + '">' + fmtDate(e.date).replace(/^\S+ /, '').slice(0, 6) + ' ' + fmtClock(e.min) + ' · ' + e.text + '</div>').join('') + '</div>' : '';
   }
 
+  function upAct(G, l) {
+    const P = D.build.projects, ids = Object.keys(P).filter(k => P[k].cab === l.id);
+    const j = ids.find(k => B.job(G, k));
+    if (j) return '<span class="biz-warn">' + P[j].label + ' im Bau</span>';
+    const k = ids.find(x => !B.done(G, x));
+    if (!k) return '';
+    const why = B.check(G, k);
+    return '<button class="btn" data-act="build:' + k + '"' + (why ? ' disabled title="' + why + '"' : '') + '>Ausbau auf ' + P[k].places[l.id] + ' Plätze · ' + eur(P[k].price) + '</button>';
+  }
+
   function liftActs(G, l) {
+    return liftActs0(G, l) + upAct(G, l);
+  }
+
+  function liftActs0(G, l) {
     const st = status(l);
     if (st === 'fault') {
       const a = repairQuote(l, false, G), b = repairQuote(l, true, G);
