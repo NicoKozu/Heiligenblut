@@ -1,5 +1,5 @@
 {
- "source": "OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL), API 0.6, Abruf 17.11.2026",
+ "source": "OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL), API 0.6, Abruf 17.11./22.11.2026",
  "lifts": [
   {
    "id": "tunnelbahn",
@@ -37,7 +37,7 @@
   },
   {
    "id": "hochfleiss",
-   "name": "Hochfleiß",
+   "name": "Schlepplift Hochfleiß",
    "from": "Fleißbahn Berg",
    "to": "Hochfleiß",
    "a": [
@@ -50,7 +50,104 @@
    ],
    "tunnel": false,
    "color": 3836490,
-   "len": 1153
+   "len": 1153,
+   "drag": true,
+   "h": 7
+  },
+  {
+   "id": "tauernberg",
+   "name": "Schlepplift Tauernberg",
+   "from": "Tauernberg Tal",
+   "to": "Seppenalm",
+   "a": [
+    723.2,
+    -548.8
+   ],
+   "b": [
+    1235.0,
+    -1543.2
+   ],
+   "tunnel": false,
+   "drag": true,
+   "h": 7,
+   "color": 3355443,
+   "len": 1118
+  },
+  {
+   "id": "viehbuehel",
+   "name": "Schlepplift Viehbühel",
+   "from": "Fallbichl",
+   "to": "Viehbühel",
+   "a": [
+    -4.0,
+    -3340.5
+   ],
+   "b": [
+    -51.0,
+    -3970.1
+   ],
+   "tunnel": false,
+   "drag": true,
+   "h": 7,
+   "color": 3355443,
+   "len": 631
+  },
+  {
+   "id": "ederfeld",
+   "name": "Tellerlift Ederfeld",
+   "from": "Fleißalm",
+   "to": "Ederfeld",
+   "a": [
+    2140.2,
+    -1211.5
+   ],
+   "b": [
+    2451.2,
+    -1514.2
+   ],
+   "tunnel": false,
+   "drag": true,
+   "h": 6,
+   "color": 3355443,
+   "len": 434
+  },
+  {
+   "id": "schulwiese",
+   "name": "Tellerlift Schulwiese",
+   "from": "Schulwiese Tal",
+   "to": "Schulwiese",
+   "a": [
+    -74.4,
+    250.9
+   ],
+   "b": [
+    -10.3,
+    119.2
+   ],
+   "tunnel": false,
+   "drag": true,
+   "h": 5,
+   "color": 3355443,
+   "len": 146
+  },
+  {
+   "id": "kidsworld",
+   "name": "Seillift Kidsworld",
+   "from": "Kidsworld Tal",
+   "to": "Kidsworld",
+   "a": [
+    -456.6,
+    56.0
+   ],
+   "b": [
+    -423.0,
+    -15.8
+   ],
+   "tunnel": false,
+   "drag": true,
+   "h": 1.6,
+   "color": 3355443,
+   "len": 79
   }
  ]
 }

@@ -31,7 +31,8 @@ export function log(G, text, lvl = 'info') {
 }
 
 export const running = l => l.open && !l.broken && !(l.insp > 0) && !l.wind && !l.build;
-export const pisteOpen = (G, id) => !!G.pistes?.[id] && G.pistes[id].open !== false;
+const OF = Object.fromEntries(D.pistes.filter(p => p.of).map(p => [p.id, p]));
+export const pisteOpen = (G, id) => { const a = OF[id]; if (a && !G.build?.done.includes(a.proj)) return false; const o = G.pistes?.[a ? a.of : id]; return !!o && o.open !== false; };
 
 export function status(l) {
   if (l.build) return 'build';
@@ -54,7 +55,7 @@ export function initAssets(G) {
   const P = G.pistes || {};
   G.pistes = {};
   for (const p of D.pistes) {
-    if (!built(G, p)) continue;
+    if (p.of || !built(G, p)) continue;
     const o = P[p.id];
     G.pistes[p.id] = o && typeof o === 'object' ? o : { id: p.id, open: o !== false, cond: D.pisteStart.cond, snow: D.pisteStart.snow, groomed: true };
   }

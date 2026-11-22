@@ -4,7 +4,7 @@ import { TERRAIN_URL, get, image, texture } from './config.js';
 const SUB = 2;
 const CHUNK = 64;
 const UVS = 8;
-const SURF = 16;
+const SURF = 24;
 const SAT_URL = 'public/terrain/';
 
 function snowBumpTexture() {

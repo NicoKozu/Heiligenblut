@@ -267,7 +267,7 @@ function go(G, f, g, node, t, ev, end) {
 const nodeOf = g => g.s === 'r' ? (g.rb ? LIFT[g.at].from : LIFT[g.at].to) : g.s === 'p' ? PISTE[g.at].to : g.s === 'h' ? SD.HUT[g.at].node : 'tal';
 
 function finish(G, f, g) {
-  if (g.s === 'p') wear(G, g.at, g.n);
+  if (g.s === 'p') wear(G, PISTE[g.at].of || g.at, g.n);
   if (g.s === 'h') f.hut[g.at] = Math.max(0, f.hut[g.at] - g.n);
 }
 
@@ -288,14 +288,16 @@ function board(G, f, t) {
             const g = M.get(Q[j]);
             if (!g) { Q.splice(j--, 1); continue; }
             if (g.t0 > tc) break;
-            if (g.n > free) continue;
+            const split = g.n > pl && free === pl;
+            if (g.n > free && !split) continue;
             Q.splice(j--, 1);
             g.t1 = tc;
             mark(g);
             if (!cid) cid = f.cn[k] = (f.cn[k] || 0) + 1;
             g.cb = cid;
             g.cs = pl - free;
-            free -= g.n;
+            free = split ? 0 : free - g.n;
+            if (split) tc += gap * (Math.ceil(g.n / pl) - 1);
             b += g.n;
             ws += (tc - g.t0) * g.n;
             g.s = 'r';
