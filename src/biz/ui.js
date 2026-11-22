@@ -144,7 +144,7 @@ const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const revLabel = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
 const ticketSum = o => Object.entries(o || {}).reduce((a, [k, v]) => a + (k in D.tickets ? v : 0), 0);
 const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad', staff: 'bad', build: 'warn' };
-const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(v) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
+const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(Math.max(0, Math.min(100, v))) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
 const sw = (k, id, on, dis) => '<button class="biz-sw' + (on ? '' : ' off') + '" data-act="tog:' + k + ':' + id + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'auf' : 'zu') + '</button>';
 const pName = id => D.pistes.find(p => p.id === id).name;
 const ztone = z => z >= 70 ? 'biz-good' : z >= 50 ? 'biz-warn' : 'biz-bad';
@@ -156,9 +156,13 @@ function face(z, s = 30) {
   return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 30 30" style="flex:none"><circle cx="15" cy="15" r="14" fill="' + zcol(z) + '"/><circle cx="10.5" cy="12" r="1.8" fill="#13263a"/><circle cx="19.5" cy="12" r="1.8" fill="#13263a"/><path d="M9 19.5 Q15 ' + (19.5 + k).toFixed(1) + ' 21 19.5" stroke="#13263a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
 }
 function parts(sat) {
-  return Object.entries(D.sat.labels).map(([k, v]) => '<div class="biz-part"><span>' + v + ' <em style="opacity:.55;font-style:normal">' + Math.round(D.sat.w[k] * 100) + '%</em></span>' + bar(sat.parts[k]) + '<b>' + Math.round(sat.parts[k]) + '</b></div>').join('') +
-    (sat.lost >= 1 ? '<div class="biz-part"><span>Ohne Fahrt abgereist</span><span></span><b class="biz-bad">' + num(sat.lost) + '</b></div>' : '') +
-    (sat.ded ? '<div class="biz-part"><span>Ereignis-Abzug</span><span></span><b class="biz-bad">−' + Math.round(sat.ded) + '</b></div>' : '');
+  const w = sat.w || D.sat.w, L = D.sat.labels, row = (k, v, c = '') => '<div class="biz-part"><span>' + k + '</span><span></span><b class="' + c + '">' + v + '</b></div>';
+  return Object.entries(L).map(([k, v]) => '<div class="biz-part"><span>' + v + ' <em style="opacity:.55;font-style:normal">' + Math.round(w[k] * 100) + '%</em></span>' + bar(sat.parts[k]) + '<b>' + Math.round(sat.parts[k]) + '</b></div>').join('') +
+    (sat.avg != null ? row('Gewichteter Schnitt', Math.round(sat.avg)) : '') +
+    (sat.pen >= 0.5 ? row('Abzug schwächster Wert <em style="opacity:.55;font-style:normal">' + Math.round(D.sat.worst * 100) + '% des Abstands</em>', '−' + Math.round(sat.pen), 'biz-bad') : '') +
+    (sat.lost >= 1 ? row('Ohne Fahrt abgereist (' + num(sat.lost) + ')', sat.avg != null ? '−' + Math.round(Math.max(0, sat.avg - sat.pen - sat.z - (sat.ded || 0))) : num(sat.lost), 'biz-bad') : '') +
+    (sat.ded ? row('Ereignis-Abzug', '−' + Math.round(sat.ded), 'biz-bad') : '') +
+    (sat.low && sat.mix ? '<div style="margin-top:6px;opacity:.8;font-size:12px">Je Zielgruppe (Anteil · Note · schwächster Wert)</div>' + SEGS.map(sg => row('<i class="biz-dot" style="background:' + D.segs[sg].color + '"></i> ' + D.segs[sg].label + ' <em style="opacity:.55;font-style:normal">' + Math.round((sat.mix[sg] || 0) * 100) + '%</em>', '<span class="' + ztone(sat.seg[sg]) + '">' + Math.round(sat.seg[sg]) + '</span> <small style="opacity:.75;font-weight:400">· ' + L[sat.low[sg].k] + ' ' + Math.round(sat.low[sg].v) + '</small>')).join('') : '');
 }
 const guestsN = G => G.phase === 'prep' ? forecast(G).n : Math.max(G.today.expected || 0, G.today.guests || 0);
 const tr = (k, v, c = '') => '<tr class="' + c + '"><td>' + k + '</td><td>' + v + '</td></tr>';
