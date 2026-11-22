@@ -145,7 +145,7 @@ export const D = {
     relief: 1.25, techPerLift: 1, techBase: 1, techRef: 2, techMin: 0.5, techRisk: 0.3,
     patrolPer: 3, accident: 0.002, pupils: 8,
     cash: { rate: 4, online: 0.3, auto: 0.5, wait: [2, 20] },
-    service: { cash: 0.35, morale: 0.3, gastro: 0.25, side: 0.1 },
+    service: { gastro: 0.7, side: 0.3 },
     returnRate: [0.3, 0.9]
   },
   cover: {
@@ -284,6 +284,7 @@ export const D = {
     price: { ref: 62, base: 0.75, offer: 0.25, atFair: 85, perEur: 3, floor: -50 },
     offerExp: 0.45,
     worst: 0.3,
+    worstLo: -40,
     lostW: 0.6,
     ded: { rescue: 8, fault: 3, pisteClose: 2, accident: 5 },
     dedLabels: { rescue: 'Bergung', fault: 'Liftausfall im Betrieb', pisteClose: 'Pistensperre im Betrieb', accident: 'Unfall' },
@@ -317,7 +318,7 @@ export const D = {
         good: ['Die Pisten fast für uns allein!', 'Herrlich leer, freie Fahrt.', 'Viel Platz zum Carven.']
       },
       service: {
-        bad: ['Unfreundlich an der Kassa.', 'Niemand wusste Bescheid, keine Infos.', 'Service ausbaufähig.'],
+        bad: ['Ewig auf einen Platz in der Hütte gewartet.', 'Leihski in schlechtem Zustand.', 'Service ausbaufähig.'],
         good: ['Super freundliches Personal!', 'Liftler mit Schmäh – sympathisch.', 'Alles bestens organisiert.']
       },
       lost: { bad: ['Ticket gekauft, kein Lift fährt – Geld zurück!', 'Zwei Stunden an der Talstation, dann heimgefahren.', 'Lift zu, keine Info, Tag verloren.'] },

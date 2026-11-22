@@ -68,7 +68,6 @@ export function minute(G) {
 }
 
 export function service(G) {
-  const f = G.flow, c = S.cash.wait, w = S.service, st = G.staff;
-  const cash = clamp((c[1] - (f?.cashWait || 0)) / (c[1] - c[0]), 0, 1) * 100;
-  return w.cash * cash + w.morale * st.morale + w.gastro * gastroScore(G) + w.side * sideScore(G);
+  const w = S.service;
+  return w.gastro * gastroScore(G) + w.side * sideScore(G);
 }

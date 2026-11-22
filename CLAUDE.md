@@ -47,7 +47,7 @@
 - Piste 1a (Zusatz): Fallbichlabfahrt Variante (rot, 2,0 km, OSM-Wege 227495664/1126074861/227495665, Bogen über den Osthang, ab 918/−3162 wie Piste 1), Bauprojekt `p1a` (30k, braucht Panoramabahn), `exp`.
 - Pausen nach Länge (Zusatz): Pause je Abfahrt × min(1, km/`F.pauseKm` 1) (`flow.js` `runTime`); vorher volle 4 min auch auf Kidsworld (0,13 km) → bis ~600 Gäste/km, jetzt ~100–150.
 - Scroll bleibt (Zusatz): Overlay `ui.js` `render` merkt `scrollTop` der `.card` je `view:tab` (`over.dataset.k`), Neuaufbau nach Aktionen springt nicht mehr nach oben.
-- Zufriedenheit transparent (Zusatz): `segZ` liefert wirksame Teilnoten (Zielgruppen-Mix inkl. Preis je Gruppe, Hütten-Niveau, Parkpreis), Gewichte, Schnitt `avg`, Abzug schwächster Wert `pen`, je Gruppe `low`; `parts()` in `ui.js` zeigt das + Zielgruppen-Zeilen. Formel unverändert.
+- Zufriedenheit transparent (Zusatz): `segZ` liefert wirksame Teilnoten (Zielgruppen-Mix inkl. Preis je Gruppe, Hütten-Niveau, Parkpreis), Gewichte, Schnitt `avg`, Abzug schwächster Wert `pen`, je Gruppe `low`; `parts()` in `ui.js` zeigt das + Zielgruppen-Karten. Service = 70 % Gastro + 30 % Verleih/Skischule (Kassa steckt in Wartezeit, Moral entfällt); Abzug schwächster Wert erst ab `worstLo` −40 gedeckelt; Tagesnote nutzt echten Pistenanteil wie live.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur

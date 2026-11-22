@@ -16,7 +16,7 @@ const lin = (v, a, b) => clamp((b - v) / (b - a), 0, 1) * 100;
 export const waitScore = w => lin(w, S.wait[0], S.wait[1]);
 export const offerScore = v => 100 * Math.pow(clamp(v, 0, 1), S.offerExp);
 export function combine(p, w = S.w) {
-  const m = K.reduce((a, k) => a + w[k] * (p[k] ?? 0), 0), lo = Math.min(...K.map(k => p[k] ?? 0));
+  const m = K.reduce((a, k) => a + w[k] * (p[k] ?? 0), 0), lo = Math.max(S.worstLo, Math.min(...K.map(k => p[k] ?? 0)));
   return m - S.worst * Math.max(0, m - lo);
 }
 export const stars = z => clamp(z / 20, 0, 5);
@@ -160,7 +160,7 @@ function voices(G, parts, z) {
 export function endDay(G) {
   const base = dayParts(G), ded = deduction(G), st = state(G);
   const offer = st.wt ? Object.fromEntries(SEGS.map(sg => [sg, st.seg[sg] / st.wt])) : offerNow(G);
-  const r = segZ(G, base, offer, base.offer / 100), z = r.z, seg = r.seg, lost = G.today.lost || 0, parts = r.eff;
+  const r = segZ(G, base, offer, Math.pow(base.offer / 100, 1 / S.offerExp)), z = r.z, seg = r.seg, lost = G.today.lost || 0, parts = r.eff;
   const quotes = voices(G, parts, z);
   const rep0 = G.rep;
   const rw = G.today.guests > 0 ? S.rep : S.repClosed;
