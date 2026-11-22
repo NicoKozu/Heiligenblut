@@ -515,7 +515,7 @@ export function createUI(h) {
   return {
     render(G) {
       renderPanel(G);
-      if (view) { const html = '<div class="card">' + views[view](G) + '</div>'; if (over.dataset.v !== html) { over.innerHTML = html; over.dataset.v = html; chart(G); } }
+      if (view) { const html = '<div class="card">' + views[view](G) + '</div>'; if (over.dataset.v !== html) { const k = view + ':' + tab, y = over.dataset.k === k ? over.firstChild?.scrollTop || 0 : 0; over.innerHTML = html; over.dataset.v = html; over.dataset.k = k; if (y) over.firstChild.scrollTop = y; chart(G); } }
     },
     open(v, t) { if (view !== v) tab = 'over'; if (t) tab = t; view = v; over.hidden = false; over.dataset.v = ''; },
     toast(G, id) {

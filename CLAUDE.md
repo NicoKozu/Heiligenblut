@@ -46,6 +46,7 @@
 - Echtes Liftnetz 2026 (Zusatz): OSM-Abruf 22.11.2026 → alle 11 Anlagen (OSM = offizielle Zahl) und alle präparierten Pisten. Neu baubar: Schlepplift Tauernberg (+ Piste 2c Seppenbaur), Schlepplift Viehbühel (+ Piste 8), Tellerlift Ederfeld, Tellerlift Schulwiese (+ Piste S), Seillift Kidsworld (+ Piste K), Piste 2b Tauernabfahrt (blau, 3,7 km). Hochfleiß ist Schlepplift (Sim-Werte unverändert). Skirouten seit 2025/26 freier Skiraum → nicht im Spiel. Schlepplifte: `drag`/`h` in `expansion.json`+`data.js`, `lift.js` `dressDrag` (Bügel/Teller, kleine Hütten, keine Halle), Gruppen > Plätze belegen mehrere Bügel (`flow.js`). Teilstrecken (`of`, `at`/`upto`, `proj`) nutzen Geometrie/Zustand einer Hauptpiste (10o/10t Tauernberg, 11e Ederfeld; `pisteOpen`, `crowd.runPath`). `SURF` 24.
 - Piste 1a (Zusatz): Fallbichlabfahrt Variante (rot, 2,0 km, OSM-Wege 227495664/1126074861/227495665, Bogen über den Osthang, ab 918/−3162 wie Piste 1), Bauprojekt `p1a` (30k, braucht Panoramabahn), `exp`.
 - Pausen nach Länge (Zusatz): Pause je Abfahrt × min(1, km/`F.pauseKm` 1) (`flow.js` `runTime`); vorher volle 4 min auch auf Kidsworld (0,13 km) → bis ~600 Gäste/km, jetzt ~100–150.
+- Scroll bleibt (Zusatz): Overlay `ui.js` `render` merkt `scrollTop` der `.card` je `view:tab` (`over.dataset.k`), Neuaufbau nach Aktionen springt nicht mehr nach oben.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
