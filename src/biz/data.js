@@ -25,6 +25,7 @@ export const D = {
     { id: '5', name: 'Kärntnerabfahrt', level: 'leicht', km: 2.86, from: 'schareck', to: 'rossbach', proj: 'p5' },
     { id: '5a', name: 'Kärntnerabfahrt Variante', level: 'mittel', km: 3.1, from: 'schareck', to: 'rossbach', proj: 'p5a' },
     { id: '1', name: 'Fallbichlabfahrt', level: 'schwer', km: 1.39, from: 'schareck', to: 'fallbichl', proj: 'p1' },
+    { id: '1a', name: 'Fallbichlabfahrt Variante', level: 'mittel', km: 2.0, from: 'schareck', to: 'fallbichl', proj: 'p1a', exp: true },
     { id: '2', name: 'Seppenalmabfahrt', level: 'mittel', km: 3.03, from: 'schareck', to: 'rossbach', proj: 'p2' },
     { id: '10', name: 'Talabfahrt', level: 'mittel', km: 1.83, from: 'rossbach', to: 'tal' },
     { id: '11', name: 'Wiesenabfahrt', level: 'leicht', km: 2.38, from: 'fleisstop', to: 'fleissalm', proj: 'p11', exp: true },
@@ -179,7 +180,7 @@ export const D = {
     lowSnow: 0.45
   },
   snowFactor: { steps: [[20, 0.3], [40, 0.7], [60, 0.9]], top: 1.05, powder: 15, powderAdd: 0.2 },
-  aval: { decay: 0.6, wind: 40, windAdd: 12, levels: [10, 25, 45, 70], close: ['1', '12'], risk: 0.0006 },
+  aval: { decay: 0.6, wind: 40, windAdd: 12, levels: [10, 25, 45, 70], close: ['1', '1a', '12'], risk: 0.0006 },
   segs: {
     fam: { label: 'Familien', color: '#ffb14a', share: 0.35, el: 1.8, wx: 1, mix: { adult: 0.5, youth: 0.1, child: 0.4 }, skill: { leicht: 0.6, mittel: 0.35, schwer: 0.05 }, pref: { leicht: 1, mittel: 0.5, schwer: 0.1 }, fair: 0.85, w: { wait: 0.2, offer: 0.12, quality: 0.13, price: 0.25, crowd: 0.2, service: 0.1 }, gastro: 1, info: 'preisbewusst, leichte Pisten, Gedränge stört' },
     sport: { label: 'Sportliche', color: '#ff6b5a', share: 0.2, el: 1.0, wx: 0.9, mix: { adult: 0.8, youth: 0.17, child: 0.03 }, skill: { leicht: 0.1, mittel: 0.45, schwer: 0.45 }, pref: { leicht: 0.3, mittel: 0.8, schwer: 1 }, fair: 1.1, w: { wait: 0.2, offer: 0.25, quality: 0.3, price: 0.08, crowd: 0.07, service: 0.1 }, gastro: 0.3, info: 'Präparierung und schwere Pisten zählen' },
@@ -239,6 +240,7 @@ export const D = {
       p2c: { label: 'Piste 2c Seppenbaur', price: 25000, life: 25, needs: ['tauernberg'], pistes: ['2c'], info: 'rot · 1,2 km · Seppenalm → Tauernberg Tal, von dort Talabfahrt 10 ins Dorf' },
       panorama: { label: 'Panoramabahn', price: 220000, life: 20, needs: ['schareck'], lifts: ['panorama'], info: 'Fallbichl → Schareck. Sinnvoll erst mit Piste 1 Fallbichlabfahrt.' },
       p1: { label: 'Piste 1 Fallbichlabfahrt', price: 25000, life: 25, needs: ['panorama'], pistes: ['1'], info: 'schwarz · 1,4 km · Schareck → Fallbichl, für Sportliche' },
+      p1a: { label: 'Piste 1a Fallbichlabfahrt Variante', price: 30000, life: 25, needs: ['panorama'], pistes: ['1a'], info: 'rot · 2,0 km · Schareck → Fallbichl, Bogen über den Osthang' },
       viehbuehel: { label: 'Schlepplift Viehbühel', price: 60000, life: 20, needs: ['panorama'], lifts: ['viehbuehel'], info: 'Fallbichl → Viehbühel (2.420 m). Windanfällig. Braucht Piste 8.' },
       p8: { label: 'Piste 8 Viehbühel', price: 20000, life: 25, needs: ['viehbuehel'], pistes: ['8'], info: 'blau · 1,3 km · Viehbühel → Fallbichl' },
       schulwiese: { label: 'Tellerlift Schulwiese', price: 22000, life: 20, lifts: ['schulwiese'], pistes: ['S'], info: 'Übungslift im Ort mit Piste (250 m). Für Anfänger und Skischule.' },
