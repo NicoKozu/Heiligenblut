@@ -1,5 +1,5 @@
 import { D } from './data.js';
-import { DIRS, keys, LIFTX } from './area.js';
+import { DIRS, keys, LIFTX, PX } from './area.js';
 import { running, pisteOpen, pay } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
@@ -10,7 +10,7 @@ import { grp } from './people.js';
 
 const F = D.flow;
 const LIFT = LIFTX;
-const PISTE = Object.fromEntries(D.pistes.map(p => [p.id, p]));
+const PISTE = PX;
 const LV = ['leicht', 'mittel', 'schwer'];
 const smooth = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 const unsmooth = u => 0.5 - Math.sin(Math.asin(1 - 2 * Math.min(1, Math.max(0, u))) / 3);
@@ -234,7 +234,8 @@ function valid(G, f, g, node, d) {
 
 function runTime(f, g, p) {
   const d = LV.indexOf(p.level) - g.k, adj = d > 0 ? 1 - F.over * d * 2 : 1 + F.under * -d;
-  return p.km / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * Math.min(1, p.km / F.pauseKm) * span(f, [0.5, 1.5]);
+  const km = p.rk || p.km;
+  return km / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * Math.min(1, km / F.pauseKm) * span(f, [0.5, 1.5]);
 }
 
 function drop(G, f, g, lost) {
@@ -267,7 +268,7 @@ function go(G, f, g, node, t, ev, end) {
 const nodeOf = g => g.s === 'r' ? (g.rb ? LIFT[g.at].from : LIFT[g.at].to) : g.s === 'p' ? PISTE[g.at].to : g.s === 'h' ? SD.HUT[g.at].node : 'tal';
 
 function finish(G, f, g) {
-  if (g.s === 'p') wear(G, PISTE[g.at].of || g.at, g.n);
+  if (g.s === 'p') { wear(G, PISTE[g.at].of || g.at, g.n); if (PISTE[g.at].custom) { const R = G.today.runs || (G.today.runs = {}); R[g.at] = (R[g.at] || 0) + g.n; } }
   if (g.s === 'h') f.hut[g.at] = Math.max(0, f.hut[g.at] - g.n);
 }
 

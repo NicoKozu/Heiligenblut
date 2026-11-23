@@ -571,6 +571,10 @@ export function createCrowd(terrain, pistes, lift, assets) {
       const c = a?.at || a?.upto;
       if (c) p.pts.forEach((q, i) => { const d = Math.hypot(q[0] - c[0], q[1] - c[1]); if (d < bd) { bd = d; j = i; } });
       const pts = a?.upto ? [...p.pts.slice(lift.clear(p.pts), j), a.upto] : a?.at ? [a.at, ...p.pts.slice(j + 1)] : p.pts.slice(lift.clear(p.pts)), qs = secs.find(x => x.qbig);
+      const near = (q, c) => { let k = 0, b = Infinity; q.pts.forEach((v, i) => { const d = Math.hypot(v[0] - c[0], v[1] - c[1]); if (d < b) { b = d; k = i; } }); return k; };
+      const pp = a?.pre && pistes.list.find(x => x.id === a.pre.of), po = a?.post && pistes.list.find(x => x.id === a.post.of);
+      if (pp) pts.unshift(...pp.pts.slice(lift.clear(pp.pts), near(pp, a.pre.upto)));
+      if (po) pts.push(...po.pts.slice(near(po, a.post.at) + 1));
       const n0 = pts.length;
       if (qs) while (pts.length > 2 && Math.hypot(pts[pts.length - 1][0] - qs.a[0], pts[pts.length - 1][1] - qs.a[1]) < 32) pts.pop();
       const cut = pts.length < n0;
@@ -1100,5 +1104,5 @@ export function createCrowd(terrain, pistes, lift, assets) {
 
   let extra = null;
   const make = s => { const m = guest(mul(s >>> 0)); m.foot = true; return m; };
-  return { group, update, collide, setDensity, setQueue, link, make, setExtra: fn => { extra = fn; }, setSource: fn => { source = fn; }, get count() { return source ? act.length : members.length; } };
+  return { group, update, collide, setDensity, setQueue, link, make, repath: () => paths.clear(), setExtra: fn => { extra = fn; }, setSource: fn => { source = fn; }, get count() { return source ? act.length : members.length; } };
 }

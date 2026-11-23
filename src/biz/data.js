@@ -349,7 +349,8 @@ export const D = {
     },
     snap: 120, near: 30, minRise: 10, mid: 40000, clear: 8, exposed: 2200, kwK: 0.000409, kwBase: 20,
     base: { price: 60000, perSpot: 250, spots: [50, 600], step: 50, def: 150, road: 120, maxRoad: 2500 },
-    refund: 0.2, life: 20, max: 30, linkColor: '#ff8a1e'
+    refund: 0.2, life: 20, max: 30, linkColor: '#ff8a1e',
+    piste: { base: 4000, perM: 12, wRef: 40, width: [20, 60], def: 40, clearM2: 0.5, len: [150, 6000], drop: 30, max: 40, win: 50, steep: [0.25, 0.4], maxSlope: 1, rise: 4, snap: 120, join: 40, step: 10, life: 25 }
   }
 };
 

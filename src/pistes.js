@@ -101,26 +101,33 @@ export async function loadPistes(terrain) {
     return out;
   }
 
-  terrain.groom((x, z, y) => {
-    const q = nearest(x, z, 60);
+  list.forEach((p, i) => { p.slot = i + 1; });
+  const near1 = (p, x, z, max) => {
+    const b = p.box;
+    if (x < b[0] || x > b[2] || z < b[1] || z > b[3]) return null;
+    const out = nearestOn(p, x, z, { d2: max * max, p: null });
+    if (!out.p) return null;
+    out.d = Math.sqrt(out.d2);
+    out.y = p.y[out.i] + (p.y[out.i + 1] - p.y[out.i]) * out.t;
+    return out;
+  };
+  const groomFn = q => (x, z, y) => {
     if (!q) return null;
     const hw = q.p.width / 2;
     const w = 1 - THREE.MathUtils.smoothstep(q.d, hw, hw + FALL);
     if (w <= 0) return null;
     const c = (1 - THREE.MathUtils.smoothstep(q.d, hw - 6, hw + 12)) * 0.9;
-    return [y + (q.y - y) * w, c, q.lat, list.indexOf(q.p) + 1];
-  });
+    return [y + (q.y - y) * w, c, q.lat, q.p.slot];
+  };
+
+  terrain.groom((x, z, y) => groomFn(nearest(x, z, 60))(x, z, y));
 
   const group = new THREE.Group();
   const poleGeo = new THREE.CylinderGeometry(0.045, 0.045, 1.8, 6).translate(0, 0.9, 0);
   const capGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8).translate(0, 1.6, 0);
-  const poles = [];
-  const fenceTri = [];
   const STEP = 40;
-  for (const p of list) {
-    const hw = p.width / 2;
-    p.poles = [poles.length, 0];
-    p.ftri = fenceTri.length;
+  function fenceOf(p) {
+    const hw = p.width / 2, tri = [];
     for (let i = 0; i < p.pts.length - 1; i++) {
       const [ax, az] = p.pts[i], [bx, bz] = p.pts[i + 1];
       const l = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / l, nz = (bx - ax) / l;
@@ -144,10 +151,14 @@ export async function loadPistes(terrain) {
           const x0 = ax + (bx - ax) * t0 + nx * sg * o, z0 = az + (bz - az) * t0 + nz * sg * o;
           const x1 = ax + (bx - ax) * t1 + nx * sg * o, z1 = az + (bz - az) * t1 + nz * sg * o;
           const y0 = terrain.heightAt(x0, z0), y1 = terrain.heightAt(x1, z1);
-          fenceTri.push(x0, y0, z0, x1, y1, z1, x1, y1 + 1.3, z1, x0, y0, z0, x1, y1 + 1.3, z1, x0, y0 + 1.3, z0);
+          tri.push(x0, y0, z0, x1, y1, z1, x1, y1 + 1.3, z1, x0, y0, z0, x1, y1 + 1.3, z1, x0, y0 + 1.3, z0);
         }
       }
     }
+    return tri;
+  }
+  function polesOf(p) {
+    const hw = p.width / 2, out = [];
     for (let d = 10; d < p.len - 5; d += STEP) {
       let i = 0;
       while (i < p.s.length - 2 && p.s[i + 1] < d) i++;
@@ -157,44 +168,55 @@ export async function loadPistes(terrain) {
       const l = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / l, nz = (bx - ax) / l;
       for (const sg of [1, -1]) {
         const px = x + nx * sg * (hw + 1), pz = z + nz * sg * (hw + 1);
-        poles.push([px, terrain.heightAt(px, pz), pz, p.lv.color]);
+        out.push([px, terrain.heightAt(px, pz), pz, p.lv.color]);
       }
     }
+    return out;
+  }
+  const poles = [];
+  for (const p of list) {
+    p.poles = [poles.length, 0];
+    poles.push(...polesOf(p));
     p.poles[1] = poles.length;
-    p.ftri = [p.ftri, fenceTri.length];
+    p.ftri = fenceOf(p);
   }
 
   function hwOff(hw) { return hw + FENCE_OUT; }
 
-  const poleMesh = new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.6 }), poles.length);
-  const capMesh = new THREE.InstancedMesh(capGeo, new THREE.MeshStandardMaterial({ roughness: 0.5 }), poles.length);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.6 }), capMat = new THREE.MeshStandardMaterial({ roughness: 0.5 });
   const mtx = new THREE.Matrix4(), col = new THREE.Color();
-  poles.forEach(([x, y, z, c], k) => {
-    mtx.makeTranslation(x, y - 0.1, z);
-    poleMesh.setMatrixAt(k, mtx);
-    capMesh.setMatrixAt(k, mtx);
-    capMesh.setColorAt(k, col.setHex(c));
-  });
-  poleMesh.castShadow = capMesh.castShadow = true;
+  function poleMeshes(P) {
+    const a = new THREE.InstancedMesh(poleGeo, poleMat, Math.max(1, P.length)), b = new THREE.InstancedMesh(capGeo, capMat, Math.max(1, P.length));
+    a.count = b.count = P.length;
+    P.forEach(([x, y, z, c], k) => {
+      mtx.makeTranslation(x, y - 0.1, z);
+      a.setMatrixAt(k, mtx);
+      b.setMatrixAt(k, mtx);
+      b.setColorAt(k, col.setHex(c));
+    });
+    a.castShadow = b.castShadow = true;
+    return [a, b];
+  }
+  const [poleMesh, capMesh] = poleMeshes(poles);
   group.add(poleMesh, capMesh);
 
   const fenceMat = new THREE.MeshStandardMaterial({
     color: 0xff6a00, emissive: 0x4a1800, transparent: true, opacity: 0.8, side: THREE.DoubleSide, roughness: 0.8, depthWrite: false
   });
-  for (const p of list) {
-    const [a, b] = p.ftri;
-    if (b <= a) continue;
+  function fenceMesh(p, into) {
+    if (!p.ftri.length) return;
     const fg = new THREE.BufferGeometry();
-    fg.setAttribute('position', new THREE.Float32BufferAttribute(fenceTri.slice(a, b), 3));
+    fg.setAttribute('position', new THREE.Float32BufferAttribute(p.ftri, 3));
     fg.computeVertexNormals();
     p.fenceMesh = new THREE.Mesh(fg, fenceMat);
-    group.add(p.fenceMesh);
+    into.add(p.fenceMesh);
   }
+  for (const p of list) fenceMesh(p, group);
 
   const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0);
   const postMat = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 });
   const backMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.8 });
-  function sign(p, d, small) {
+  function sign(p, d, small, into = group) {
     let i = 0;
     while (i < p.s.length - 2 && p.s[i + 1] < d) i++;
     const [ax, az] = p.pts[i], [bx, bz] = p.pts[i + 1];
@@ -218,7 +240,7 @@ export async function loadPistes(terrain) {
     g.position.set(x, terrain.heightAt(x, z) - 0.1, z);
     g.rotation.y = Math.atan2(-tx, -tz);
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    group.add(g);
+    into.add(g);
     (p.signs ||= []).push(g);
   }
   for (const p of list) {
@@ -310,6 +332,7 @@ export async function loadPistes(terrain) {
     const p = list.find(q => q.id === id);
     if (!p || !p.unbuilt === on) return;
     p.unbuilt = !on;
+    if (p.custom) { p.grp.visible = on; return; }
     for (let k = p.poles[0]; k < p.poles[1]; k++) {
       if (on) { const [x, y, z] = poles[k]; mtx.makeTranslation(x, y - 0.1, z); } else mtx.copy(zero);
       poleMesh.setMatrixAt(k, mtx);
@@ -364,7 +387,55 @@ export async function loadPistes(terrain) {
     return { x: ax, z: az, heading: Math.atan2(bx - ax, bz - az), piste: p };
   }
 
-  const setSurface = (id, cord, worn, aper) => terrain.surface(list.findIndex(p => p.id === id) + 1, cord, worn, aper);
-  const setTint = (id, c, a) => terrain.tint(list.findIndex(p => p.id === id) + 1, c, a);
-  return { group, list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt, setTint };
+  const slotOf = id => list.find(p => p.id === id)?.slot || 0;
+  const setSurface = (id, cord, worn, aper) => terrain.surface(slotOf(id), cord, worn, aper);
+  const setTint = (id, c, a) => terrain.tint(slotOf(id), c, a);
+
+  const customs = [];
+  function lay(p) {
+    const m = p.width / 2 + FALL + 2;
+    p.undo = terrain.snapshot(p.box);
+    terrain.groom((x, z, y) => groomFn(near1(p, x, z, m))(x, z, y), p.box);
+  }
+  function addCustom(d) {
+    const old = list.find(q => q.id === d.id);
+    if (old) return old;
+    const used = new Set(list.map(q => q.slot));
+    let slot = 1;
+    while (used.has(slot)) slot++;
+    if (slot >= (terrain.slots || 24)) return null;
+    const p = prepare({ ...d }, terrain);
+    p.slot = slot;
+    p.custom = true;
+    let bd = Infinity;
+    const [ex, ez] = p.pts[p.pts.length - 1];
+    for (const q of Object.values(terrain.pois)) { const dd = Math.hypot(q.x - ex, q.z - ez); if (dd < bd) { bd = dd; p.end = q.name; } }
+    lay(p);
+    p.y = p.y.map((_, i) => terrain.heightAt(...p.pts[i]));
+    p.grp = new THREE.Group();
+    p.grp.add(...poleMeshes(polesOf(p)));
+    p.ftri = fenceOf(p);
+    fenceMesh(p, p.grp);
+    sign(p, Math.min(45, p.len / 3), false, p.grp);
+    for (let dd = 500; dd < p.len - 200; dd += 500) sign(p, dd, true, p.grp);
+    group.add(p.grp);
+    list.push(p);
+    customs.push(p);
+    return p;
+  }
+  function removeCustom(id) {
+    const p = customs.find(q => q.id === id);
+    if (!p) return;
+    for (let i = customs.length - 1; i >= 0; i--) customs[i].undo();
+    customs.splice(customs.indexOf(p), 1);
+    list.splice(list.indexOf(p), 1);
+    if (cur === p) cur = null;
+    group.remove(p.grp);
+    p.grp.traverse(o => { if (o.geometry && o.geometry !== poleGeo && o.geometry !== capGeo && o.geometry !== postGeo) o.geometry.dispose(); });
+    if (p.barrier) group.remove(p.barrier);
+    terrain.surface(p.slot, 1, 0, 0);
+    terrain.tint(p.slot, null, 0);
+    for (const q of customs) lay(q);
+  }
+  return { group, list, at, collide, startOf, nearest, setOpen, setSurface, setBuilt, setTint, addCustom, removeCustom, profile: p => prepare(p, terrain), LEVELS };
 }
