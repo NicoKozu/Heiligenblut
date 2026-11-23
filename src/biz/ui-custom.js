@@ -102,7 +102,7 @@ export function createCustom({ scene, cam, terrain, lift, village, props, hud, s
       if (h > 20 && h < 6000) {
         const sec = buildSection({ id: '_p', a: [a[0], a[2]], b: [b[0], b[2]], drag: t.drag, h: t.h }, terrain, [a[1], b[1]], []);
         out.towers += sec.towers.length;
-        if (!out.blocked && !t.drag) { const tw = sec.towers.find(w => props?.blocked?.(w.x, w.z, 4)); if (tw) out.blocked = 'Stütze auf Gebäude – Trasse leicht verschieben'; }
+        if (!out.blocked && !t.drag) { const tw = sec.towers.find(w => props?.blocked?.(w.x, w.z, 4)); if (tw) out.blocked = 'Stütze auf Gebäude oder Straße – Trasse leicht verschieben'; }
         out.secs.push(sec);
       }
     }
