@@ -4,7 +4,7 @@ import { TERRAIN_URL, get, image, texture } from './config.js';
 const SUB = 2;
 const CHUNK = 64;
 const UVS = 8;
-const SURF = 24;
+const SURF = 128;
 const SAT_URL = 'public/terrain/';
 
 function snowBumpTexture() {
@@ -45,20 +45,20 @@ float tnN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(tnH(i), tnH(i + vec2(1, 0)), f.x), mix(tnH(i + vec2(0, 1)), tnH(i + vec2(1, 1)), f.x), f.y); }
 vec3 tnH3(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }`;
 
-function snowMaterial(bump, sat, forest, rect, surf, tint) {
+function snowMaterial(bump, sat, forest, rect, ptex) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0, bumpMap: bump, bumpScale: 0.05 });
   mat.customProgramCacheKey = () => 'snow';
   mat.onBeforeCompile = s => {
     s.uniforms.satMap = { value: sat };
     s.uniforms.forMap = { value: forest };
     s.uniforms.satR = { value: rect };
-    s.uniforms.pSurf = { value: surf };
-    s.uniforms.pTint = { value: tint };
-    s.vertexShader = 'attribute vec3 pist;\nuniform vec3 pSurf[' + SURF + '];\nuniform vec4 pTint[' + SURF + '];\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec4 vTint;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+    s.uniforms.pTex = { value: ptex };
+    s.vertexShader = 'attribute vec3 pist;\nuniform sampler2D pTex;\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec4 vTint;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vTw = (modelMatrix * vec4(transformed, 1.0)).xyz;
-  vTint = pTint[int(pist.z + 0.5)];
+  int pI = clamp(int(pist.z + 0.5), 0, ${SURF - 1});
+  vTint = texelFetch(pTex, ivec2(pI, 1), 0);
   vPist = pist.xy;
-  vSurf = pSurf[int(pist.z + 0.5)];`);
+  vSurf = texelFetch(pTex, ivec2(pI, 0), 0).xyz;`);
     const bumpPars = THREE.ShaderChunk.bumpmap_pars_fragment.replace('vec2 dHdxy_fwd()', 'vec2 dHdxy_tex()') + `
   vec2 dHdxy_fwd() {
     float pm = clamp(vPist.x, 0.0, 1.0) * step(-0.5, vSurf.x);
@@ -171,10 +171,10 @@ export async function loadTerrain() {
   const COL = new Float32Array(NX * NZ * 3);
   const PIST = new Float32Array(NX * NZ * 3);
 
-  function calcNormals() {
-    for (let j = 0; j < NZ; j++) {
+  function calcNormals(I0 = 0, I1 = NX - 1, J0 = 0, J1 = NZ - 1) {
+    for (let j = J0; j <= J1; j++) {
       const j0 = Math.max(0, j - 1), j1 = Math.min(NZ - 1, j + 1);
-      for (let i = 0; i < NX; i++) {
+      for (let i = I0; i <= I1; i++) {
         const i0 = Math.max(0, i - 1), i1 = Math.min(NX - 1, i + 1);
         const gx = (H[j * NX + i1] - H[j * NX + i0]) / ((i1 - i0) * C);
         const gz = (H[j1 * NX + i] - H[j0 * NX + i]) / ((j1 - j0) * C);
@@ -241,9 +241,12 @@ export async function loadTerrain() {
   }
 
   const bump = snowBumpTexture();
-  const surf = Array.from({ length: SURF }, () => new THREE.Vector3(1, 0, 0));
-  const tints = Array.from({ length: SURF }, () => new THREE.Vector4(0, 0, 0, 0));
-  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth), surf, tints);
+  const PT = new Float32Array(SURF * 2 * 4);
+  for (let i = 0; i < SURF; i++) PT[i * 4] = 1;
+  const ptex = new THREE.DataTexture(PT, SURF, 2, THREE.RGBAFormat, THREE.FloatType);
+  ptex.needsUpdate = true;
+  const mat = snowMaterial(bump, sat, forTex, new THREE.Vector4(originX, originZ, width, depth), ptex);
+  const put = (o, a, b, c, d) => { if (PT[o] === a && PT[o + 1] === b && PT[o + 2] === c && PT[o + 3] === d) return; PT[o] = a; PT[o + 1] = b; PT[o + 2] = c; PT[o + 3] = d; ptex.needsUpdate = true; };
   const mesh = new THREE.Group();
   const chunks = [];
   for (let j0 = 0; j0 < NZ - 1; j0 += CHUNK) {
@@ -275,8 +278,9 @@ export async function loadTerrain() {
     }
   }
 
-  function sync() {
+  function sync(B) {
     for (const { geo, i0, j0, w, d } of chunks) {
+      if (B && (i0 > B[1] || i0 + w - 1 < B[0] || j0 > B[3] || j0 + d - 1 < B[2])) continue;
       const p = geo.attributes.position.array, n = geo.attributes.normal.array;
       const c = geo.attributes.color.array, s = geo.attributes.pist.array;
       for (let b = 0; b < d; b++) for (let a = 0; a < w; a++) {
@@ -294,9 +298,35 @@ export async function loadTerrain() {
   sync();
 
   const groomed = new THREE.Color(0xfbfdff);
-  function groom(fn) {
+  const cl = (v, n) => Math.max(0, Math.min(n - 1, v));
+  function range(box) {
+    if (!box) return [0, NX - 1, 0, NZ - 1];
+    return [cl(Math.floor((box[0] - originX) / C), NX), cl(Math.ceil((box[2] - originX) / C), NX), cl(Math.floor((box[1] - originZ) / C), NZ), cl(Math.ceil((box[3] - originZ) / C), NZ)];
+  }
+  function snapshot(box) {
+    const [I0, I1, J0, J1] = range(box), w = I1 - I0 + 1, n = w * (J1 - J0 + 1), h = new Float32Array(n), c = new Float32Array(n * 3), p = new Float32Array(n * 3);
+    for (let j = J0; j <= J1; j++) for (let i = I0; i <= I1; i++) {
+      const k = j * NX + i, v = (j - J0) * w + i - I0;
+      h[v] = H[k];
+      c.set(COL.subarray(k * 3, k * 3 + 3), v * 3);
+      p.set(PIST.subarray(k * 3, k * 3 + 3), v * 3);
+    }
+    return () => {
+      for (let j = J0; j <= J1; j++) for (let i = I0; i <= I1; i++) {
+        const k = j * NX + i, v = (j - J0) * w + i - I0;
+        H[k] = h[v];
+        COL.set(c.subarray(v * 3, v * 3 + 3), k * 3);
+        PIST.set(p.subarray(v * 3, v * 3 + 3), k * 3);
+      }
+      const R = [I0, I1, J0, J1];
+      calcNormals(Math.max(0, I0 - 1), Math.min(NX - 1, I1 + 1), Math.max(0, J0 - 1), Math.min(NZ - 1, J1 + 1));
+      sync([R[0] - 1, R[1] + 1, R[2] - 1, R[3] + 1]);
+    };
+  }
+  function groom(fn, box) {
     let any = false;
-    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
+    const [I0, I1, J0, J1] = range(box);
+    for (let j = J0; j <= J1; j++) for (let i = I0; i <= I1; i++) {
       const k = j * NX + i;
       const r = fn(originX + i * C, originZ + j * C, H[k]);
       if (!r) continue;
@@ -309,12 +339,13 @@ export async function loadTerrain() {
       if (r.length > 2 && r[1] / 0.9 >= PIST[k * 3]) { PIST[k * 3] = r[1] / 0.9; PIST[k * 3 + 1] = r[2]; PIST[k * 3 + 2] = r[3] || 0; }
     }
     if (!any) return;
-    calcNormals();
-    sync();
+    if (!box) { calcNormals(); sync(); return; }
+    calcNormals(Math.max(0, I0 - 1), Math.min(NX - 1, I1 + 1), Math.max(0, J0 - 1), Math.min(NZ - 1, J1 + 1));
+    sync([I0 - 1, I1 + 1, J0 - 1, J1 + 1]);
   }
 
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
-  const surface = (i, cord, worn, aper) => { if (i > 0 && i < SURF) surf[i].set(cord, worn, aper); };
-  const tint = (i, c, a) => { if (i > 0 && i < SURF) tints[i].set(c ? c.r : 0, c ? c.g : 0, c ? c.b : 0, c ? a : 0); };
-  return { mesh, heightAt, normalAt, inside, groom, forestAt, pois, meta, surface, tint };
+  const surface = (i, cord, worn, aper) => { if (i > 0 && i < SURF) put(i * 4, cord, worn, aper, 0); };
+  const tint = (i, c, a) => { if (i > 0 && i < SURF) put((SURF + i) * 4, c ? c.r : 0, c ? c.g : 0, c ? c.b : 0, c ? a : 0); };
+  return { mesh, heightAt, normalAt, inside, groom, snapshot, forestAt, pois, meta, surface, tint, slots: SURF };
 }

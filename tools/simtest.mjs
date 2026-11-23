@@ -8,7 +8,7 @@ import { setLevel, setSidePrice, HUTS } from '../src/biz/side.js';
 import { check, order, borrow, repay, seasonPL, groomer } from '../src/biz/build.js';
 import { seasonOf } from '../src/biz/calendar.js';
 import { pl } from '../src/biz/area.js';
-import { place, quote, segIds } from '../src/biz/custom.js';
+import { place, quote, segIds, pplace, pquote } from '../src/biz/custom.js';
 
 const argv = process.argv.slice(2);
 const opt = k => { const i = argv.indexOf('--' + k); return i < 0 ? null : argv[i + 1]; };
@@ -137,6 +137,10 @@ const OWN = [
   { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1246, 60], [-1890, 1898, 590]] }
 ];
 
+const dense = (P, step = 10) => P.slice(1).flatMap((b, i) => { const a = P[i], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[2] - a[2]) / step)); return Array.from({ length: n + (i === P.length - 2 ? 1 : 0) }, (_, k) => a.map((v, j) => v + (b[j] - v) * k / n)); });
+const zig = P => { let L = 0; const d = P.slice(1).map((b, i) => (L += Math.hypot(b[0] - P[i][0], b[2] - P[i][2]))); return P.map((p, i) => [p[0], P[0][1] + (P[P.length - 1][1] - P[0][1]) * (i ? d[i - 1] / L : 0), p[2]]); };
+const OWNP = [{ name: 'Gegenhangabfahrt', width: 40, pts: dense(zig([[-1890, 1895, 610], [-1700, 0, 1000], [-1300, 0, 750], [-1110, 1352, 290]])), forest: 20000 }];
+
 function openworld() {
   const s = sensible({ name: 'openworld', reserve: 100000, buffer: 100000, repayAbove: 130000, maxLoan: [D.start.credit, 800000], now: true, repayFrom: 3, finishFrom: 4, mkt: 0, plan: [ALL, [], REST] });
   const m = s.morning;
@@ -145,6 +149,8 @@ function openworld() {
       G.open = true;
       const o = OWN.find(o => !G.custom.lifts.some(c => c.name === o.name)), q = o && quote(G, o);
       if (q && !q.why && afford(G, q.price + 150000, s.c)) place(G, o);
+      const r = !o && OWNP.find(r => !G.custom.pistes.some(c => c.name === r.name)), pq = r && pquote(G, r);
+      if (pq && !pq.why && afford(G, pq.price + 150000, s.c)) pplace(G, r);
     }
     m(G);
   };
@@ -193,6 +199,8 @@ function run(name, seed, seasons, maxDays, daily) {
       cur.acc += h.sat?.hits?.accident || 0;
       cur.loanMax = Math.max(cur.loanMax, G.loan);
       cur.own = G.custom.lifts.filter(c => G.build.done.includes(c.id)).length;
+      cur.ownP = G.custom.pistes.filter(c => G.build.done.includes(c.id)).length;
+      cur.ownRuns = (cur.ownRuns || 0) + Object.values(h.runs || {}).reduce((a, v) => a + v, 0);
       cur.ownRides = (cur.ownRides || 0) + G.custom.lifts.flatMap(segIds).reduce((a, id) => a + (h.rides?.[id] || 0), 0);
       for (const id of G.build.done) if (!doneSeen.has(id)) { doneSeen.add(id); cur.built.push(short(id) + '@' + cur.day); }
       if (daily) days.push({ strat: name, seed, date: h.date, guests: h.guests, rev: h.revenue, cost: h.cost, cash: G.cash, z: h.sat?.z ?? 0, rep: G.rep, wait: h.avgWait || 0 });
@@ -222,7 +230,7 @@ function agg(runs, i) {
   if (!S.length) return null;
   const f = key => { const v = S.map(s => s[key]); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
   const o = {};
-  for (const key of ['own', 'ownRides', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
+  for (const key of ['own', 'ownRides', 'ownP', 'ownRuns', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
   o.insolv = runs.filter(r => r.seasons[i]?.insolvent).length;
   o.n = S.length;
   o.built = S[0].built.join(' ');
@@ -298,6 +306,8 @@ if (flag('check')) {
   for (let i = 0; i < seasons; i++) if (A[O]?.[i]) rows.push([O, i + 1, 'keine Insolvenz', A[O][i].insolv, A[O][i].insolv === 0]);
   add(O, 3, 'eigene Lifte gebaut = 3', 'own', v => v === 3, N);
   add(O, 2, 'eigener Sessellift genutzt', 'ownRides', ge(1000), K);
+  add(O, 3, 'eigene Piste gebaut = 1', 'ownP', v => v === 1, N);
+  add(O, 4, 'eigene Piste befahren', 'ownRuns', ge(500), K);
   for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.1e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;

@@ -4,7 +4,7 @@ import * as C from './custom.js';
 import * as B from './build.js';
 import { buildSection } from '../lift.js';
 
-const CSS = `
+export const CSS = `
 #biz-cpl{position:fixed;left:14px;top:64px;z-index:22;width:300px;max-height:calc(100vh - 90px);overflow:auto;background:rgba(12,20,30,.9);color:#dfe8f2;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 12px;font:13px system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.4)}
 #biz-cpl h4{margin:0 0 6px;font-size:15px;color:#fff;display:flex;justify-content:space-between}
 #biz-cpl .r{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -403,7 +403,7 @@ export function createCustom({ scene, cam, terrain, lift, village, props, hud, s
 
   function tab(G2, h) {
     const T = D.custom.types, P = D.build.projects;
-    if (!G2.open) return '<h2>Freier Bau</h2><p class="note">Wird freigeschaltet, sobald alle Lifte und Pisten des echten Gebiets gebaut sind (Tab Bau). Danach baust du eigene Lifte überall im Gelände: im Gebiet, als Tallift mit Talstation und Parkplatz oder als Verbindungslift zwischen Gebieten.</p>';
+    if (!G2.open) return '<h2>Freier Bau</h2><p class="note">Wird freigeschaltet, sobald alle Lifte und Pisten des echten Gebiets gebaut sind (Tab Bau). Danach baust du eigene Lifte und Pisten überall im Gelände: im Gebiet, als Tallift mit Talstation und Parkplatz oder als Verbindungslift zwischen Gebieten.</p>';
     const own = C.custLifts(G2);
     let s = '<h2>Neuen Lift platzieren</h2><p class="note">Öffnet den Flugmodus: Talstation und Bergstation anklicken (Gondel/Sessel optional mit Mittelstation). Liegt die Talstation frei, kann sie als Tallift mit Kassa und Parkplatz gebaut werden. Endpunkte bis ' + D.custom.snap + ' m an einer Station werden angeschlossen.</p><table>';
     for (const k of C.TYPES) { const t = T[k]; s += h.tr('<b>' + t.label + '</b><br><small style="opacity:.75">' + t.places + ' Plätze' + (t.max ? ' (Ausbau bis ' + t.max + ')' : '') + ' · ' + Math.round(3600 / t.gap * t.places).toLocaleString('de-AT') + ' P/h · ' + t.len[0] + '–' + t.len[1].toLocaleString('de-AT') + ' m · max. ' + Math.round(t.slope * 100) + ' %</small>', h.eur(t.base) + ' + ' + t.perM + ' €/m + ' + t.perHm + ' €/Hm<br><button class="btn primary" data-act="cplace:' + k + '">Platzieren</button>'); }

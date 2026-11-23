@@ -1,9 +1,9 @@
 import { D, addCabs, cabId } from './data.js';
-import { relink } from './area.js';
+import { relink, PX } from './area.js';
 import { log, ev } from './assets.js';
 import { order, done, job, room, post, writeoff } from './build.js';
 
-const C = D.custom, T = C.types, P = D.build.projects;
+const C = D.custom, T = C.types, P = D.build.projects, PC = C.piste, LV = ['leicht', 'mittel', 'schwer'];
 const CN = new Set();
 const r1 = v => Math.round(v * 10) / 10;
 
@@ -13,6 +13,7 @@ export function initCustom(G) {
   if (!G.custom) G.custom = { lifts: [], pistes: [], bases: [], n: 0 };
   for (const k of ['lifts', 'pistes', 'bases']) if (!Array.isArray(G.custom[k])) G.custom[k] = [];
   if (!G.custom.n) G.custom.n = 0;
+  if (!G.custom.pn) G.custom.pn = 0;
   if (G.open == null) G.open = false;
   sync(G);
 }
@@ -48,6 +49,11 @@ export function sync(G) {
     P[c.id] = { label: c.name, price: c.price, life: C.life, lifts: segs.map(s => s.id), park: c.base ? base(G, c.base)?.spots || 0 : 0, custom: true, info: info(c) };
     const t = T[c.type];
     for (const s of segs) addCabs(s, Math.max(20000, c.price / segs.length * 0.5), t.max || 20, { custom: true });
+  }
+  for (let i = D.pistes.length - 1; i >= 0; i--) if (D.pistes[i].custom) D.pistes.splice(i, 1);
+  for (const p of G.custom?.pistes || []) {
+    D.pistes.push({ id: p.id, name: p.name, level: p.level, km: p.km, rk: p.rk, from: p.from, to: p.to, proj: p.id, exp: true, custom: true, width: p.width, pre: p.pre || null, post: p.post || null });
+    P[p.id] = { label: 'Piste ' + p.id + ' ' + p.name, price: p.price, life: PC.life, pistes: [p.id], custom: true, info: pinfo(p) };
   }
   relink();
 }
@@ -177,6 +183,7 @@ export function canDemolish(G, id) {
   if (G.phase === 'open' && !G.summer) return 'nur außerhalb des Betriebs';
   const own = c.nodes.filter(n => n.startsWith(c.id + ':') || n === c.base);
   if (G.custom.lifts.some(x => x !== c && x.nodes.some(n => own.includes(n)))) return 'erst anschließende Lifte abreißen';
+  if (G.custom.pistes.some(p => own.includes(p.from) || own.includes(p.to))) return 'erst anschließende Pisten abreißen';
   return '';
 }
 
@@ -221,5 +228,117 @@ export function unlock(G) {
   return true;
 }
 
+export const custPiste = (G, id) => G.custom?.pistes.find(p => p.id === id);
+const levelOf = s => s <= PC.steep[0] ? 0 : s <= PC.steep[1] ? 1 : 2;
+const pinfo = p => p.level.replace('leicht', 'blau').replace('mittel', 'rot').replace('schwer', 'schwarz') + ' · ' + p.km.toFixed(1).replace('.', ',') + ' km · ' + p.width + ' m breit · ' + (D.nodes[p.from] || '') + ' → ' + (D.nodes[p.to] || '');
+
+export function profile(pts) {
+  const n = pts.length, h = new Float64Array(n);
+  let len = 0;
+  for (let i = 1; i < n; i++) { const a = pts[i - 1], b = pts[i], d = Math.hypot(b[0] - a[0], b[2] - a[2]); h[i] = h[i - 1] + d; len += Math.hypot(d, b[1] - a[1]); }
+  const lv = new Array(Math.max(0, n - 1)).fill(0), w = Math.min(PC.win, h[n - 1] || 0);
+  let max = 0, rise = 0;
+  if (n > 1 && w > 0) for (let i = 0, j = 0; i < n - 1; i++) {
+    while (j < n - 1 && h[j] - h[i] < w) j++;
+    const d = h[j] - h[i];
+    if (d < w * 0.99) break;
+    const sl = (pts[i][1] - pts[j][1]) / d;
+    max = Math.max(max, sl);
+    rise = Math.max(rise, pts[j][1] - pts[i][1]);
+    const k = levelOf(sl);
+    for (let m = i; m < j; m++) lv[m] = Math.max(lv[m], k);
+  }
+  const top = lv.reduce((a, v) => Math.max(a, v), 0);
+  return { len, h: h[n - 1] || 0, drop: n ? pts[0][1] - pts[n - 1][1] : 0, max, rise, lv, level: LV[top] };
+}
+
+export function pquote(G, req) {
+  const pts = req.pts || [], pr = profile(pts), width = Math.max(PC.width[0], Math.min(PC.width[1], Math.round(req.width || PC.def)));
+  const o = { ...pr, width, km: Math.round(pr.len) / 1000, parts: {}, price: 0, why: '', from: null, to: null };
+  if (pts.length > 1) {
+    const a = pts[0], b = pts[pts.length - 1], s0 = snap(G, a[0], a[2]), s1 = snap(G, b[0], b[2]);
+    const pre = !s0 && req.pre && PX[req.pre.of], post = !s1 && req.post && PX[req.post.of];
+    o.from = s0?.node || (pre ? pre.from : null);
+    o.to = s1?.node || (post ? post.to : null);
+    o.pre = pre ? { of: pre.id, upto: req.pre.upto, km: req.pre.km || 0 } : null;
+    o.post = post ? { of: post.id, at: req.post.at, km: req.post.km || 0 } : null;
+  }
+  o.rk = Math.round((o.km + (o.pre?.km || 0) + (o.post?.km || 0)) * 100) / 100;
+  o.forest = Math.round(req.forest || 0);
+  o.parts = { piste: Math.round(PC.base + PC.perM * pr.len * width / PC.wRef), clear: Math.round(PC.clearM2 * o.forest) };
+  o.price = Math.round((o.parts.piste + o.parts.clear) / 1000) * 1000;
+  o.why = pwhy(G, req, o);
+  return o;
+}
+
+function pwhy(G, req, o) {
+  if (!G.open) return 'Freier Ausbau noch nicht freigeschaltet';
+  if ((G.custom?.pistes.length || 0) >= PC.max) return 'höchstens ' + PC.max + ' eigene Pisten';
+  if ((req.pts || []).length < 2) return 'Endpunkt fehlt';
+  if (req.blocked) return req.blocked;
+  if (o.h < PC.len[0]) return 'zu kurz (min. ' + PC.len[0] + ' m)';
+  if (o.h > PC.len[1]) return 'zu lang (max. ' + PC.len[1].toLocaleString('de-DE') + ' m)';
+  if (!o.from) return 'Start nicht an Bergstation oder Piste';
+  if (!o.to) return 'Ende nicht an Station, Lift oder Piste';
+  if (o.from === o.to) return 'Start und Ende an derselben Station';
+  if (o.drop < PC.drop) return 'zu wenig Gefälle';
+  if (o.rise > PC.rise) return 'Gegenanstieg (' + Math.round(o.rise) + ' Hm bergauf)';
+  if (o.max > PC.maxSlope) return 'zu steil (max. ' + Math.round(PC.maxSlope * 100) + ' %)';
+  if (G.cash + room(G) < o.price) return 'zu wenig Geld/Kredit';
+  return '';
+}
+
+export function pplace(G, req) {
+  const q = pquote(G, req);
+  if (q.why) return null;
+  const id = 'E' + (++G.custom.pn), r = v => Math.round(v * 10) / 10;
+  const p = { id, name: (req.name || 'Abfahrt ' + G.custom.pn).slice(0, 40), pts: req.pts.map(v => v.map(r)), width: q.width, level: q.level, lv: q.lv, km: q.km, rk: q.rk, from: q.from, to: q.to, pre: q.pre, post: q.post, price: q.price, forest: q.forest, date: G.date };
+  G.custom.pistes.push(p);
+  sync(G);
+  if (!order(G, id, !!G.summer)) { G.custom.pistes = G.custom.pistes.filter(x => x !== p); sync(G); return null; }
+  log(G, 'Eigene Piste geplant: ' + p.name + ' (' + pinfo(p) + ')', 'info');
+  return id;
+}
+
+export function canDemolishPiste(G, id) {
+  const p = custPiste(G, id);
+  if (!p) return 'unbekannt';
+  if (G.phase === 'open' && !G.summer) return 'nur außerhalb des Betriebs';
+  if (G.cannons?.[id] > 0) return 'erst Schneekanonen abbauen';
+  if (G.custom.pistes.some(x => x.pre?.of === id || x.post?.of === id)) return 'erst anschließende Pisten abreißen';
+  return '';
+}
+
+export function prefundOf(G, id) {
+  const p = custPiste(G, id);
+  if (!p) return 0;
+  if (job(G, id)) return p.price;
+  return Math.round(G.fin.items.filter(x => x.id === id).reduce((a, x) => a + x.cost, 0) * C.refund);
+}
+
+export function demolishPiste(G, id) {
+  if (canDemolishPiste(G, id)) return false;
+  const p = custPiste(G, id), r = prefundOf(G, id), pending = !!job(G, id);
+  if (pending) post(G, 'invest', -r);
+  else {
+    const val = G.fin.items.filter(x => x.id === id).reduce((a, x) => a + x.val, 0);
+    post(G, 'sale', r);
+    writeoff(G, Math.max(0, val - r));
+  }
+  G.fin.items = G.fin.items.filter(x => x.id !== id);
+  G.build.done = G.build.done.filter(k => k !== id);
+  G.build.jobs = G.build.jobs.filter(j => j.id !== id);
+  delete G.pistes[id];
+  if (G.cannons) delete G.cannons[id];
+  if (G.pipes) G.pipes = G.pipes.filter(k => k !== id);
+  if (G.flow?.run) delete G.flow.run[id];
+  G.custom.pistes = G.custom.pistes.filter(x => x !== p);
+  sync(G);
+  ev(G, 'build', id, -1);
+  log(G, 'Piste ' + p.name + (pending ? ' storniert' : ' abgerissen – Rückerstattung ' + r.toLocaleString('de-DE') + ' €'), 'info');
+  return true;
+}
+
+export const custPistes = G => (G.custom?.pistes || []).map(p => ({ ...p, built: done(G, p.id), job: !!job(G, p.id) }));
 export const custLifts = G => (G.custom?.lifts || []).map(c => ({ ...c, segs: segIds(c), built: done(G, c.id), job: !!job(G, c.id) }));
 export { cabId };

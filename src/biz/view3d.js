@@ -257,9 +257,11 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       row('Gedränge', G.phase === 'open' ? Math.round(crowd) + ' Gäste/km' : '–') +
       row('Präparieren (Nacht)', o.grm ? 'ja' : 'nein') +
       row('Mittagspräparierung', o.mid ? 'ja' : 'nein') +
-      (can ? row('Beschneiung (Nacht)', (o.gun || 0) + ' h · ' + can + ' Kanonen') : '');
+      (can ? row('Beschneiung (Nacht)', (o.gun || 0) + ' h · ' + can + ' Kanonen') : '') +
+      (d.custom ? row('Eigene Piste', d.width + ' m breit · ' + (D.nodes[d.from] || '') + ' → ' + (D.nodes[d.to] || '')) : '');
     h += '<div class="a">' + btn('tog:piste:' + id, o.open ? 'Sperren' : 'Öffnen', { p: !o.open, off: !o.open && o.aper }) + btn('grm:' + id, o.grm ? 'Nicht präparieren' : 'Präparieren', { p: !o.grm }) + btn('mid:' + id, o.mid ? 'Mittag aus' : 'Mittag präparieren', { p: !o.mid });
     if (can) h += btn('gun:' + id + ':-' + D.snow.hStep, 'Beschneien −') + btn('gun:' + id + ':' + D.snow.hStep, 'Beschneien +', { p: true });
+    if (d.custom) { const w = CU.canDemolishPiste(G, id); h += btn('pdemo:' + id, 'Abriss +' + eur(CU.prefundOf(G, id)), { off: !!w, tip: w }); }
     return h + '</div>';
   }
 

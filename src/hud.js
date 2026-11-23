@@ -65,9 +65,17 @@ export function createHud(pistes) {
   }
 
   let svg = null;
-  function lines(L) {
+  const sets = {};
+  const P = v => v.toFixed(1);
+  function lines(L, k = 'lift') {
     if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none'; root.querySelector('#hud-map').insertBefore(svg, dot); }
-    svg.innerHTML = (L || []).map(l => { const [ax, ay] = mapAt(...l.a), [bx, by] = mapAt(...l.b); return '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + bx.toFixed(1) + '" y2="' + by.toFixed(1) + '" stroke="' + l.color + '" stroke-width="1.6" stroke-dasharray="' + (l.dash ? '3 2' : 'none') + '"/><circle cx="' + bx.toFixed(1) + '" cy="' + by.toFixed(1) + '" r="1.3" fill="' + l.color + '"/>'; }).join('');
+    sets[k] = L || [];
+    svg.innerHTML = Object.values(sets).flat().map(l => {
+      const da = '" stroke="' + l.color + '" stroke-width="' + (l.w || 1.6) + '" fill="none" stroke-dasharray="' + (l.dash ? '3 2' : 'none') + '"/>';
+      if (l.pts) return '<polyline points="' + l.pts.map(q => mapAt(...q).map(P).join(',')).join(' ') + da;
+      const [ax, ay] = mapAt(...l.a), [bx, by] = mapAt(...l.b);
+      return '<line x1="' + P(ax) + '" y1="' + P(ay) + '" x2="' + P(bx) + '" y2="' + P(by) + da + '<circle cx="' + P(bx) + '" cy="' + P(by) + '" r="1.3" fill="' + l.color + '"/>';
+    }).join('');
   }
 
   return { update, lines };

@@ -1,5 +1,5 @@
 import { D } from './data.js';
-import { pl } from './area.js';
+import { pl, PX } from './area.js';
 import { next as rand } from './rng.js';
 import { tempAt, advance, applyWind, avalClose, weatherFactor, forecastFor } from './weather.js';
 import { pay, log } from './assets.js';
@@ -8,11 +8,11 @@ import { duty, patrolShort } from './staff.js';
 
 const C = D.cover, S = D.snow, W = D.weather;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const PISTE = Object.fromEntries(D.pistes.map(p => [p.id, p]));
+const PISTE = PX;
 
 export const pisteH = p => (D.nodeH[p.from] + D.nodeH[p.to]) / 2;
 export const pisteT = (p, day) => tempAt(day.tTal, pisteH(p));
-export const area = p => p.km * 1000 * S.width;
+export const area = p => p.km * 1000 * (p.width || S.width);
 export const label = o => o.cond < C.worn ? 'abgefahren' : o.q || 'griffig';
 export const depthF = cm => clamp(C.depth[2] + (1 - C.depth[2]) * (cm - C.depth[0]) / (C.depth[1] - C.depth[0]), C.depth[2], 1);
 export const score = (G, id) => { const o = G.pistes[id]; return clamp((o.cond ?? 0) * (C.q[label(o)] ?? 1) * depthF(o.snow ?? 0), 0, 100); };
