@@ -142,8 +142,8 @@ export function createProps(terrain, pistes, lift, osm) {
   index();
 
   let avoid = null;
-  function blocked(x, z, m) {
-    if (avoid && avoid(x, z, m)) return true;
+  function blocked(x, z, m, only) {
+    if (!only && avoid && avoid(x, z, m)) return true;
     const list = bgrid.get(Math.floor(x / BC) * 65536 + Math.floor(z / BC));
     if (!list) return false;
     for (const i of list) {

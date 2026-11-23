@@ -104,7 +104,7 @@ export function createPisteTool({ scene, cam, terrain, pistes, village, props, h
       if (f > 0.2) out.forest += f * w * PC.step;
       if (out.blocked) continue;
       if (!terrain.inside(x, z)) out.blocked = 'außerhalb des Geländes';
-      else if (props?.blocked?.(x, z, 2)) out.blocked = 'Trasse über Gebäude';
+      else if (i * PC.step > 40 && (n - i) * PC.step > 40 && props?.blocked?.(x, z, 2, true)) out.blocked = 'Piste über Gebäude – Linie um das Haus führen';
       else if (i * PC.step > 80 && (n - i) * PC.step > 80 && village?.blocked?.(x, z, 1)) out.blocked = 'Trasse kreuzt Straße';
     }
     return out;
