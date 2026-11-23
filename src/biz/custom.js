@@ -2,8 +2,9 @@ import { D, addCabs, cabId } from './data.js';
 import { relink, PX } from './area.js';
 import { log, ev } from './assets.js';
 import { order, done, job, room, post, writeoff } from './build.js';
+import { rehut } from './side.js';
 
-const C = D.custom, T = C.types, P = D.build.projects, PC = C.piste, LV = ['leicht', 'mittel', 'schwer'];
+const C = D.custom, T = C.types, P = D.build.projects, PC = C.piste, CH = C.hut, LV = ['leicht', 'mittel', 'schwer'];
 const CN = new Set();
 const r1 = v => Math.round(v * 10) / 10;
 
@@ -11,7 +12,9 @@ export const TYPES = Object.keys(T);
 
 export function initCustom(G) {
   if (!G.custom) G.custom = { lifts: [], pistes: [], bases: [], n: 0 };
-  for (const k of ['lifts', 'pistes', 'bases']) if (!Array.isArray(G.custom[k])) G.custom[k] = [];
+  if (!G.custom.names) G.custom.names = {};
+  if (!G.custom.hn) G.custom.hn = 0;
+  for (const k of ['lifts', 'pistes', 'bases', 'huts']) if (!Array.isArray(G.custom[k])) G.custom[k] = [];
   if (!G.custom.n) G.custom.n = 0;
   if (!G.custom.pn) G.custom.pn = 0;
   if (G.open == null) G.open = false;
@@ -55,8 +58,19 @@ export function sync(G) {
     D.pistes.push({ id: p.id, name: p.name, level: p.level, km: p.km, rk: p.rk, from: p.from, to: p.to, proj: p.id, exp: true, custom: true, width: p.width, pre: p.pre || null, post: p.post || null });
     P[p.id] = { label: 'Piste ' + p.id + ' ' + p.name, price: p.price, life: PC.life, pistes: [p.id], custom: true, info: pinfo(p) };
   }
+  for (const b of G.custom?.bases || []) P['svc:' + b.id] = { label: 'Verleih & Skischule ' + b.name, price: C.svc.price, life: C.svc.life, needs: [b.lift], svc: b.id, custom: true, info: 'Ohne Verleih/Skischule leihen und buchen Gäste dieser Talstation nur ' + Math.round(C.svc.k * 100) + ' % so oft.' };
+  const SH = D.side.huts;
+  for (let i = SH.length - 1; i >= 0; i--) if (SH[i].custom) SH.splice(i, 1);
+  for (const h of G.custom?.huts || []) {
+    const z = CH.sizes[h.size];
+    SH.push({ id: h.id, name: h.name, node: h.node, seats: z.seats, draw: z.draw, fix: z.fix, custom: true });
+    P[h.id] = { label: h.name, price: h.price, life: CH.life, hut: h.id, custom: true, info: hinfo(h) };
+  }
+  rehut(G);
   relink();
 }
+
+const hinfo = h => 'Hütte ' + CH.sizes[h.size].label + ' · ' + CH.sizes[h.size].seats + ' Plätze · bei ' + (D.nodes[h.node] || '');
 
 function info(c) {
   const t = T[c.type];
@@ -92,7 +106,99 @@ export function areas(G, skip) {
   return A;
 }
 
-export const areaName = (G, a) => D.areas[a]?.label || base(G, a)?.name || '';
+export const areaName = (G, a) => G.custom?.names?.[a] || D.areas[a]?.label || base(G, a)?.name || '';
+
+export function areaList(G) {
+  const A = areas(G), o = [...Object.keys(D.areas), ...(G.custom?.bases || []).map(b => b.id)];
+  return o.map((id, i) => ({ id, name: areaName(G, id), color: C.areaColors[i % C.areaColors.length], nodes: Object.keys(A).filter(n => A[n] === id) }));
+}
+
+export function renameArea(G, a, name) {
+  const n = String(name || '').trim().slice(0, 40);
+  if (!D.areas[a] && !base(G, a)) return false;
+  if (n) G.custom.names[a] = n; else delete G.custom.names[a];
+  return true;
+}
+
+const areaOfNode = (A, n) => A[n] || 'hb';
+
+export function areaDay(G) {
+  const T = G.today, A = areas(G), o = {}, at = a => o[a] || (o[a] = { g: 0, rev: 0, cost: 0 });
+  const B = T.bases || {}, ng = Object.values(B).reduce((a, v) => a + v, 0);
+  for (const b in B) at(areaOfNode(A, b)).g += B[b];
+  const sh = {}, R = T.revenue || {}, K = T.costs || {};
+  for (const a in o) sh[a] = ng > 0 ? o[a].g / ng : 0;
+  const gen = ['tickets', 'rental', 'school', 'parking'].reduce((a, k) => a + Object.keys(R).filter(x => (k === 'tickets' ? x in D.tickets : x === k)).reduce((s, x) => s + R[x], 0), 0);
+  for (const a in sh) at(a).rev += gen * sh[a];
+  const hs = T.side || {}, gastro = R.gastro || 0, hr = D.side.huts.reduce((a, h) => a + (hs['h_' + h.id] || 0), 0);
+  for (const h of D.side.huts) { const v = hs['h_' + h.id] || 0; if (v) { at(areaOfNode(A, h.node)).rev += hr > 0 ? gastro * v / hr : 0; at(areaOfNode(A, h.node)).cost += v * D.side.gastro.goods + (G.side.huts[h.id]?.open ? h.fix ?? D.side.hutFix : 0); } }
+  const lp = T.lp || {}, ls = D.staffCost.lift || 0;
+  for (const l of G.lifts) {
+    const sp = D.lifts.find(x => x.id === l.id);
+    if (!sp || !l.open) continue;
+    at(areaOfNode(A, sp.from) || areaOfNode(A, sp.to)).cost += (sp.maint ?? D.maintPerLift) + (lp[l.id] || 0) + sp.staff * ls + D.adminLift;
+  }
+  const km = {};
+  let tk = 0;
+  for (const p of D.pistes) if (!p.of && G.pistes?.[p.id]?.open) { const a = areaOfNode(A, p.from); km[a] = (km[a] || 0) + p.km; tk += p.km; }
+  const pc = (K.groom || 0) + (K.snowmaking || 0);
+  for (const a in km) at(a).cost += tk > 0 ? pc * km[a] / tk : 0;
+  for (const a in o) { o[a].g = Math.round(o[a].g); o[a].rev = Math.round(o[a].rev); o[a].cost = Math.round(o[a].cost); }
+  return o;
+}
+
+export function areaSeason(H) {
+  const o = {};
+  for (const h of H) for (const a in h.area || {}) { const x = o[a] || (o[a] = { g: 0, rev: 0, cost: 0 }); x.g += h.area[a].g; x.rev += h.area[a].rev; x.cost += h.area[a].cost; }
+  return o;
+}
+
+export const custHut = (G, id) => G.custom?.huts.find(h => h.id === id);
+
+export function hquote(G, req) {
+  const z = CH.sizes[req.size] || CH.sizes[CH.def], s = req.x != null ? snap(G, req.x, req.z) : null, near = s && s.d <= CH.snap ? s : null;
+  const o = { size: CH.sizes[req.size] ? req.size : CH.def, seats: z.seats, price: z.price, node: near?.node || null, why: '' };
+  o.why = !G.open ? 'Freier Ausbau noch nicht freigeschaltet' : (G.custom?.huts.length || 0) >= CH.max ? 'höchstens ' + CH.max + ' eigene Hütten' : req.blocked ? req.blocked : !o.node ? 'zu weit von einer Station (max. ' + CH.snap + ' m)' : (s.d < CH.min) ? 'zu nah an der Station' : G.cash + room(G) < o.price ? 'zu wenig Geld/Kredit' : '';
+  return o;
+}
+
+export function hplace(G, req) {
+  const q = hquote(G, req);
+  if (q.why) return null;
+  const id = 'H' + (++G.custom.hn);
+  const h = { id, name: (req.name || 'Hütte ' + G.custom.hn).slice(0, 40), size: q.size, node: q.node, x: Math.round(req.x * 10) / 10, y: Math.round((req.y || D.nodeH[q.node] || 0) * 10) / 10, z: Math.round(req.z * 10) / 10, rot: req.rot || 0, price: q.price, date: G.date };
+  G.custom.huts.push(h);
+  sync(G);
+  if (req.level && D.side.levels[req.level]) G.side.huts[id].level = req.level;
+  if (!order(G, id, !!G.summer)) { G.custom.huts = G.custom.huts.filter(x => x !== h); sync(G); return null; }
+  log(G, 'Eigene Hütte geplant: ' + h.name + ' (' + hinfo(h) + ')', 'info');
+  return id;
+}
+
+export function canDemolishHut(G, id) {
+  if (!custHut(G, id)) return 'unbekannt';
+  if (G.phase === 'open' && !G.summer) return 'nur außerhalb des Betriebs';
+  return '';
+}
+
+export const hrefundOf = (G, id) => job(G, id) ? custHut(G, id)?.price || 0 : Math.round(G.fin.items.filter(x => x.id === id).reduce((a, x) => a + x.cost, 0) * C.refund);
+
+export function demolishHut(G, id) {
+  if (canDemolishHut(G, id)) return false;
+  const h = custHut(G, id), r = hrefundOf(G, id), pending = !!job(G, id);
+  if (pending) post(G, 'invest', -r);
+  else { const val = G.fin.items.filter(x => x.id === id).reduce((a, x) => a + x.val, 0); post(G, 'sale', r); writeoff(G, Math.max(0, val - r)); }
+  G.fin.items = G.fin.items.filter(x => x.id !== id);
+  G.build.done = G.build.done.filter(k => k !== id);
+  G.build.jobs = G.build.jobs.filter(j => j.id !== id);
+  G.custom.huts = G.custom.huts.filter(x => x !== h);
+  sync(G);
+  ev(G, 'build', id, -1);
+  log(G, h.name + (pending ? ' storniert' : ' abgerissen – Rückerstattung ' + r.toLocaleString('de-DE') + ' €'), 'info');
+  return true;
+}
+
+export const custHuts = G => (G.custom?.huts || []).map(h => ({ ...h, seats: CH.sizes[h.size].seats, built: done(G, h.id), job: !!job(G, h.id), open: !!G.side?.huts[h.id]?.open }));
 
 export function quote(G, req) {
   const t = T[req.type], pts = req.pts || [];
@@ -184,6 +290,7 @@ export function canDemolish(G, id) {
   const own = c.nodes.filter(n => n.startsWith(c.id + ':') || n === c.base);
   if (G.custom.lifts.some(x => x !== c && x.nodes.some(n => own.includes(n)))) return 'erst anschließende Lifte abreißen';
   if (G.custom.pistes.some(p => own.includes(p.from) || own.includes(p.to))) return 'erst anschließende Pisten abreißen';
+  if ((G.custom.huts || []).some(h => own.includes(h.node))) return 'erst Hütten an der Station abreißen';
   return '';
 }
 
@@ -199,7 +306,7 @@ export function demolish(G, id) {
   if (canDemolish(G, id)) return false;
   const c = lift(G, id), segs = segIds(c), r = refundOf(G, id), pending = !!job(G, c.id);
   const cabs = Object.keys(P).filter(k => P[k].custom && segs.includes(P[k].cab));
-  const ids = [c.id, ...cabs];
+  const ids = [c.id, ...cabs, ...(c.base ? ['svc:' + c.base] : [])];
   if (pending) post(G, 'invest', -r);
   else {
     const val = G.fin.items.filter(x => ids.includes(x.id)).reduce((a, x) => a + x.val, 0);

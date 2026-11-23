@@ -10,11 +10,12 @@ import { consume } from '../input.js';
 import { createView3d } from './view3d.js';
 import { createCustom } from './ui-custom.js';
 import { createPisteTool } from './ui-piste.js';
+import { createHutTool } from './ui-hut.js';
 import * as CU from './custom.js';
 import { bases as netBases } from './net.js';
 
 export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain, village, props, hud }) {
-  const ui = createUI({ refresh: () => ui.render(G), action, custom: (g, h) => cust.tab(g, h) + pt.tab(g, h), price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
+  const ui = createUI({ refresh: () => ui.render(G), action, custom: (g, h) => cust.tab(g, h) + pt.tab(g, h) + ht.tab(g, h), rename: (a, v) => { if (G && CU.renameArea(G, a, v)) { save(); ui.render(G); } }, price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
   let G = null, active = false, hold = false, acc = 0, htxt = '';
@@ -30,6 +31,10 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
   const v3 = createView3d({ scene, cam, terrain, lift, pistes, scenery, act: a => action(a) });
   const cust = createCustom({ scene, cam, terrain, lift, village, props, hud, scenery, act: a => action(a), note: (t, s) => note(t, s) });
   const pt = createPisteTool({ scene, cam, terrain, pistes, village, props, hud, scenery, crowd, act: a => action(a), note: (t, s) => note(t, s) });
+  const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
+  const ht = createHutTool({ scene, cam, terrain, scenery, huts, act: a => action(a), note: (t, s) => note(t, s) });
+  ht.setRef({ pistes, lift });
+  const H = { eur: v => Math.round(v).toLocaleString('de-AT') + ' €', num: v => Math.round(v).toLocaleString('de-AT') };
   function mgr(on) {
     if (on === v3.mgr) return;
     v3.setMgr(on);
@@ -65,8 +70,11 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (a.startsWith('mach:')) { if (B.groomer(G, Number(a.slice(5)))) save(); }
     else if (a.startsWith('can:')) { const [, id, d] = a.split(':'); if (B.cannon(G, id, Number(d))) save(); }
     else if (a.startsWith('pipe:')) { if (B.pipe(G, a.slice(5))) save(); }
-    else if (a.startsWith('cplace:')) { pt.cancel(); if (cust.start(a.slice(7))) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
-    else if (a === 'pplace') { cust.cancel(); if (pt.start()) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
+    else if (a === 'hplace') { cust.cancel(); pt.cancel(); if (ht.start()) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
+    else if (a.startsWith('hdemo:')) { if (CU.demolishHut(G, a.slice(6))) { save(); note('Hütte abgerissen', 2); } }
+    else if (a === 'amap') { ui.close(); ht.openMap(G, H); }
+    else if (a.startsWith('cplace:')) { pt.cancel(); ht.cancel(); if (cust.start(a.slice(7))) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
+    else if (a === 'pplace') { cust.cancel(); ht.cancel(); if (pt.start()) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
     else if (a.startsWith('pdemo:')) { if (CU.demolishPiste(G, a.slice(6))) { save(); note('Piste abgerissen', 2); } }
     else if (a.startsWith('cdemo:')) { if (CU.demolish(G, a.slice(6))) { save(); note('Lift abgerissen', 2); } }
     else if (a === 'custom:built') save();
@@ -112,6 +120,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     }
     cust.sync(G, active);
     pt.sync(G, active);
+    ht.sync(G, active);
     env?.set(active ? G.weather?.today : null);
     if (scenery) scenery.wind = active && G.weather?.today ? G.weather.today.wind / 70 : 0.2;
     if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.side.huts[h.id].own && G.phase !== 'closed'));
@@ -135,7 +144,6 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     v3.set(true, G);
   }
 
-  const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
   const view = () => active && G.flow ? { f: G.flow, now: G.min - 1 + (G.phase === 'open' ? clk.frac() : 0), pace: lift.pace || 0, huts, base: b => b && b !== 'tal' ? CU.base(G, b)?.lift || null : null, places: id => G.lifts.find(x => x.id === id)?.places || D.lifts.find(x => x.id === id)?.places } : null;
 
   function end() {
@@ -161,6 +169,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     cust.update(G, dt);
     pt.setOn(v3.mgr);
     pt.update(G);
+    ht.update(G);
     while (keys.length) {
       const k = keys.shift();
       if (k === '+' || k === '-') { const f = S.setFactor(G, k === '+' ? 1 : -1); note(f < 1 ? 'Zeitfaktor Echtzeit' : 'Zeitfaktor ×' + f, 1.2); }
@@ -194,7 +203,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     hold = want;
     if (hold) {
       const v = G.fin?.over ? 'over' : G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily';
-      if (ui.view !== v && !cust.active && !pt.active) ui.open(v);
+      if (ui.view !== v && !cust.active && !pt.active && !ht.active) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';
 

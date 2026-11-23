@@ -14,6 +14,12 @@ function dl(a, b, f, up = true) {
   return ' <small class="' + ((d > 0) === up ? 'biz-good' : 'biz-bad') + '">' + (d > 0 ? '+' : '−') + f(Math.abs(d)) + '</small>';
 }
 
+function areaRows(s, h) {
+  const A = s.areas || {}, ids = Object.keys(A).filter(k => A[k].g > 0 || A[k].rev > 0);
+  if (ids.length < 2) return '';
+  return '<h2>Gebiete</h2><table>' + ids.map(k => { const x = A[k], d = x.rev - x.cost; return h.tr((s.anames?.[k] || k) + ' <small style="opacity:.6">' + h.num(x.g) + ' Gäste</small>', h.eur(x.rev) + ' − ' + h.eur(x.cost) + ' = <b class="' + (d >= 0 ? 'biz-good' : 'biz-bad') + '">' + h.eur(d) + '</b>'); }).join('') + '</table><p class="note">Erlös − direkte Kosten je Gebiet (ohne Verwaltung, Marketing, Zinsen, Abschreibung).</p>';
+}
+
 export function seasonView(G, h) {
   const { eur, tr, num, dec } = h, s = G.seasons[G.seasons.length - 1];
   if (!s) return '<h1>Saisonende</h1><p class="sub">Keine Betriebstage in dieser Saison.</p><div class="go"><button class="primary" data-act="splan">Zur Sommerplanung ⏎</button></div>';
@@ -48,6 +54,7 @@ export function seasonView(G, h) {
     '<h2>Beste und schlechteste Tage</h2><table>' + day('Meiste Gäste', s.best) + day('Wenigste Gäste', s.worst) + day('Bestes Ergebnis', s.bestR) + day('Schlechtestes Ergebnis', s.worstR) + '</table>' +
     '<h2>Erlöse</h2><table>' + rev.map(([k, v]) => tr(lb(k), eur(v) + ' <small style="opacity:.6">' + pc(v / s.R * 100) + '</small>')).join('') + tr('<b>Summe</b>', '<b>' + eur(s.R) + '</b>', 'sum') + '</table>' +
     '<h2>Kosten</h2><table>' + cost.map(([k, v]) => tr(D.costLabels[k] || k, eur(-v) + ' <small style="opacity:.6">' + pc(v / s.C * 100) + '</small>')).join('') + tr('<b>Summe</b>', '<b>' + eur(-s.C) + '</b>', 'sum') + '</table>' +
+    areaRows(s, h) +
     '<h2>Gebaut und investiert</h2><table>' + (s.built.length ? s.built.map(id => tr(P[id]?.label || id, eur(P[id]?.price || 0))).join('') : tr('Keine Bauprojekte fertiggestellt', '–')) + tr('Investitionen in der Saison', eur(s.invest), 'sum') + '</table>' +
     '<h2>Personal</h2><table>' + tr('Mitarbeiter Saisonende', num(s.heads)) +
     tr('Mitarbeiter zuletzt', num(s.heads)) + tr('Lohnkosten', eur(s.wages)) + '</table>' +

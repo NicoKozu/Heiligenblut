@@ -79,7 +79,7 @@ export const D = {
     variety: 0.6,
     look: 10
   },
-  net: { home: [-158, -109], funEl: 1.2, cond: [0.6, 0.4], variety: 0.25, varRef: 8, waitTau: 15, park: [0.25, 0.75], distTau: 6, memK: 0.3, mem0: 0.5, memA: 0.25, memWait: 30, shuttle: 6, shuttleMin: 20, lastRide: 980, homeBy: 960, early: 12, awayW: 0.15, dead: 0.002, offerBase: 0.04, offerLink: 0.03, offerMax: 0.12, repKm: 0.03, repMax: 0.15 },
+  net: { home: [-158, -109], funEl: 1.2, cond: [0.6, 0.4], variety: 0.25, varRef: 8, waitTau: 15, park: [0.25, 0.75], distTau: 6, memK: 0.3, mem0: 0.5, memA: 0.25, memWait: 30, shuttle: 6, shuttleMin: 20, lastRide: 980, homeBy: 960, early: 12, awayW: 0.15, dead: 0.002, offerBase: 0.1, offerLink: 0.03, offerMax: 0.2, repKm: 0.03, repMax: 0.15 },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 2000,
   guestCost: 9,
@@ -351,6 +351,10 @@ export const D = {
     snap: 120, near: 30, minRise: 10, mid: 40000, clear: 8, exposed: 2200, kwK: 0.000409, kwBase: 20,
     base: { price: 60000, perSpot: 250, spots: [50, 600], step: 50, def: 150, road: 120, maxRoad: 2500 },
     refund: 0.2, life: 20, max: 30, linkColor: '#ff8a1e',
+    hut: { sizes: { S: { label: 'klein', seats: 60, price: 40000, draw: 0.7, fix: 450, w: 8, l: 10, h: 3, color: 0x77502f }, M: { label: 'mittel', seats: 120, price: 70000, draw: 0.9, fix: 650, w: 10, l: 14, h: 3.4, color: 0x6e4a2e }, L: { label: 'groß', seats: 220, price: 115000, draw: 1.1, fix: 900, w: 13, l: 20, h: 4.2, color: 0x5d3f28 } }, def: 'M', snap: 150, min: 25, max: 12, life: 25 },
+    svc: { price: 45000, life: 20, k: 0.35 },
+    dim: 0.6, creditK: 0.5, creditStep: 50000,
+    areaColors: ['#5aa2ff', '#7be07b', '#ffb14a', '#ff6b5a', '#b48cff', '#4ad6d6', '#f07ad8', '#d6d64a'],
     piste: { base: 4000, perM: 12, wRef: 40, width: [20, 60], def: 40, clearM2: 0.5, len: [150, 6000], drop: 30, max: 40, win: 50, steep: [0.25, 0.4], maxSlope: 1, rise: 4, snap: 120, join: 40, step: 10, life: 25 }
   }
 };

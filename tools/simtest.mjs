@@ -5,10 +5,10 @@ import { repair, inspect } from '../src/biz/assets.js';
 import { setGroom, setGun, nightTemp, groomPlan } from '../src/biz/snow.js';
 import { act } from '../src/biz/marketing.js';
 import { setLevel, setSidePrice, HUTS } from '../src/biz/side.js';
-import { check, order, borrow, repay, seasonPL, groomer } from '../src/biz/build.js';
+import { check, order, borrow, repay, seasonPL, groomer, credit } from '../src/biz/build.js';
 import { seasonOf } from '../src/biz/calendar.js';
 import { pl } from '../src/biz/area.js';
-import { place, quote, segIds, pplace, pquote } from '../src/biz/custom.js';
+import { place, quote, segIds, pplace, pquote, hplace, hquote } from '../src/biz/custom.js';
 
 const argv = process.argv.slice(2);
 const opt = k => { const i = argv.indexOf('--' + k); return i < 0 ? null : argv[i + 1]; };
@@ -29,7 +29,7 @@ const lastDay = G => seasonOf(nextDate(G)) !== G.season;
 
 function afford(G, price, c) {
   const cap = Array.isArray(c.maxLoan) ? c.maxLoan[Math.min(c.si, c.maxLoan.length - 1)] : c.maxLoan;
-  const own = G.cash - c.reserve, room = Math.max(0, Math.min(cap, D.start.credit - c.buffer) - G.loan);
+  const own = G.cash - c.reserve, room = Math.max(0, Math.min(cap, credit(G) - c.buffer) - G.loan);
   if (own + room < price) return false;
   if (own < price) borrow(G, Math.ceil((price - own) / D.fin.autoDraw) * D.fin.autoDraw);
   return true;
@@ -131,37 +131,42 @@ function investor() {
 }
 
 const REST = ['tauernberg', 'p2c', 'viehbuehel', 'p8', 'schulwiese', 'kidsworld', 'ederfeld', 'p2b', 'p1a'];
-const OWN = [
-  { type: 'gondola', name: 'Gegenhangbahn', pts: [[-1100, 1350, 300], [-1900, 1900, 600]], base: { name: 'Talstation Gegenhang', spots: 150 } },
-  { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1246, 60], [-1890, 1898, 590]] },
-  { type: 'chair', name: 'Sessellift Rossbach-Express', pts: [[-140, 1312, -90], [600, 1745, -900]] }
-];
-
 const dense = (P, step = 10) => P.slice(1).flatMap((b, i) => { const a = P[i], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[2] - a[2]) / step)); return Array.from({ length: n + (i === P.length - 2 ? 1 : 0) }, (_, k) => a.map((v, j) => v + (b[j] - v) * k / n)); });
 const zig = P => { let L = 0; const d = P.slice(1).map((b, i) => (L += Math.hypot(b[0] - P[i][0], b[2] - P[i][2]))); return P.map((p, i) => [p[0], P[0][1] + (P[P.length - 1][1] - P[0][1]) * (i ? d[i - 1] / L : 0), p[2]]); };
-const OWNP = [
-  { name: 'Gegenhangabfahrt', width: 40, pts: dense(zig([[-1890, 1895, 610], [-1700, 0, 1000], [-1300, 0, 750], [-1110, 1352, 290]])), forest: 20000 },
-  { name: 'Waldabfahrt', width: 35, pts: dense(zig([[-1890, 1895, 610], [-2100, 0, 350], [-1600, 0, 150], [-1110, 1352, 290]])), forest: 20000 }
+const OWN = [
+  { k: 'lift', o: { type: 'gondola', name: 'Gegenhangbahn', pts: [[-1100, 1482, 300], [-1900, 1967, 600]], base: { name: 'Talstation Gegenhang', spots: 150 } } },
+  { k: 'piste', o: { name: 'Gegenhangabfahrt', width: 40, pts: dense(zig([[-1890, 1972, 610], [-1700, 0, 1000], [-1300, 0, 750], [-1110, 1482, 290]])), forest: 20000 } },
+  { k: 'piste', o: { name: 'Waldabfahrt', width: 35, pts: dense(zig([[-1890, 1972, 610], [-2100, 0, 350], [-1600, 0, 150], [-1110, 1482, 290]])), forest: 20000 } },
+  { k: 'hut', o: { name: 'Gegenhang Alm', size: 'M', x: -1960, y: 1975, z: 660 } },
+  { k: 'svc', o: 'Talstation Gegenhang' },
+  { k: 'lift', o: { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1239, 60], [-1890, 1972, 590]] } },
+  { k: 'lift', o: { type: 'chair', name: 'Sessellift Gegenhang-Gipfel', pts: [[-1880, 1972, 620], [-2400, 2387, 1200]] } },
+  { k: 'piste', o: { name: 'Gipfelabfahrt', width: 40, pts: dense(zig([[-2400, 2387, 1200], [-2600, 0, 900], [-2200, 0, 700], [-1890, 1972, 610]])), forest: 15000 } },
+  { k: 'lift', o: { type: 'drag', name: 'Übungslift Gegenhang', pts: [[-1080, 1480, 330], [-1450, 1576, 300]] } },
+  { k: 'piste', o: { name: 'Übungshang', width: 45, pts: dense(zig([[-1450, 1576, 300], [-1300, 0, 200], [-1110, 1482, 290]])), forest: 5000 } }
 ];
 
-function openworld() {
-  const s = sensible({ name: 'openworld', reserve: 100000, buffer: 100000, repayAbove: 130000, maxLoan: [D.start.credit, 800000], now: true, repayFrom: 3, finishFrom: 4, mkt: 0, plan: [ALL, [], REST] });
+const ownDone = (G, x) => x.k === 'lift' ? G.custom.lifts.some(c => c.name === x.o.name) : x.k === 'piste' ? G.custom.pistes.some(c => c.name === x.o.name) : x.k === 'hut' ? G.custom.huts.some(c => c.name === x.o.name) : G.custom.bases.some(b => b.name === x.o && b.svc || G.build.jobs.some(j => j.id === 'svc:' + b.id));
+function ownStep(G, s) {
+  const x = OWN.find(x => !ownDone(G, x));
+  if (!x) return;
+  if (x.k === 'svc') { const b = G.custom.bases.find(b => b.name === x.o), id = b && 'svc:' + b.id; if (id && !check(G, id) && afford(G, P[id].price + 150000, s.c)) order(G, id); return; }
+  const q = x.k === 'lift' ? quote(G, x.o) : x.k === 'piste' ? pquote(G, x.o) : hquote(G, x.o);
+  if (q.why || !afford(G, q.price + 150000, s.c)) return;
+  (x.k === 'lift' ? place : x.k === 'piste' ? pplace : hplace)(G, x.o);
+}
+
+function openworld(own = true) {
+  const s = sensible({ name: own ? 'openworld' : 'vollausbau', reserve: 100000, buffer: 100000, repayAbove: 130000, maxLoan: [D.start.credit, 800000, 1400000], now: true, repayFrom: 3, finishFrom: 4, mkt: 0, plan: [ALL, [], REST] });
   const m = s.morning;
   s.morning = G => {
-    if (sIdx(G, s) >= 2) {
-      G.open = true;
-      const nl = G.custom.lifts.length, np = G.custom.pistes.length;
-      const o = nl <= np ? OWN.find(o => !G.custom.lifts.some(c => c.name === o.name)) : null, q = o && quote(G, o);
-      if (q && !q.why && afford(G, q.price + 150000, s.c)) place(G, o);
-      const r = !o && OWNP.find(r => !G.custom.pistes.some(c => c.name === r.name)), pq = r && pquote(G, r);
-      if (pq && !pq.why && afford(G, pq.price + 150000, s.c)) pplace(G, r);
-    }
+    if (own && sIdx(G, s) >= 2) { G.open = true; ownStep(G, s); }
     m(G);
   };
   return s;
 }
 
-const STRATS = { 'vernünftig': () => sensible(), abwarten: waiting, gierig: greedy, geizig: stingy, investor, openworld };
+const STRATS = { 'vernünftig': () => sensible(), abwarten: waiting, gierig: greedy, geizig: stingy, investor, openworld: () => openworld(), vollausbau: () => openworld(false) };
 
 function run(name, seed, seasons, maxDays, daily) {
   const s = STRATS[name](), G = newGame(seed), out = [], days = [];
@@ -204,6 +209,8 @@ function run(name, seed, seasons, maxDays, daily) {
       cur.loanMax = Math.max(cur.loanMax, G.loan);
       cur.own = G.custom.lifts.filter(c => G.build.done.includes(c.id)).length;
       cur.ownP = G.custom.pistes.filter(c => G.build.done.includes(c.id)).length;
+      cur.ownH = G.custom.huts.filter(c => G.build.done.includes(c.id)).length;
+      for (const b of G.custom.bases.slice(0, 1)) { const x = h.area?.[b.id]; if (x) { cur.a2g = (cur.a2g || 0) + x.g; cur.a2 = (cur.a2 || 0) + x.rev - x.cost; } }
       cur.ownRuns = (cur.ownRuns || 0) + Object.values(h.runs || {}).reduce((a, v) => a + v, 0);
       cur.ownRides = (cur.ownRides || 0) + G.custom.lifts.flatMap(segIds).reduce((a, id) => a + (h.rides?.[id] || 0), 0);
       const hb = Object.entries(h.bases || {});
@@ -239,9 +246,9 @@ const padR = (s, n) => String(s).padEnd(n);
 function agg(runs, i) {
   const S = runs.map(r => r.seasons[i]).filter(Boolean);
   if (!S.length) return null;
-  const f = key => { const v = S.map(s => s[key]); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
+  const f = key => { const v = S.map(s => s[key] ?? 0); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
   const o = {};
-  for (const key of ['b2', 'nb', 'linkUp', 'linkDown', 'shuttle', 'own', 'ownRides', 'ownP', 'ownRuns', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
+  for (const key of ['ownH', 'a2', 'a2g', 'b2', 'nb', 'linkUp', 'linkDown', 'shuttle', 'own', 'ownRides', 'ownP', 'ownRuns', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
   o.insolv = runs.filter(r => r.seasons[i]?.insolvent).length;
   o.n = S.length;
   o.built = S[0].built.join(' ');

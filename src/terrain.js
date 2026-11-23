@@ -45,6 +45,7 @@ float tnN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(tnH(i), tnH(i + vec2(1, 0)), f.x), mix(tnH(i + vec2(0, 1)), tnH(i + vec2(1, 1)), f.x), f.y); }
 vec3 tnH3(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }`;
 
+const OW = [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 1, 0));
 function snowMaterial(bump, sat, forest, rect, ptex) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0, bumpMap: bump, bumpScale: 0.05 });
   mat.customProgramCacheKey = () => 'snow';
@@ -53,6 +54,7 @@ function snowMaterial(bump, sat, forest, rect, ptex) {
     s.uniforms.forMap = { value: forest };
     s.uniforms.satR = { value: rect };
     s.uniforms.pTex = { value: ptex };
+    s.uniforms.owC = { value: OW };
     s.vertexShader = 'attribute vec3 pist;\nuniform sampler2D pTex;\nvarying vec2 vPist;\nvarying vec3 vSurf;\nvarying vec4 vTint;\nvarying vec3 vTw;\n' + s.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
   vTw = (modelMatrix * vec4(transformed, 1.0)).xyz;
   int pI = clamp(int(pist.z + 0.5), 0, ${SURF - 1});
@@ -84,6 +86,7 @@ varying vec4 vTint;
 varying vec3 vTw;
 uniform sampler2D satMap, forMap;
 uniform vec4 satR;
+uniform vec4 owC[4];
 ${NOISE}`)
       .replace('#include <bumpmap_pars_fragment>', bumpPars)
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -95,6 +98,9 @@ ${NOISE}`)
   float tFo = texture2D(forMap, tUv).r * (1.0 - smoothstep(2600.0, 3700.0, tCd));
   tSat = mix(tSat, vec3(0.8, 0.84, 0.9), tFo);
   tSat = mix(tSat, max(tSat, diffuseColor.rgb * 0.9), 0.6 * (1.0 - smoothstep(60.0, 450.0, tCd)));
+  float tOw = 0.0;
+  for (int i = 0; i < 4; i++) tOw = max(tOw, owC[i].w * (1.0 - smoothstep(owC[i].z * 0.7, owC[i].z, distance(vTw.xz, owC[i].xy))));
+  tSat = mix(tSat, max(tSat, diffuseColor.rgb * 0.93), tOw * (1.0 - tFo * 0.6));
   diffuseColor.rgb = mix(tSat, diffuseColor.rgb, smoothstep(0.0, 0.8, tPm));
   float tSnow = smoothstep(0.3, 0.7, dot(diffuseColor.rgb, vec3(0.333)));
   float tN = tnN(vTw.xz * 0.021) * 0.55 + tnN(vTw.xz * 0.13) * 0.3 + tnN(vTw.xz * 0.9) * 0.15;
@@ -347,5 +353,6 @@ export async function loadTerrain() {
   const pois = Object.fromEntries(meta.pois.map(p => [p.name, p]));
   const surface = (i, cord, worn, aper) => { if (i > 0 && i < SURF) put(i * 4, cord, worn, aper, 0); };
   const tint = (i, c, a) => { if (i > 0 && i < SURF) put((SURF + i) * 4, c ? c.r : 0, c ? c.g : 0, c ? c.b : 0, c ? a : 0); };
-  return { mesh, heightAt, normalAt, inside, groom, snapshot, forestAt, pois, meta, surface, tint, slots: SURF };
+  function openWorld(list) { OW.forEach((v, i) => { const o = list?.[i]; v.set(o ? o[0] : 0, o ? o[1] : 0, o ? o[2] : 1, o ? o[3] ?? 0.75 : 0); }); }
+  return { mesh, openWorld, heightAt, normalAt, inside, groom, snapshot, forestAt, pois, meta, surface, tint, slots: SURF };
 }

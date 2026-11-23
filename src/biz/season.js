@@ -2,6 +2,7 @@ import { D } from './data.js';
 import { seasonOf, diff } from './calendar.js';
 import { seasonPL, bookValue } from './build.js';
 import { heads } from './staff.js';
+import { areaSeason, areaList } from './custom.js';
 
 const SM = D.summer;
 const sum = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
@@ -54,7 +55,7 @@ export function snapshot(G, sy) {
     wait: boards ? wait / boards : 0, faults, rescued, snow: avg(H, h => h.snow || 0), snowCost: pl.cost.snowmaking || 0,
     best: day(byG[0]), worst: day(byG[byG.length - 1]), bestR: day(byR[0]), worstR: day(byR[byR.length - 1]),
     series, built, hired, fired, left, heads: last.staff?.heads ?? heads(G), morale: avg(st, s => s.morale), sick: st.reduce((a, s) => a + (s.sick || 0), 0),
-    wages: pl.cost.staff || 0, book: bookValue(G), equity: G.cash + bookValue(G) - G.loan, sumCost: 0
+    areas: areaSeason(H), anames: Object.fromEntries(areaList(G).map(a => [a.id, a.name])), wages: pl.cost.staff || 0, book: bookValue(G), equity: G.cash + bookValue(G) - G.loan, sumCost: 0
   };
 }
 
