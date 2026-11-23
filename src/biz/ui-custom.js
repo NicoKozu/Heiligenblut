@@ -94,7 +94,7 @@ export function createCustom({ scene, cam, terrain, lift, village, props, hud, s
         const k = d / h, x = a[0] + (b[0] - a[0]) * k, z = a[2] + (b[2] - a[2]) * k;
         if (terrain.forestAt(x, z) > 0.35) out.forest += 5;
         if (out.blocked || d < 30 || d > h - 30) continue;
-        if (props?.blocked?.(x, z, 2)) out.blocked = 'Trasse über Gebäude';
+        if (t.drag && props?.blocked?.(x, z, 2)) out.blocked = 'Schlepptrasse über Gebäude';
         else if (t.drag && village?.blocked?.(x, z, 1)) out.blocked = 'Schlepptrasse kreuzt Straße';
         else if (t.drag && d % 10 === 0) { const s2 = Math.abs(terrain.heightAt(x + (b[0] - a[0]) / h * 10, z + (b[2] - a[2]) / h * 10) - terrain.heightAt(x, z)) / 10; out.maxSlope = Math.max(out.maxSlope, s2); }
         if (!out.blocked && d % 10 === 0) for (const sc of live()) if (segDist(x, z, sc.a, sc.b) < 14) { out.blocked = 'zu nah an ' + sc.name; break; }
@@ -102,6 +102,7 @@ export function createCustom({ scene, cam, terrain, lift, village, props, hud, s
       if (h > 20 && h < 6000) {
         const sec = buildSection({ id: '_p', a: [a[0], a[2]], b: [b[0], b[2]], drag: t.drag, h: t.h }, terrain, [a[1], b[1]], []);
         out.towers += sec.towers.length;
+        if (!out.blocked && !t.drag) { const tw = sec.towers.find(w => props?.blocked?.(w.x, w.z, 4)); if (tw) out.blocked = 'Stütze auf Gebäude – Trasse leicht verschieben'; }
         out.secs.push(sec);
       }
     }
