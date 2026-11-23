@@ -7,8 +7,9 @@ import { ticketPrice, kidsFree } from './marketing.js';
 import * as SD from './side.js';
 import { next } from './rng.js';
 import { grp } from './people.js';
+import { graph, dist, shares } from './net.js';
 
-const F = D.flow;
+const F = D.flow, NX = D.net;
 const LIFT = LIFTX;
 const PISTE = PX;
 const LV = ['leicht', 'mittel', 'schwer'];
@@ -67,13 +68,13 @@ function size(f, sg) {
   return 1 + pick(f, p.map((w, i) => ({ i, w }))).i;
 }
 
-function spawn(f, sg, half, n, t) {
+function spawn(f, sg, half, n, t, b) {
   const S = D.segs[sg], L = F.lunch;
   const g = {
     i: ++f.id, n, sg, k: LV.indexOf(pickKey(f, S.skill)), v: span(f, F.tempo) * (sg === 'fam' ? 0.9 : 1), h: half ? 1 : 0,
     ht: F.leave.from + (F.leave.to - F.leave.from) * unsmooth(R(f)),
     lt: R(f) < (half ? F.eatHalf : L.share) ? L.from + (L.to - L.from) * unsmooth(R(f)) : -1,
-    e: 0, lp: null, s: 'c', at: 'tal', t0: t, t1: t, nx: null, dl: span(f, F.lead)
+    e: 0, lp: null, s: 'c', at: b, b, t0: t, t1: t, nx: null, dl: span(f, F.lead)
   };
   f.g.push(g);
   grp(f).set(g.i, g);
@@ -87,16 +88,19 @@ function arrivals(G, f, t, ev) {
   let A = f.plan.full * (cf - f.done.full), H = f.plan.half * (ch - f.done.half);
   f.done.full = cf;
   f.done.half = ch;
-  const k = SD.arrive(G, f, A + H);
+  const sh = f.seg || Object.fromEntries(Object.entries(D.segs).map(([k, v]) => [k, v.share]));
+  const mix = {}, nb = {};
+  for (const sg in sh) { const s = shares(G, f, net, sg); for (const b in s) { const v = sh[sg] * s[b]; if (!(v > 0)) continue; (mix[b] || (mix[b] = {}))[sg] = v; nb[b] = (nb[b] || 0) + (A + H) * v; } }
+  const got = SD.arrive(G, f, nb, net.B), all = sum(Object.values(got)), k = A + H > 0 ? all / (A + H) : 1;
   A *= k;
   H *= k;
   SD.guests(G, f, A, A + H);
+  if (all > 0) { const TB = T.bases || (T.bases = {}); for (const b in got) TB[b] = (TB[b] || 0) + got[b]; }
   const add = (k, n) => { T.types[k] = (T.types[k] || 0) + n; };
   const earn = (k, n) => { const v = n * ticketPrice(G, D.ticketOf[k]); T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };
   add('season', (A + H) * s);
   const paid = Math.max(0, s - (G.mkt?.early === G.season ? D.mkt.campaigns.early.share : 0)) * (A + H);
   if (paid > 0) { const v = paid * G.prices.season / F.cardVisits; T.revenue.season = (T.revenue.season || 0) + v; G.cash += v; }
-  const sh = f.seg || Object.fromEntries(Object.entries(D.segs).map(([k, v]) => [k, v.share]));
   if (!T.seg) T.seg = {};
   for (const sg in sh) {
     const a = A * sh[sg], mx = D.segs[sg].mix, tm = mx.adult + mx.youth + mx.child;
@@ -108,17 +112,21 @@ function arrivals(G, f, t, ev) {
   T.guests += A + H;
   pay(G, 'guest', (A + H) * D.guestCost);
   const born = [];
-  const make = (key, sg, half, x) => {
+  const make = (key, sg, half, x, b) => {
     f.acc[key] = (f.acc[key] || 0) + x;
     if (!f.nz[key]) f.nz[key] = size(f, sg);
     while (f.acc[key] >= f.nz[key]) {
       f.acc[key] -= f.nz[key];
-      born.push(spawn(f, sg, half, f.nz[key], t + R(f)));
+      born.push(spawn(f, sg, half, f.nz[key], t + R(f), b));
       f.nz[key] = size(f, sg);
     }
   };
-  for (const sg in sh) make(sg, sg, false, A * sh[sg]);
-  if (H > 0) make('half', pickKey(f, sh), true, H);
+  for (const b in got) {
+    const q = all > 0 ? got[b] / all : 0, m = mix[b] || sh, mt = sum(Object.values(m)) || 1, tag = b === 'tal' ? '' : '@' + b;
+    if (!(q > 0)) continue;
+    for (const sg in m) make(sg + tag, sg, false, A * q * m[sg] / mt, b);
+    if (H > 0) make('half' + tag, pickKey(f, m), true, H * q, b);
+  }
   born.sort((a, b) => a.t0 - b.t0);
   const cash = (1 - s) * (1 - D.staff.cash.online);
   for (const g of born) {
@@ -153,37 +161,21 @@ function serveCash(G, f, t) {
 
 let net = null;
 function network(G) {
-  const P = {}, L = {}, nodes = Object.keys(D.nodes), run = {};
-  for (const n of nodes) { P[n] = []; L[n] = []; }
-  for (const p of D.pistes) if (pisteOpen(G, p.id)) P[p.from].push(p);
-  for (const l of G.lifts) if (running(l)) for (const k of keys(l)) { run[k] = 1; L[LIFT[k].from].push(LIFT[k]); }
-  const ex = Object.fromEntries(nodes.map(n => [n, P[n].length > 0 || L[n].length > 0]));
-  for (const n of nodes) P[n] = P[n].filter(p => p.to === 'tal' || ex[p.to]);
+  const N = graph(G), { P, L } = N, nodes = Object.keys(D.nodes);
   const dst = Object.fromEntries(nodes.map(n => [n, LV.map(c => {
     let b = 0;
-    for (const p of P[n]) b = Math.max(b, F.pref[c][p.level]);
-    if (L[n].some(x => x.back)) b = Math.max(b, 0.5);
+    let real = L[n].some(x => !x.back);
+    for (const p of P[n]) if (!N.isB[p.to] || L[p.to].length) { b = Math.max(b, F.pref[c][p.level]); real = true; }
+    if (real && L[n].some(x => x.back)) b = Math.max(b, 0.5);
     return Math.max(F.destMin, b);
   })]));
   const hut = Object.fromEntries(nodes.map(n => [n, SD.hutAt(G, n)]));
-  const hold = G.lifts.some(l => l.open && !running(l) && LIFT[l.id].from === 'tal');
-  return { P, L, ex, dst, run, hut, hold, home: null };
+  const hold = {};
+  for (const l of G.lifts) if (l.open && !running(l) && LIFT[l.id]) hold[LIFT[l.id].from] = true;
+  return Object.assign(N, { dst, hut, hold });
 }
 
-function homeDist(G, to = 'tal') {
-  if (to === 'tal' && net.home) return net.home;
-  if (to !== 'tal' && net.to?.[to]) return net.to[to];
-  const d = { [to]: 0 }, q = [to];
-  while (q.length) {
-    const n = q.shift();
-    for (const a in net.P) {
-      if (d[a] != null) continue;
-      if (net.P[a].some(p => p.to === n) || net.L[a].some(x => x.to === n)) { d[a] = d[n] + 1; q.push(a); }
-    }
-  }
-  if (to !== 'tal') return (net.to || (net.to = {}))[to] = d;
-  return net.home = d;
-}
+const homeDist = (G, to) => dist(net, to);
 
 function hutGoal(G, f, g, node) {
   if (g.hu && SD.seatsEff(G, g.hu) > 0 && homeDist(G, SD.HUT[g.hu].node)[node] != null) return SD.HUT[g.hu].node;
@@ -197,8 +189,9 @@ function hutGoal(G, f, g, node) {
 }
 
 function decide(G, f, g, node, t) {
-  const home = t >= g.ht;
-  if (node === 'tal' && home) return 'o';
+  const hb = g.b || 'tal', far = net.B.length > 1 ? dist(net, hb)[node] ?? 0 : 0, home = t >= (far ? Math.min(g.ht, NX.homeBy) - NX.early * far : g.ht);
+  if (node === hb && home) return 'o';
+  if (home && net.isB[node] && (t >= NX.lastRide || dist(net, hb)[node] == null)) return 'o';
   let hungry = false, hd = null;
   if (!home && g.lt >= 0 && !g.e && t >= g.lt) {
     if (t > F.lunch.to + F.lateLunch) g.lt = -1;
@@ -209,23 +202,28 @@ function decide(G, f, g, node, t) {
       if (gn && gn !== node) hd = homeDist(G, gn);
     }
   }
-  const dn = home ? homeDist(G) : null, here = dn?.[node] ?? Infinity, hh = hd?.[node] ?? Infinity;
-  const toward = to => (dn && (dn[to] ?? Infinity) < here ? F.homeW : 1) * (hungry && (hd ? (hd[to] ?? Infinity) < hh : net.hut[to]) ? F.hungryW : 1);
+  const dn = home ? dist(net, hb) : null, here = dn?.[node] ?? Infinity, hh = hd?.[node] ?? Infinity;
+  const toward = to => (dn && (dn[to] ?? Infinity) < here ? F.homeW : dn && far ? NX.awayW : 1) * (hungry && (hd ? (hd[to] ?? Infinity) < hh : net.hut[to]) ? F.hungryW : 1);
   const o = [];
   for (const s of net.L[node] || []) {
     if (!net.ex[s.to]) continue;
     const w = F.liftW * (s.back ? F.backW : 1) * Math.exp(-(f.wait[s.id] || 0) / F.queueTau) * net.dst[s.to][g.k] * toward(s.to);
     o.push({ d: 'q:' + s.id, w: Math.max(0.02, w) });
   }
-  for (const p of net.P[node] || []) o.push({ d: 'p:' + p.id, w: Math.max(0.005, F.pref[LV[g.k]][p.level] * (g.lp === p.id ? F.variety : 1)) * toward(p.to) });
-  if (!o.length) return node === 'tal' && net.hold ? 'w' : 'x';
+  for (const p of net.P[node] || []) o.push({ d: 'p:' + p.id, w: Math.max(0.005, F.pref[LV[g.k]][p.level] * (g.lp === p.id ? F.variety : 1)) * toward(p.to) * (net.isB[p.to] && p.to !== hb && !net.L[p.to].length ? NX.dead : 1) });
+  if (!o.length) {
+    if (!net.isB[node]) return 'x';
+    if (net.hold[node] && node === hb) return 'w';
+    const alt = [hb, ...net.B.map(b => b.id)].find(b => b !== node && net.L[b]?.length);
+    return alt ? 's:' + alt : net.hold[node] ? 'w' : 'x';
+  }
   return pick(f, o).d;
 }
 
 function valid(G, f, g, node, d) {
   if (!d) return false;
   const i = d.indexOf(':'), s = i < 0 ? d : d.slice(0, i), id = d.slice(i + 1);
-  if (s === 'o') return node === 'tal';
+  if (s === 'o') return !!net.isB[node];
   if (s === 'q') { const x = LIFT[id]; return !!x && x.from === node && !!net.run[id] && net.ex[x.to]; }
   if (s === 'p') { const p = PISTE[id]; return !!p && p.from === node && net.P[node].includes(p); }
   if (s === 'h') return SD.HUT[id]?.node === node && SD.seatsEff(G, id) > 0;
@@ -242,7 +240,7 @@ function drop(G, f, g, lost) {
   g.x = 1;
   grp(f).delete(g.i);
   f.present = Math.max(0, f.present - g.n);
-  SD.leave(G, f, g.n);
+  SD.leave(G, f, g.n, g.b || 'tal');
   if (lost) G.today.lost = (G.today.lost || 0) + g.n;
 }
 
@@ -254,8 +252,9 @@ function go(G, f, g, node, t, ev, end) {
   const i = d.indexOf(':'), s = i < 0 ? d : d.slice(0, i), id = d.slice(i + 1);
   g.t0 = t;
   g.rb = 0;
-  if (s === 'o' || s === 'x') return drop(G, f, g, s === 'x');
+  if (s === 'o' || s === 'x') { if (s === 'o' && node !== (g.b || 'tal')) shuttle(G, g); return drop(G, f, g, s === 'x'); }
   if (s === 'w') { g.s = 'w'; g.at = node; return; }
+  if (s === 's') { shuttle(G, g); g.s = 'a'; g.at = id; g.t1 = t + NX.shuttleMin; if (g.t1 < end) ev.push(g); return; }
   g.at = id;
   if (s === 'q') { g.s = 'q'; f.Q[id].push(g.i); return; }
   if (s === 'h') { g.s = 'hq'; SD.queueHut(f, id, g.i); return; }
@@ -265,7 +264,13 @@ function go(G, f, g, node, t, ev, end) {
   if (g.t1 < end) ev.push(g);
 }
 
-const nodeOf = g => g.s === 'r' ? (g.rb ? LIFT[g.at].from : LIFT[g.at].to) : g.s === 'p' ? PISTE[g.at].to : g.s === 'h' ? SD.HUT[g.at].node : 'tal';
+const nodeOf = g => g.s === 'r' ? (g.rb ? LIFT[g.at].from : LIFT[g.at].to) : g.s === 'p' ? PISTE[g.at].to : g.s === 'h' ? SD.HUT[g.at].node : g.at || 'tal';
+
+function shuttle(G, g) {
+  pay(G, 'shuttle', g.n * NX.shuttle);
+  const S = G.today.shuttle || (G.today.shuttle = {}), b = g.b || 'tal';
+  S[b] = (S[b] || 0) + g.n;
+}
 
 function finish(G, f, g) {
   if (g.s === 'p') { wear(G, PISTE[g.at].of || g.at, g.n); if (PISTE[g.at].custom) { const R = G.today.runs || (G.today.runs = {}); R[g.at] = (R[g.at] || 0) + g.n; } }
@@ -301,6 +306,7 @@ function board(G, f, t) {
             if (split) tc += gap * (Math.ceil(g.n / pl) - 1);
             b += g.n;
             ws += (tc - g.t0) * g.n;
+            if (net.isB[LIFT[k].from]) { const W = T.bw || (T.bw = {}), o = W[LIFT[k].from] || (W[LIFT[k].from] = [0, 0]); o[0] += (tc - g.t0) * g.n; o[1] += g.n; }
             g.s = 'r';
             g.at = k;
             g.t0 = tc;
@@ -315,6 +321,7 @@ function board(G, f, t) {
       f.board[k] = b;
       bs += b;
       T.rides[l.id] = (T.rides[l.id] || 0) + b;
+      if (k !== l.id && b) { const V = T.back || (T.back = {}); V[l.id] = (V[l.id] || 0) + b; }
     }
     l.util = u;
   }
@@ -324,6 +331,7 @@ function board(G, f, t) {
 export function step(G, t) {
   const f = G.flow, T = G.today, end = t + 1, ev = [];
   net = network(G);
+  if (DIRS.some(l => !f.Q[l.id])) ensureKeys(f);
   for (const l of G.lifts) if (!running(l)) for (const k of keys(l)) {
     const Q = f.Q[k];
     while (Q.length) { const g = grp(f).get(Q.shift()); if (g) { g.t1 = t; mark(g); g.s = 'n'; g.at = LIFT[k].from; g.t1 = t; ev.push(g); } }
@@ -340,16 +348,16 @@ export function step(G, t) {
     const list = ev.splice(0).sort((a, b) => a.t1 - b.t1);
     for (const g of list) {
       if (g.x) continue;
-      const node = g.s === 'a' ? 'tal' : g.s === 'n' ? g.at : nodeOf(g);
+      const node = g.s === 'a' || g.s === 'n' ? g.at || 'tal' : nodeOf(g);
       finish(G, f, g);
       go(G, f, g, node, Math.max(t, g.t1), ev, end);
     }
   }
   for (const g of all) {
     if (g.s !== 'w' || g.x) continue;
-    const d = decide(G, f, g, 'tal', t);
+    const d = decide(G, f, g, g.at, t);
     if (d === 'w') { if (R(f) < F.holdGiveUp) drop(G, f, g, true); }
-    else { g.nx = d; go(G, f, g, 'tal', t, ev, end); }
+    else { g.nx = d; go(G, f, g, g.at, t, ev, end); }
   }
   const [ws, bs] = board(G, f, t);
   SD.hutStep(G, f, t, (g, node) => go(G, f, g, node, t, ev, end), () => R(f));

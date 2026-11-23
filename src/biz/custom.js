@@ -31,7 +31,7 @@ function segSpec(c, i) {
     id: segIds(c)[i], name: c.name + (multi ? (i ? ' II' : ' I') : ''), custom: true, type: c.type, gap: t.gap, places, cap,
     kw: Math.round(C.kwBase + cap * Math.max(0, rise) * C.kwK), staff: t.staff, maint: Math.round(t.maint[0] + t.maint[1] * len),
     ride: Math.max(1, r1(len / t.speed / 60)), from: c.nodes[i], to: c.nodes[i + 1], proj: c.id,
-    exposed: Math.max(a[1], b[1]) > C.exposed, drag: !!t.drag, chair: !!t.chair, h: t.h, color: t.color, link: !!c.link,
+    exposed: Math.max(a[1], b[1]) > C.exposed, drag: !!t.drag, chair: !!t.chair, h: t.h, color: t.color, link: !!c.link, both: !!c.link && !t.drag,
     a: [a[0], a[2]], b: [b[0], b[2]], ya: a[1], yb: b[1], len, rise
   };
 }

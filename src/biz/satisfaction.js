@@ -7,6 +7,7 @@ import { SEGS, kidsFree } from './marketing.js';
 import { score } from './snow.js';
 import { service } from './staff.js';
 import { levelAdj, parkAdj } from './side.js';
+import { sizeRep } from './net.js';
 
 const S = D.sat;
 const K = Object.keys(S.w);
@@ -164,7 +165,7 @@ export function endDay(G) {
   const quotes = voices(G, parts, z);
   const rep0 = G.rep;
   const rw = G.today.guests > 0 ? S.rep : S.repClosed;
-  G.rep = clamp((1 - rw) * G.rep + rw * z, 0, 100);
+  G.rep = clamp((1 - rw) * G.rep + rw * z + (G.today.guests > 0 ? sizeRep(G) : 0), 0, 100);
   const ex = { w: r.w, avg: r.avg, pen: r.pen, low: r.low };
   G.sat = { z, seg, mix: r.mix, parts, ...ex, ded, lost, date: G.today.date };
   return { z, seg, mix: r.mix, parts, ...ex, ded, lost, rep0, hits: { ...(G.today.hits || {}) }, quotes };

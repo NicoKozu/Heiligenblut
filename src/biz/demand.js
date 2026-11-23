@@ -4,6 +4,7 @@ import { baseDemand } from './calendar.js';
 import { range } from './rng.js';
 import { running, pisteOpen } from './assets.js';
 import { mFactor, kFactor, SEGS } from './marketing.js';
+import { bases, offerBonus } from './net.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const M = D.demandModel;
@@ -28,8 +29,9 @@ export const priceFactor = p => SEGS.reduce((a, s) => a + D.segs[s].share * segP
 export const repFactor = rep => M.rep[0] + M.rep[1] * rep / 100;
 
 export function openPistes(G) {
-  const reach = new Set(['tal']);
-  for (let k = 0; k < 4; k++) {
+  const reach = new Set(bases(G).map(b => b.id));
+  for (let k = 0, n = -1; k < 4 || (n !== reach.size && k < 12); k++) {
+    n = reach.size;
     for (const l of D.lifts) { const s = G.lifts?.find(x => x.id === l.id); if (reach.has(l.from) && (s ? running(s) : !l.proj)) reach.add(l.to); }
     for (const p of D.pistes) if (reach.has(p.from) && pisteOpen(G, p.id)) reach.add(p.to);
   }
@@ -57,7 +59,7 @@ export function segFactors(G, date, sg, extra = {}) {
     B: baseDemand(date) * S.share,
     P: segPriceFactor(G.prices, sg),
     R: repFactor(G.rep),
-    O: offerF(segOffer(G, sg)),
+    O: offerF(segOffer(G, sg)) * offerBonus(G),
     weather: 1 + (w - 1) * S.wx,
     snow: extra.snow ?? 1,
     marketing: extra.noMkt ? 1 : mFactor(G, date, sg),
