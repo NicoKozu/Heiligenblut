@@ -42,8 +42,8 @@ export function sideFlow(f) {
   return f;
 }
 
-export const seats = (G, id) => HUT[id].seats + (G.side.huts[id].extra || 0);
-export const hutOpen = (G, id) => G.side.huts[id].open && G.side.huts[id].own;
+export const seats = (G, id) => (HUT[id]?.seats || 0) + (G.side.huts[id]?.extra || 0);
+export const hutOpen = (G, id) => !!(G.side.huts[id]?.open && G.side.huts[id].own && HUT[id]);
 export const hutNeed = (G, id) => Math.ceil(seats(G, id) / X.seatsPerStaff);
 export const gastroNeed = G => HUTS.filter(id => hutOpen(G, id)).reduce((a, id) => a + hutNeed(G, id), 0);
 export const staffRatio = G => { const n = gastroNeed(G); return n ? Math.min(1, duty(G, 'gastro') / n) : 1; };

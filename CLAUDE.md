@@ -19,9 +19,8 @@
 
 ## Offene Etappen (Reihenfolge)
 22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
-- **Open World** (nach Vollausbau freigeschaltet): 31 zweites Gebiet, Hütten, Balancing. Spezifikation in `MANAGER.md` (Abschnitt „Open World“ + Etappe).
 
-## Stand (Etappen 1–21, 23, 24, 28–30 fertig, Details `HISTORY.md`)
+## Stand (Etappen 1–21, 23, 24, 28–31 fertig, Details `HISTORY.md`)
 - 3D: echtes DEM (15-m-Gelände, Satellitenbild Sentinel-2, Panorama bis 56 km), Fahrphysik Ski/Board, Pisten/Lifte/Hütten aus OSM, Bäume/Gebäude/Felsen, Gäste 1:1 als Figuren (Manager), Flugmodus (F), Menü, Audio.
 - Manager-Sim (`src/biz/`, rein, headless testbar): Zeit/Phasen, Nachfrage je Zielgruppe, Flussmodell, Anlagen/Defekte, Zufriedenheit/Ruf, Wetter/Schnee, Personal, Marketing/Konkurrenz, Nebengeschäfte, Bau/Kredit/AfA. Start nur mit Gondel Rossbach + Piste 10 + Rossbach Alm (Kasse 1,5 Mio, Kredit bis 6 Mio), Rest sind Bauprojekte.
 - Etappe 20b: `tools/simtest.mjs` + Balancing. Werte in `data.js` (nicht MANAGER.md B) maßgeblich: Bauprojekte ~50 %, Nachfrage ×0,65, Lift-Wartung je Lift `maint`, Gästebetrieb 15 €/Gast, Preis-Note bis −50, Grundwartung nachts bis 70 %. Ohne offene Piste keine Nachfrage; Folgeprojekte im Sommer vorbestellbar.
@@ -57,6 +56,9 @@
 - 3D 29: `terrain.js` Pistenzustände/Tint als DataTexture (`SURF` 128, `texelFetch`), `groom(fn, box)` begrenzt, `snapshot(box)` → Undo; `pistes.js` `slot` je Piste, `addCustom/removeCustom` (Einebnung, Stangen, Zäune, Schilder); `ui-piste.js` Zeichenmodus (Catmull-Rom, 10-m-Abtastung, Farbe je Abschnitt, Breite/Name, Rodung, Straßen/Gebäude), Liste im Tab „Freier Bau“, Bäume weg (`scenery.cut('cpiste')`), Minikarte (`hud.lines(L, key)` mit Polylinien), Objektkarte mit Abriss; `crowd.runPath` mit `pre/post`, `repath`. Simtest `openworld` baut Piste E1 (S4), alle Ziele OK (~200 s).
 - Etappe 30 (Netzlogik): `biz/net.js` Graph/Talstationen (`bases`, `graph`, `dist`, `reach`, `fun`, `shares`, `offerBonus`, `sizeRep`, `remember`, `baseStats`, Werte `D.net`); Gruppen haben Heim-Talstation `g.b` (Wahl nach Spaß/Wartezeit/Parkplatz/Entfernung/Erinnerung), Heimweg vor Liftschluss, sonst Shuttle (`G.today.shuttle`); Verbindungslifte beidseitig (`both`, `T.back`); Parkplätze je Talstation (`f.carsB`, Überlauf); Angebot ab allen Talstationen.
 - 3D/UI 30: Gäste an eigener Talstation (`crowd` `src.base`), Autos auf eigenen Parkplätzen (`village.setLots`), Panel Gäste/Wartezeit je Talstation. Simtest `openworld` S5: 2. Talstation 20 %, Verbindung 56k↑/52k↓, Shuttle 3 %, alle Ziele OK.
+- Etappe 31 (zweites Gebiet): `custom.js` eigene Hütten `G.custom.huts` (Ids `H<n>`, Größe S/M/L 60/120/220 Plätze, 40k/70k/115k, `hquote/hplace/demolishHut`, ≤ 150 m an Station → `node`), `sync` hängt sie in `D.side.huts` (`side.js` `rehut`, HUTS/HUT dynamisch, Fixkosten je Größe); Verleih & Skischule je Talstation (`svc:<base>`, 45k, ohne nur 35 % Verleih/Schule, `side.svcK`); Gebietsnamen `G.custom.names`/`renameArea`, `areaList`, `areaDay` (Gäste/Erlös/direkte Kosten je Gebiet → `history.area`, Strom je Lift `today.lp`), `areaSeason` → Saisonbilanz `s.areas`.
+- 3D/UI 31: `biz/ui-hut.js` Hütten-Platziermodus (Flugmodus, Geist grün/rot, Größe/Preisniveau), Tab „Freier Bau“: Hütten, Verleih/Skischule, Gebiete umbenennen, Gebietskarte (SVG-Overlay, Aktion `amap`, auch in Finanzen) + Tabelle je Gebiet; `scenery.addHut/removeHut` (Einebnen mit Undo, Bäume weg); `view3d` Hütten dynamisch + Abriss; `terrain.openWorld([[x,z,r,k]])` Schnee stärker über Satellitenbild in eigenen Gebieten (nur Manager).
+- Balancing 31: `D.net.offerBase` 0,1 je Talstation (max. 0,2), `demand.segOffer` mit abnehmendem Ertrag über dem echten Vollausbau (`D.custom.dim` 0,6), Kreditrahmen `build.credit` = 1 Mio + 50 % Buchwert eigener Anlagen (nur offen). Simtest `openworld` baut Gegenhang (Gondel-Tallift, Verbindung, Sessel, Schlepplift, 4 Pisten, Hütte, Verleih), Vergleich `vollausbau`: S4 0,59 vs 0,63, S5 0,67 vs 0,57 Mio, 52k vs 39k Skitage, Beitrag Gegenhang S5 0,73 Mio.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
@@ -83,7 +85,7 @@
 - `weather.js` · `snow.js` (`night, setGroom, setGun, groomPlan, gunPlan, nightTemp`) · `staff.js` (`needs, hire, fire, setWage, bonus, seasonEnd`) · `marketing.js` (`act`, Konkurrenz `G.comp`) · `side.js` (Hütten, Verleih, Schule, Parkplatz)
 - `build.js` `check(G, id, summer), order, buildDay, borrow, repay, depreciate, solvency, groomer, cannon, pipe, seasonPL, benefit` · `area.js` `pl(G), DIRS, keys, baseKm`
 - `season.js` Saisonbilanz/Revision/Sommerkosten · `ui-season.js` Bilanz- und Sommer-Ansicht
-- `net.js` Netzgraph, Talstationswahl, Kennzahlen je Talstation · `custom.js` Open World: eigene Lifte/Talstationen/Pisten (`G.custom`), `ui-custom.js` Platzier-Modus/Tab „Freier Bau“/Basis-3D, `ui-piste.js` Pisten-Zeichenmodus
+- `net.js` Netzgraph, Talstationswahl, Kennzahlen je Talstation · `custom.js` Open World: eigene Lifte/Talstationen/Pisten/Hütten, Gebiete (`G.custom`), `ui-custom.js` Platzier-Modus/Tab „Freier Bau“/Basis-3D, `ui-piste.js` Pisten-Zeichenmodus, `ui-hut.js` Hütten-Modus, Gebietskarte, Tabelle je Gebiet
 - `bridge.js` Brücke zur 3D-Welt · `ui.js`, `ui-build.js` Panel/Overlays/Tabs · `view3d.js` Objektkarte, Status-Symbole, Overlay (three + DOM)
 - `tools/simtest.mjs` Headless-Balancingtest
 

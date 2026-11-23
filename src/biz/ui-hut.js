@@ -7,6 +7,7 @@ import { CSS as CCSS } from './ui-custom.js';
 
 const CSS = CCSS.replaceAll('#biz-cpl', '#biz-hpl').replaceAll('#biz-ctip', '#biz-htip') + `
 #biz-amap{position:fixed;inset:40px 60px;z-index:30;background:rgba(10,16,24,.96);color:#dfe8f2;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 16px;font:13px system-ui,sans-serif;display:flex;gap:14px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#biz-amap[hidden]{display:none}
 #biz-amap svg{flex:1;min-width:0;background:#e9eef3;border-radius:8px}
 #biz-amap .side{width:360px;overflow:auto}
 #biz-amap h3{margin:0 0 8px;color:#fff;display:flex;justify-content:space-between}
@@ -191,7 +192,7 @@ export function createHutTool({ scene, cam, terrain, scenery, huts, act, note })
     const A = C.areas(G2), L = C.areaList(G2), col = Object.fromEntries(L.map(a => [a.id, a.color])), aOf = n => A[n] || 'hb';
     const lines = [], dots = [], P = [];
     const spec = id => D.lifts.find(l => l.id === id);
-    for (const p of mapRef.pistes?.list || []) { if (!G2.pistes[p.id] || !p.pts?.length) continue; lines.push({ pts: p.pts, c: LVC[p.level] || '#555', w: 2.2, o: 0.7 }); P.push(...p.pts); }
+    for (const p of mapRef.pistes?.list || []) { if (!G2.pistes[p.id] || !p.pts?.length) continue; lines.push({ pts: p.pts, c: LVC[p.level] || '#555', w: 1.6, o: 0.55 }); P.push(...p.pts); }
     const secs = [...(mapRef.lift.sections || []), ...(mapRef.lift.planned || [])];
     const seen = new Set();
     for (const s of secs) {
@@ -213,6 +214,7 @@ export function createHutTool({ scene, cam, terrain, scenery, huts, act, note })
     const pad = 400, W = x1 - x0 + 2 * pad, H = z1 - z0 + 2 * pad, k = W / 1000;
     const pt = ([x, z]) => ((x - x0 + pad) / k).toFixed(1) + ',' + ((z - z0 + pad) / k).toFixed(1);
     let s = '<svg viewBox="0 0 1000 ' + Math.round(H / k) + '" preserveAspectRatio="xMidYMid meet">';
+    for (const l of lines) if (l.w > 3) s += '<polyline points="' + l.pts.map(pt).join(' ') + '" fill="none" stroke="#fff" stroke-width="' + (l.w + 3) + '" stroke-linecap="round"/>';
     for (const l of lines) s += '<polyline points="' + l.pts.map(pt).join(' ') + '" fill="none" stroke="' + l.c + '" stroke-width="' + l.w + '" stroke-opacity="' + l.o + '"' + (l.dash ? ' stroke-dasharray="8 4"' : '') + ' stroke-linecap="round"/>';
     for (const d of dots) { const [x, y] = pt(d.p).split(','); s += '<circle cx="' + x + '" cy="' + y + '" r="' + d.r + '" fill="' + d.c + '"/>'; }
     for (const h of hs) { const [x, y] = pt(h.p).split(',').map(Number); s += '<path d="M' + (x - 6) + ' ' + (y + 4) + 'L' + x + ' ' + (y - 6) + 'L' + (x + 6) + ' ' + (y + 4) + 'Z" fill="#8a5a2e" stroke="#fff"/><text x="' + (x + 8) + '" y="' + (y + 4) + '" font-size="11" fill="#5a3a1e">' + esc(h.name) + '</text>'; }
@@ -228,7 +230,7 @@ export function createHutTool({ scene, cam, terrain, scenery, huts, act, note })
 
   function openMap(G2, h) {
     G = G2;
-    const t = seasonAreas(G2), today = G2.phase !== 'prep' ? C.areaDay(G2) : null;
+    const t = seasonAreas(G2), today = G2.phase === 'open' ? C.areaDay(G2) : null;
     let side = '<h3>Gebietskarte<button data-m="x">✕</button></h3><p style="opacity:.75;margin:0 0 8px">Quadrat = Talstation · Linie = Lift (Farbe des Gebiets, orange gestrichelt = Verbindung) · Pisten blau/rot/schwarz · Dreieck = Hütte</p>';
     side += '<h4>Saison bisher</h4>' + (areaTable(G2, t, h) || '<p style="opacity:.7">Kennzahlen je Gebiet ab zwei Gebieten mit Gästen.</p>');
     if (today) side += '<h4>Heute</h4>' + areaTable(G2, today, h);
