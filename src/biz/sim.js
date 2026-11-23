@@ -11,6 +11,7 @@ import { initStaff, staffAuto, evening, wages, minute as staffMinute } from './s
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
 import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
 import { snapshot, fixed } from './season.js';
+import { initCustom, unlock } from './custom.js';
 import { initSide, sideFlow, dayStart as sideStart, evening as sideEvening } from './side.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
@@ -23,6 +24,7 @@ export function newGame(seed = newSeed()) {
     cash: D.start.cash, loan: D.start.loan, rep: D.start.rep, sat: null, seasonShare: D.flow.seasonShare,
     lifts: [], today: null, history: [], prices: defaultPrices(), pistes: {}, flow: null, log: []
   };
+  initCustom(G);
   G.lifts = D.lifts.filter(l => !l.proj).map(l => ({ id: l.id, name: l.name, open: true, cond: int(G, D.start.cond[0], D.start.cond[1]), run: 0, util: 0 }));
   initAssets(G);
   initSnow(G, true);
@@ -32,6 +34,7 @@ export function newGame(seed = newSeed()) {
 }
 
 function migrate(G) {
+  initCustom(G);
   G.prices = { ...defaultPrices(), ...(G.prices || {}) };
   initBuild(G);
   initAssets(G);
@@ -52,6 +55,7 @@ function migrate(G) {
   for (const l of G.lifts) if (l.boost) { l.places = Math.round(D.lifts.find(x => x.id === l.id).places * (1 + l.boost)); delete l.boost; }
   if (G.today && !G.today.hits) G.today.hits = {};
   if (!G.today || !G.today.types) resetToday(G);
+  unlock(G);
   return G;
 }
 
@@ -154,6 +158,7 @@ export function nextDay(G) {
   night(G, d);
   compDay(G);
   buildDay(G, false);
+  unlock(G);
   G.date = d;
   G.day++;
   G.phase = 'prep';
@@ -189,6 +194,7 @@ export function startSeason(G) {
   G.seasonShare = seasonShare(G.rep);
   newSeason(G);
   buildDay(G, true);
+  unlock(G);
   G.summer = null;
   G.date = d;
   G.season = seasonOf(d);

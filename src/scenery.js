@@ -436,7 +436,7 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     const center = new THREE.Vector2(originX + (k % cx + 0.5) * CHUNK, originZ + (Math.floor(k / cx) + 0.5) * CHUNK);
     near.visible = far.visible = false;
     group.add(near, far);
-    chunks.push({ near, far, center });
+    chunks.push({ near, far, center, list });
   }
 
   const grid = new Map();
@@ -471,6 +471,7 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
       for (const i of list) {
         const o = i * TS, x = T[o], z = T[o + 1];
         if ((x - px) ** 2 + (z - pz) ** 2 >= DET * DET) continue;
+        if (hid && hid[i]) continue;
         const p = pools[T[o + 6] * NV + i % NV];
         if (p.n >= CAP) continue;
         const s = T[o + 3], br = T[o + 5], w = s * (0.85 + (br - 0.85) * 0.5);
@@ -544,5 +545,22 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
 
   const setHut = (name, open) => huts.find(h => h.name === name)?.setOpen(open);
   let wind = 0.2;
-  return { group, update, collide, huts, setHut, treeCount: N, set wind(v) { wind = Math.max(0, Math.min(1, v)); } };
+  let hid = null;
+  const cuts = new Map(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  function cut(key, test) {
+    if (test) cuts.set(key, test); else if (!cuts.delete(key)) return;
+    const hit = (x, z) => { for (const t of cuts.values()) if (t(x, z)) return true; return false; };
+    hid = cuts.size ? new Uint8Array(N) : null;
+    if (hid) for (let i = 0; i < N; i++) hid[i] = hit(T[i * TS], T[i * TS + 1]) ? 1 : 0;
+    for (const c of chunks) {
+      c.list.forEach(([x, y, z, s, rot, b], i) => {
+        if (cuts.size && hit(x, z)) c.near.setMatrixAt(i, zero);
+        else c.near.setMatrixAt(i, m.compose(v.set(x, y, z), q.setFromAxisAngle(up, rot), sc.set(s * (0.85 + (b - 0.85) * 0.5), s, s * (0.85 + (b - 0.85) * 0.5))));
+      });
+      c.near.instanceMatrix.needsUpdate = true;
+    }
+    lx = Infinity;
+  }
+
+  return { group, update, collide, huts, setHut, cut, treeCount: N, set wind(v) { wind = Math.max(0, Math.min(1, v)); } };
 }

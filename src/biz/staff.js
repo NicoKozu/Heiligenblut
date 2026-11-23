@@ -1,5 +1,5 @@
 import { D } from './data.js';
-import { pl } from './area.js';
+import { pl, LIFTX as LIFT } from './area.js';
 import { next as rand } from './rng.js';
 import { log } from './assets.js';
 import { hit } from './satisfaction.js';
@@ -8,7 +8,6 @@ import { gastroNeed, gastroScore, sideScore } from './side.js';
 const S = D.staff;
 export const GROUPS = Object.keys(S.groups);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const LIFT = Object.fromEntries(D.lifts.map(l => [l.id, l]));
 
 export function initStaff(G) {
   if (!G.staff) G.staff = { n: {} };

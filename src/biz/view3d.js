@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { D } from './data.js';
+import * as CU from './custom.js';
 import { status, repairQuote, fmtDur, serviced } from './assets.js';
 import * as X from './side.js';
 import * as N from './snow.js';
@@ -228,6 +229,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       row('Zustand', '<span style="color:' + ccol(l.cond) + '">' + Math.round(l.cond) + ' %</span>') + bar(l.cond, ccol(l.cond)) +
       row('Wartezeit', run ? '<span style="color:' + wcol(w) + '">' + (w < 0.5 ? '–' : Math.round(w) + ' min') + '</span>' : '–') +
       row('Auslastung', run ? Math.round((l.util || 0) * 100) + ' %' : '–') +
+      (d.custom ? row('Typ', D.custom.types[d.type].label + (d.link ? ' · <span style="color:' + D.custom.linkColor + '">⇄ Verbindungslift</span>' : '') + (CU.lift(G, id)?.base ? ' · Tallift' : '')) : '') +
       row('Kapazität', Math.round(3600 / d.gap * (l.places || d.places)).toLocaleString('de-DE') + ' P/h · ' + (l.places || d.places) + ' Plätze alle ' + d.gap + ' s · ' + d.ride + ' min');
     if (l.repairLeft > 0) h += row('Reparatur', 'noch ' + fmtDur(l.repairLeft));
     h += '<div class="a">';
@@ -237,6 +239,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       h += btn('repair:' + id, 'Reparieren ' + eur(q.cost), { p: true, tip: fmtDur(q.min) }) + btn('repair:' + id + ':x', 'Express ' + eur(qx.cost), { tip: fmtDur(qx.min) });
     }
     if (!l.build) h += btn('insp:' + id, serviced(G, l) ? 'Revision erledigt' : 'Revision ' + eur(D.inspect.cost), { off: !!(l.broken || serviced(G, l)) });
+    if (d.custom) { const w = CU.canDemolish(G, d.proj); h += btn('cdemo:' + d.proj, 'Abriss +' + eur(CU.refundOf(G, d.proj)), { off: !!w, tip: w }); }
     const up = Object.keys(D.build.projects).find(k => D.build.projects[k].cab === id && !B.done(G, k) && !/^erst /.test(B.check(G, k)));
     if (up) h += '</div><div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">' + projBody(up, true);
     return h + '</div>';

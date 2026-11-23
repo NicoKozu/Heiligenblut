@@ -64,5 +64,11 @@ export function createHud(pistes) {
     }
   }
 
-  return { update };
+  let svg = null;
+  function lines(L) {
+    if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none'; root.querySelector('#hud-map').insertBefore(svg, dot); }
+    svg.innerHTML = (L || []).map(l => { const [ax, ay] = mapAt(...l.a), [bx, by] = mapAt(...l.b); return '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + bx.toFixed(1) + '" y2="' + by.toFixed(1) + '" stroke="' + l.color + '" stroke-width="1.6" stroke-dasharray="' + (l.dash ? '3 2' : 'none') + '"/><circle cx="' + bx.toFixed(1) + '" cy="' + by.toFixed(1) + '" r="1.3" fill="' + l.color + '"/>'; }).join('');
+  }
+
+  return { update, lines };
 }

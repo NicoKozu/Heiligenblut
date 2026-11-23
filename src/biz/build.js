@@ -5,7 +5,6 @@ import { initSnow, startSnow, cannons } from './snow.js';
 import { seasonOf } from './calendar.js';
 
 const B = D.build, P = B.projects, FN = D.fin;
-export const PROJECTS = Object.keys(P);
 const sum = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const item = (G, id) => G.fin.items.find(x => x.id === id);
 
@@ -43,7 +42,7 @@ export function post(G, k, v) {
 
 export const invest = (G, v) => post(G, 'invest', v);
 
-function writeoff(G, v) {
+export function writeoff(G, v) {
   G.today.depr = (G.today.depr || 0) + v;
   const h = G.history[G.history.length - 1];
   if (G.phase === 'closed' && h && h.date === G.today.date) h.depr = (h.depr || 0) + v;
