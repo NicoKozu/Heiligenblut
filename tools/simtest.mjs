@@ -322,9 +322,15 @@ if (flag('check')) {
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
   const O = 'openworld';
   for (let i = 0; i < seasons; i++) if (A[O]?.[i]) rows.push([O, i + 1, 'keine Insolvenz', A[O][i].insolv, A[O][i].insolv === 0]);
-  add(O, 4, 'eigene Lifte gebaut ≥ 2', 'own', ge(2), N);
+  add(O, 4, 'eigene Lifte gebaut ≥ 4', 'own', ge(4), N);
+  add(O, 4, 'eigene Hütte gebaut', 'ownH', ge(1), N);
+  add(O, 4, 'Beitrag 2. Gebiet > 0', 'a2', ge(0), M);
+  const VA = 'vollausbau';
+  if (A[O]?.[3] && A[VA]?.[3]) rows.push([O, 4, 'Ausbaujahr ≤ vollausbau + 0,05 Mio', M(g(O, 3, 'result')) + ' / ' + M(g(VA, 3, 'result')), g(O, 3, 'result') <= g(VA, 3, 'result') + 5e4]);
+  if (A[O]?.[4] && A[VA]?.[4]) rows.push([O, 5, 'Ergebnis > vollausbau', M(g(O, 4, 'result')) + ' / ' + M(g(VA, 4, 'result')), g(O, 4, 'result') > g(VA, 4, 'result')]);
+  if (A[O]?.[4] && A[VA]?.[4]) rows.push([O, 5, 'Skitage ≥ vollausbau + 20 %', K(g(O, 4, 'guests')) + ' / ' + K(g(VA, 4, 'guests')), g(O, 4, 'guests') >= 1.2 * g(VA, 4, 'guests')]);
   add(O, 3, 'eigene Lifte genutzt', 'ownRides', ge(1000), K);
-  add(O, 4, 'eigene Pisten gebaut = 2', 'ownP', v => v === 2, N);
+  add(O, 4, 'eigene Pisten gebaut = 4', 'ownP', v => v === 4, N);
   add(O, 4, 'eigene Pisten befahren', 'ownRuns', ge(500), K);
   add(O, 4, 'Gäste an ≥ 2 Talstationen', 'nb', ge(2), N);
   if (A[O]?.[4]) rows.push([O, 5, 'Anteil 2. Talstation 10–60 %', fmt(g(O, 4, 'b2') / g(O, 4, 'guests') * 100) + ' %', rg(0.1, 0.6)(g(O, 4, 'b2') / g(O, 4, 'guests'))]);
