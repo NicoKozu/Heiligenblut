@@ -820,6 +820,43 @@ export function createVillage(terrain, data, built) {
     moving.push(car);
   }
 
+  const extra = new Map();
+  let lotSrc = null;
+  function stepLots(dt) {
+    const L = lotSrc ? lotSrc() || [] : [], seen = new Set();
+    for (const o of L) {
+      seen.add(o.id);
+      let e = extra.get(o.id);
+      if (!e) {
+        const lt = o.lot, st = [], per = Math.max(1, Math.floor((lt.W - 4) / 2.6)), rows = Math.max(1, Math.ceil(o.spots / per));
+        for (let r = 0; r < rows; r++) for (let i = 0; i < per && st.length < o.spots; i++) {
+          const u = -lt.W / 2 + 3.3 + i * 2.6, v = -lt.L / 2 + 2 + (r + 0.5) * (lt.L - 4) / rows;
+          st.push({ x: lt.c[0] - lt.dz * u + lt.dx * v, z: lt.c[1] + lt.dx * u + lt.dz * v, h: Math.atan2(lt.dx, lt.dz) + (r % 2 ? Math.PI : 0), car: null });
+        }
+        extra.set(o.id, e = { st, cars: [], t: 0, r: rng(7000 + st.length) });
+      }
+      const want = Math.round(e.st.length * Math.max(0, Math.min(1, o.fill || 0))), d = want - e.cars.length;
+      e.t -= dt;
+      if (!d || (e.t > 0 && Math.abs(d) < 8)) continue;
+      for (let k = 0; k < Math.max(1, Math.abs(d) - 7); k++) {
+        if (d > 0) {
+          const free = e.st.filter(x => !x.car);
+          if (!free.length) break;
+          const x = free[(e.r() * free.length) | 0], car = newCar(e.r);
+          Object.assign(car, { x: x.x, z: x.z, y: H(x.x, x.z) + 0.27, h: x.h, p: 0, slot: x });
+          x.car = car;
+          e.cars.push(car);
+        } else {
+          if (!e.cars.length) break;
+          const car = e.cars.splice((e.r() * e.cars.length) | 0, 1)[0];
+          car.slot.car = null;
+        }
+      }
+      e.t = 1 + e.r() * 2;
+    }
+    for (const id of [...extra.keys()]) if (!seen.has(id)) extra.delete(id);
+  }
+
   let crowdApi = null;
   const tmp = {};
   function step(dt) {
@@ -888,7 +925,7 @@ export function createVillage(terrain, data, built) {
     for (const k in fleet) fleet[k].n = 0;
     let ns = 0, nb = 0;
     const cx = camera.position.x, cz = camera.position.z;
-    const all = [statics, parked, moving];
+    const all = [statics, parked, moving, ...[...extra.values()].map(e => e.cars)];
     for (const list of all) for (const c of list) {
       const d = Math.hypot(c.x - cx, c.z - cz);
       if (d > 3200) continue;
@@ -948,6 +985,7 @@ export function createVillage(terrain, data, built) {
   function update(dt, camera) {
     const t = Math.min(dt, 0.1) * tscale, n = Math.max(1, Math.ceil(t / 0.1));
     for (let i = 0; i < n; i++) step(t / n);
+    stepLots(t);
     flowT += dt;
     if (waterMesh) M.water.map.offset.x = -flowT * 0.09;
     const d = Math.hypot(camera.position.x - VC[0], camera.position.z - VC[1]);
@@ -963,5 +1001,5 @@ export function createVillage(terrain, data, built) {
     }
     crowd.setExtra?.(() => walkers.map(w => w.m));
   }
-  return { group, update, blocked, roads: data.roads, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
+  return { group, update, blocked, roads: data.roads, attach, setSource: fn => { src = fn; }, setLots: fn => { lotSrc = fn; if (!fn) extra.clear(); }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
 }

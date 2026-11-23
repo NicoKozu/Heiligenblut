@@ -30,6 +30,7 @@ export function sideFlow(f) {
     f.hutWait = Object.fromEntries(HUTS.map(id => [id, 0]));
   }
   if (f.cars == null) Object.assign(f, { cars: 0, school: 0 });
+  if (!f.carsB) f.carsB = { tal: f.cars };
   return f;
 }
 
@@ -55,17 +56,38 @@ export function parkShare(G) {
   return Math.min(P.maxShare, P.share * Math.pow(Math.max(1, G.side.park.price) / P.price, -P.el));
 }
 
-export function arrive(G, f, n) {
-  if (n <= 0) return 1;
-  const P = X.parking, cars = n * parkShare(G) / P.persons, free = Math.max(0, G.side.park.cap - f.cars), adm = Math.min(cars, free);
+export function arrive(G, f, nb, B) {
+  const P = X.parking, ps = parkShare(G), C = f.carsB || (f.carsB = {}), got = {};
+  let over = 0, adm = 0, n = 0;
+  for (const b of B) {
+    const v = nb[b.id] || 0;
+    if (!(v > 0)) continue;
+    const cars = v * ps / P.persons, a = Math.min(cars, Math.max(0, b.cap - (C[b.id] || 0)));
+    C[b.id] = (C[b.id] || 0) + a;
+    got[b.id] = v - (cars - a) * P.persons;
+    over += cars - a;
+    adm += a;
+    n += v;
+  }
+  for (const b of B) {
+    if (!(over > 1e-9)) break;
+    if (!(b.id in got)) continue;
+    const a = Math.min(over, Math.max(0, b.cap - (C[b.id] || 0)));
+    if (!(a > 0)) continue;
+    C[b.id] += a;
+    got[b.id] += a * P.persons;
+    over -= a;
+    adm += a;
+  }
+  if (n <= 0) return got;
   f.cars += adm;
   if (adm > 0) { earn(G, 'parking', adm * G.side.park.price); bump(G, 'cars', adm); }
-  const turned = (cars - adm) * P.persons;
+  const turned = over * P.persons;
   if (turned > 0) {
     if (!G.today.side?.turned) log(G, 'Parkplatz voll – Gäste kehren um', 'bad');
     bump(G, 'turned', turned);
   }
-  return 1 - turned / n;
+  return got;
 }
 
 export function rentShare(G) {
@@ -84,8 +106,11 @@ export function guests(G, f, full, all) {
   if (want > b) bump(G, 'schoolMiss', want - b);
 }
 
-export function leave(G, f, n) {
-  if (n > 0) f.cars = Math.max(0, f.cars - n * parkShare(G) / X.parking.persons);
+export function leave(G, f, n, b = 'tal') {
+  if (!(n > 0)) return;
+  const c = n * parkShare(G) / X.parking.persons;
+  f.cars = Math.max(0, f.cars - c);
+  if (f.carsB) f.carsB[b] = Math.max(0, (f.carsB[b] || 0) - c);
 }
 
 export function lunchRate(G, f, node) {
@@ -197,6 +222,7 @@ export function evening(G) {
 export function endFlow(f) {
   for (const id of HUTS) { f.hut[id] = 0; f.HQ[id] = []; f.hutQ[id] = 0; f.hutWait[id] = 0; }
   f.cars = 0;
+  f.carsB = {};
   f.school = 0;
 }
 

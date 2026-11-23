@@ -12,6 +12,7 @@ import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow 
 import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
 import { snapshot, fixed } from './season.js';
 import { initCustom, unlock } from './custom.js';
+import { remember } from './net.js';
 import { initSide, sideFlow, dayStart as sideStart, evening as sideEvening } from './side.js';
 
 const zero = () => Object.fromEntries(Object.keys(D.costLabels).map(k => [k, 0]));
@@ -52,6 +53,7 @@ function migrate(G) {
   if (!G.seasons) G.seasons = [];
   if (!G.ev) G.ev = [];
   if (G.summer === undefined) G.summer = null;
+  if (!G.net) G.net = { mem: {} };
   for (const l of G.lifts) if (l.boost) { l.places = Math.round(D.lifts.find(x => x.id === l.id).places * (1 + l.boost)); delete l.boost; }
   if (G.today && !G.today.hits) G.today.hits = {};
   if (!G.today || !G.today.types) resetToday(G);
@@ -117,6 +119,7 @@ function close(G) {
   G.phase = 'closed';
   G.min = D.time.close;
   const sat = satEnd(G);
+  remember(G);
   const staff = evening(G);
   sideEvening(G);
   endFlow(G);
@@ -125,7 +128,8 @@ function close(G) {
   G.history.push({
     date: t.date, guests: t.guests, expected: t.expected || 0, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, runs: { ...(t.runs || {}) }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
-    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, sale: t.sale || 0, debt: G.loan
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, sale: t.sale || 0, debt: G.loan,
+    bases: { ...(t.bases || {}) }, back: { ...(t.back || {}) }, shuttle: { ...(t.shuttle || {}) }
   });
   if (G.history.length > 400) G.history.shift();
 }

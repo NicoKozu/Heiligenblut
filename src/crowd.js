@@ -747,13 +747,13 @@ export function createCrowd(terrain, pistes, lift, assets) {
       return true;
     }
     if (s === 'w') {
-      const sec = secById('rossbach');
+      const sec = secById(src.base?.(g.at) || 'rossbach');
       if (!sec) return false;
-      queueAt(m, sec, false, (src.f.queue?.rossbach || 0) + (g.i % 40) * 4 + m.j);
+      queueAt(m, sec, false, (src.f.queue?.[sec.id] || 0) + (g.i % 40) * 4 + m.j);
       return true;
     }
     if (s === 'c' || s === 'a') {
-      const sec = secById('rossbach');
+      const sec = secById(src.base?.(g.at) || 'rossbach');
       if (!sec) return false;
       const r = s === 'a' ? m.j : rank, side = 16 + Math.floor(r / 6) * 0.8, back = 4 + (r % 6) * 0.7;
       ground(m, sec.a[0] - sec.dx * back - sec.px * side, sec.a[1] - sec.dz * back - sec.pz * side);

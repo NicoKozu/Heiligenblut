@@ -132,14 +132,17 @@ function investor() {
 
 const REST = ['tauernberg', 'p2c', 'viehbuehel', 'p8', 'schulwiese', 'kidsworld', 'ederfeld', 'p2b', 'p1a'];
 const OWN = [
-  { type: 'chair', name: 'Sessellift Rossbach-Express', pts: [[-140, 1312, -90], [600, 1745, -900]] },
   { type: 'gondola', name: 'Gegenhangbahn', pts: [[-1100, 1350, 300], [-1900, 1900, 600]], base: { name: 'Talstation Gegenhang', spots: 150 } },
-  { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1246, 60], [-1890, 1898, 590]] }
+  { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1246, 60], [-1890, 1898, 590]] },
+  { type: 'chair', name: 'Sessellift Rossbach-Express', pts: [[-140, 1312, -90], [600, 1745, -900]] }
 ];
 
 const dense = (P, step = 10) => P.slice(1).flatMap((b, i) => { const a = P[i], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[2] - a[2]) / step)); return Array.from({ length: n + (i === P.length - 2 ? 1 : 0) }, (_, k) => a.map((v, j) => v + (b[j] - v) * k / n)); });
 const zig = P => { let L = 0; const d = P.slice(1).map((b, i) => (L += Math.hypot(b[0] - P[i][0], b[2] - P[i][2]))); return P.map((p, i) => [p[0], P[0][1] + (P[P.length - 1][1] - P[0][1]) * (i ? d[i - 1] / L : 0), p[2]]); };
-const OWNP = [{ name: 'Gegenhangabfahrt', width: 40, pts: dense(zig([[-1890, 1895, 610], [-1700, 0, 1000], [-1300, 0, 750], [-1110, 1352, 290]])), forest: 20000 }];
+const OWNP = [
+  { name: 'Gegenhangabfahrt', width: 40, pts: dense(zig([[-1890, 1895, 610], [-1700, 0, 1000], [-1300, 0, 750], [-1110, 1352, 290]])), forest: 20000 },
+  { name: 'Waldabfahrt', width: 35, pts: dense(zig([[-1890, 1895, 610], [-2100, 0, 350], [-1600, 0, 150], [-1110, 1352, 290]])), forest: 20000 }
+];
 
 function openworld() {
   const s = sensible({ name: 'openworld', reserve: 100000, buffer: 100000, repayAbove: 130000, maxLoan: [D.start.credit, 800000], now: true, repayFrom: 3, finishFrom: 4, mkt: 0, plan: [ALL, [], REST] });
@@ -147,7 +150,8 @@ function openworld() {
   s.morning = G => {
     if (sIdx(G, s) >= 2) {
       G.open = true;
-      const o = OWN.find(o => !G.custom.lifts.some(c => c.name === o.name)), q = o && quote(G, o);
+      const nl = G.custom.lifts.length, np = G.custom.pistes.length;
+      const o = nl <= np ? OWN.find(o => !G.custom.lifts.some(c => c.name === o.name)) : null, q = o && quote(G, o);
       if (q && !q.why && afford(G, q.price + 150000, s.c)) place(G, o);
       const r = !o && OWNP.find(r => !G.custom.pistes.some(c => c.name === r.name)), pq = r && pquote(G, r);
       if (pq && !pq.why && afford(G, pq.price + 150000, s.c)) pplace(G, r);
@@ -202,6 +206,13 @@ function run(name, seed, seasons, maxDays, daily) {
       cur.ownP = G.custom.pistes.filter(c => G.build.done.includes(c.id)).length;
       cur.ownRuns = (cur.ownRuns || 0) + Object.values(h.runs || {}).reduce((a, v) => a + v, 0);
       cur.ownRides = (cur.ownRides || 0) + G.custom.lifts.flatMap(segIds).reduce((a, id) => a + (h.rides?.[id] || 0), 0);
+      const hb = Object.entries(h.bases || {});
+      cur.b2 = (cur.b2 || 0) + hb.filter(([b]) => b !== 'tal').reduce((a, [, v]) => a + v, 0);
+      cur.nb = Math.max(cur.nb || 0, hb.filter(([, v]) => v > 50).length);
+      const lk = G.custom.lifts.filter(c => c.link).map(c => c.id);
+      cur.linkUp = (cur.linkUp || 0) + lk.reduce((a, id) => a + (h.rides?.[id] || 0) - (h.back?.[id] || 0), 0);
+      cur.linkDown = (cur.linkDown || 0) + lk.reduce((a, id) => a + (h.back?.[id] || 0), 0);
+      cur.shuttle = (cur.shuttle || 0) + Object.values(h.shuttle || {}).reduce((a, v) => a + v, 0);
       for (const id of G.build.done) if (!doneSeen.has(id)) { doneSeen.add(id); cur.built.push(short(id) + '@' + cur.day); }
       if (daily) days.push({ strat: name, seed, date: h.date, guests: h.guests, rev: h.revenue, cost: h.cost, cash: G.cash, z: h.sat?.z ?? 0, rep: G.rep, wait: h.avgWait || 0 });
       if (cur.day > 200) throw new Error('Saison > 200 Tage ' + name + ' Seed ' + seed);
@@ -230,7 +241,7 @@ function agg(runs, i) {
   if (!S.length) return null;
   const f = key => { const v = S.map(s => s[key]); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
   const o = {};
-  for (const key of ['own', 'ownRides', 'ownP', 'ownRuns', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
+  for (const key of ['b2', 'nb', 'linkUp', 'linkDown', 'shuttle', 'own', 'ownRides', 'ownP', 'ownRuns', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
   o.insolv = runs.filter(r => r.seasons[i]?.insolvent).length;
   o.n = S.length;
   o.built = S[0].built.join(' ');
@@ -304,10 +315,17 @@ if (flag('check')) {
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
   const O = 'openworld';
   for (let i = 0; i < seasons; i++) if (A[O]?.[i]) rows.push([O, i + 1, 'keine Insolvenz', A[O][i].insolv, A[O][i].insolv === 0]);
-  add(O, 3, 'eigene Lifte gebaut = 3', 'own', v => v === 3, N);
-  add(O, 2, 'eigener Sessellift genutzt', 'ownRides', ge(1000), K);
-  add(O, 3, 'eigene Piste gebaut = 1', 'ownP', v => v === 1, N);
-  add(O, 4, 'eigene Piste befahren', 'ownRuns', ge(500), K);
+  add(O, 4, 'eigene Lifte gebaut ≥ 2', 'own', ge(2), N);
+  add(O, 3, 'eigene Lifte genutzt', 'ownRides', ge(1000), K);
+  add(O, 4, 'eigene Pisten gebaut = 2', 'ownP', v => v === 2, N);
+  add(O, 4, 'eigene Pisten befahren', 'ownRuns', ge(500), K);
+  add(O, 4, 'Gäste an ≥ 2 Talstationen', 'nb', ge(2), N);
+  if (A[O]?.[4]) rows.push([O, 5, 'Anteil 2. Talstation 10–60 %', fmt(g(O, 4, 'b2') / g(O, 4, 'guests') * 100) + ' %', rg(0.1, 0.6)(g(O, 4, 'b2') / g(O, 4, 'guests'))]);
+  add(O, 4, 'Verbindungslift bergauf', 'linkUp', ge(1000), K);
+  add(O, 4, 'Verbindungslift talwärts', 'linkDown', ge(1000), K);
+  if (A[O]?.[4]) rows.push([O, 5, 'Shuttle < 10 % der Gäste', fmt(g(O, 4, 'shuttle') / g(O, 4, 'guests') * 100, 1) + ' %', g(O, 4, 'shuttle') < 0.1 * g(O, 4, 'guests')]);
+  for (const i of [3, 4]) add(O, i, 'max. Ø-Wartezeit ≤ 45 min', 'wait', le(45), N);
+  add(O, 4, 'Ergebnis ≥ 0', 'result', ge(0), M);
   for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.1e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;

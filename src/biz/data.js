@@ -79,6 +79,7 @@ export const D = {
     variety: 0.6,
     look: 10
   },
+  net: { home: [-158, -109], funEl: 1.2, cond: [0.6, 0.4], variety: 0.25, varRef: 8, waitTau: 15, park: [0.25, 0.75], distTau: 6, memK: 0.3, mem0: 0.5, memA: 0.25, memWait: 30, shuttle: 6, shuttleMin: 20, lastRide: 980, homeBy: 960, early: 12, awayW: 0.15, dead: 0.002, offerBase: 0.04, offerLink: 0.03, offerMax: 0.12, repKm: 0.03, repMax: 0.15 },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 2000,
   guestCost: 9,
@@ -327,7 +328,7 @@ export const D = {
       rescue: { bad: ['Eine Ewigkeit in der stehenden Gondel – Bergung!', 'Aus der Kabine abgeseilt worden. Erlebnis, aber nicht schön.'] }
     }
   },
-  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Lift-Revision', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf', guest: 'Gästebetrieb (Tickets, Versicherung, Reinigung)' },
+  costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Lift-Revision', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf', guest: 'Gästebetrieb (Tickets, Versicherung, Reinigung)', shuttle: 'Shuttlebus zwischen Talstationen' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal', build: 'Umbau' },
   phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' },
   nodeAt: {

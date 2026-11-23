@@ -14,6 +14,7 @@ import * as B from './build.js';
 import { finTab, buildTab, overView } from './ui-build.js';
 import { seasonView, summerView, drawSeason } from './ui-season.js';
 import { curvesView, CURVE_CSS } from './ui-price.js';
+import { baseStats } from './net.js';
 import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
 
 const CSS = `
@@ -278,6 +279,7 @@ export function createUI(h) {
         : '<button class="satb" data-act="sat"><b>–</b><span>Zufriedenheit<br><em>noch kein Betriebstag</em></span></button>') +
       kv('Ruf', num(G.rep) + trend(G.rep, p && p.rep), tone(G.rep, 60, 40)) + VS +
       kv('Gäste jetzt / heute', num(count(G.flow)) + ' / ' + num(G.today.guests)) +
+      (bs => bs.length > 1 ? VS + bs.map(b => kv(b.name, num(b.guests) + ' Gäste · ' + (b.wait == null ? 'zu' : open ? mins(b.wait) : '–'), b.wait == null ? 'biz-bad' : open ? wtone(b.wait) : '')).join('') : '')(baseStats(G)) +
       '<div class="segs">' + (o => segBar(o) + segLegend(o, v => G.today.guests >= 1 ? num(v) : Math.round(v / (SEGS.reduce((a, s) => a + o[s], 0) || 1) * 100) + ' %'))(G.today.guests >= 1 ? G.today.seg : G.phase === 'prep' ? forecast(G).seg : Object.fromEntries(SEGS.map(s => [s, D.segs[s].share]))) + '</div>' + VS +
       kv('Ø-Wartezeit', open ? mins(G.flow.avgWait) : '–', open ? wtone(G.flow.avgWait) : '') +
       (open && G.flow.cashWait >= 0.5 ? kv('Kassenschlange', mins(G.flow.cashWait), wtone(G.flow.cashWait)) : '') +
@@ -466,7 +468,7 @@ export function createUI(h) {
         '<h2>Gäste</h2><table>' + Object.entries(D.guestLabels).map(([k, v]) => tr(v, num(r.types?.[k] || 0))).join('') + tr('Gäste gesamt', num(r.guests), 'sum') + tr('Umsatz je Gast (Tickets)', eur(ticketSum(r.revs) / Math.max(1, r.guests))) + tr('Umsatz je Gast (gesamt)', eur(r.revenue / Math.max(1, r.guests))) + (r.free >= 1 ? tr('Kinder gratis (Samstag)', num(r.free)) : '') + '</table>' +
         (r.seg ? '<h2>Zielgruppen</h2>' + segBar(r.seg) + '<table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(r.seg[s] || 0) + (r.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(r.sat.seg[s]) + '">' + Math.round(r.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' : '') +
         '<h2>Einnahmen nach Ticketart</h2><table>' + Object.entries(r.revs || {}).filter(([k]) => k in D.tickets).map(([k, v]) => tr(revLabel(k), eur(v))).join('') + tr('Summe Tickets', eur(ticketSum(r.revs)), 'sum') + '</table>' + areaReport(r) +
-        '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
+        '<h2>Lifte</h2><table>' + G.lifts.map(l => tr(l.name, num(r.rides?.[l.id] || 0) + ' Fahrten · Spitze <span class="' + wtone(r.peak?.[l.id] || 0) + '">' + mins(r.peak?.[l.id] || 0) + '</span>')).join('') + tr('Ø-Wartezeit', mins(r.avgWait || 0)) + (Object.keys(r.bases || {}).length > 1 ? Object.entries(r.bases).map(([b, v]) => tr(D.nodes[b] || b, num(v) + ' Gäste' + (r.shuttle?.[b] >= 1 ? ' · ' + num(r.shuttle[b]) + ' per Shuttle zurück' : ''))).join('') : '') + (r.faults ? tr('Störungen', '<span class="biz-bad">' + r.faults + (r.rescued >= 1 ? ' · ' + num(r.rescued) + ' Gäste geborgen' : '') + '</span>') : '') + '</table>' +
         (r.staff ? '<h2>Personal</h2><table>' + tr('Lohnkosten', eur(r.costs.staff || 0)) + tr('Mitarbeiter', num(r.staff.heads)) + tr('Kassenschlange Spitze', '<span class="' + wtone(r.staff.cashPeak) + '">' + mins(r.staff.cashPeak) + '</span>') + '</table>' : '') +
         '<h2>Kosten nach Posten</h2><table>' + costs + tr('Summe Kosten', eur(-r.cost), 'sum') + '</table>' +
         '<h2>Kasse</h2><table>' + tr('vorher', eur(r.cashStart)) + tr('Ergebnis', '<span class="' + (r.cash >= r.cashStart ? 'biz-good' : 'biz-bad') + '">' + eur(r.cash - r.cashStart) + '</span>') + tr('nachher', eur(r.cash), 'sum') + '</table>' +

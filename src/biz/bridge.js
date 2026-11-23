@@ -11,6 +11,7 @@ import { createView3d } from './view3d.js';
 import { createCustom } from './ui-custom.js';
 import { createPisteTool } from './ui-piste.js';
 import * as CU from './custom.js';
+import { bases as netBases } from './net.js';
 
 export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain, village, props, hud }) {
   const ui = createUI({ refresh: () => ui.render(G), action, custom: (g, h) => cust.tab(g, h) + pt.tab(g, h), price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
@@ -129,12 +130,13 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     sync();
     ui.render(G);
     crowd?.setSource?.(view);
-    village?.setSource?.(() => active && G.flow ? (G.flow.cars || 0) / Math.max(1, G.side.park.cap) : 0);
+    village?.setSource?.(() => active && G.flow ? (G.flow.carsB?.tal ?? G.flow.cars ?? 0) / Math.max(1, netBases(G)[0].cap) : 0);
+    village?.setLots?.(() => active && G.flow ? netBases(G).slice(1).map(b => ({ id: b.id, lot: CU.base(G, b.id)?.lot, spots: b.cap, fill: (G.flow.carsB?.[b.id] || 0) / Math.max(1, b.cap) })).filter(x => x.lot) : []);
     v3.set(true, G);
   }
 
   const huts = Object.fromEntries(D.side.huts.map(h => [h.id, scenery?.huts?.find(x => x.name === h.name)]).filter(e => e[1]));
-  const view = () => active && G.flow ? { f: G.flow, now: G.min - 1 + (G.phase === 'open' ? clk.frac() : 0), pace: lift.pace || 0, huts, places: id => G.lifts.find(x => x.id === id)?.places || D.lifts.find(x => x.id === id)?.places } : null;
+  const view = () => active && G.flow ? { f: G.flow, now: G.min - 1 + (G.phase === 'open' ? clk.frac() : 0), pace: lift.pace || 0, huts, base: b => b && b !== 'tal' ? CU.base(G, b)?.lift || null : null, places: id => G.lifts.find(x => x.id === id)?.places || D.lifts.find(x => x.id === id)?.places } : null;
 
   function end() {
     if (!active) return;
@@ -147,6 +149,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     sync();
     crowd?.setSource?.(null);
     village?.setSource?.(null);
+    village?.setLots?.(null);
     village?.setScale?.(1);
     lift.pace = null;
   }
