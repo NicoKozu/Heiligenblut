@@ -12,13 +12,14 @@
 - **Nur noch Manager weiterentwickeln.** Freies Fahren bleibt unverändert (nicht anfassen, nur lauffähig halten).
 - **Immer mergen:** Jede Änderung (auch kleine Zusätze außerhalb von Etappen) per PR nach `main` und selbst mergen, ohne Rückfrage.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
-- Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
+- Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B, bei 28–31 zusätzlich „Open World – gemeinsame Regeln“, und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
 - Prüfen: `node --check` + `node tools/simtest.mjs --check` (~70 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen; jsdelivr ist gesperrt → three@0.170.0 per npm in den Scratchpad und per `page.route` ausliefern; SwiftShader ~0,2 FPS).
 - Spiel muss nach jeder Etappe lauffähig bleiben; Freies Fahren lädt keinen `biz`-Code; alte Spielstände laden (`migrate()` in `sim.js`).
 - Pro Etappe neuen Chat starten (spart Tokens).
 
 ## Offene Etappen (Reihenfolge)
 22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
+- **Open World** (nach Vollausbau freigeschaltet, direkt per „Etappe 28“ startbar): 28 freier Liftbau inkl. neuer Tallifte mit Talstation/Parkplatz und Verbindungslifte · 29 freier Pistenbau · 30 Netzlogik: Gäste wählen Talstation/Route nach Spaß + Wollen · 31 zweites Gebiet, Hütten, Balancing. Spezifikation in `MANAGER.md` (Abschnitt „Open World“ + Etappe).
 
 ## Stand (Etappen 1–21, 23, 24 fertig, Details `HISTORY.md`)
 - 3D: echtes DEM (15-m-Gelände, Satellitenbild Sentinel-2, Panorama bis 56 km), Fahrphysik Ski/Board, Pisten/Lifte/Hütten aus OSM, Bäume/Gebäude/Felsen, Gäste 1:1 als Figuren (Manager), Flugmodus (F), Menü, Audio.
