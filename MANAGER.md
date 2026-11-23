@@ -1,10 +1,10 @@
-# Manager-Modus – Spezifikation (Etappen 12–27)
+# Manager-Modus – Spezifikation (Etappen 12–31)
 
 Bei „Etappe XX“: nur **Abschnitt A (Grundregeln)**, **Abschnitt B (Referenzwerte)** und den Abschnitt der Etappe lesen, dazu nur die dort genannten Quelldateien. Am Ende Abnahme-Liste prüfen, dann Stand in `CLAUDE.md` eintragen (2–4 Zeilen) und Workflow aus `CLAUDE.md` (Branch `etappe-XX`, PR, merge).
 
 ---
 
-## A. Grundregeln (gelten für alle Etappen 12–27)
+## A. Grundregeln (gelten für alle Etappen 12–31)
 
 **Vision.** Der Spieler ist Betreiber des Skigebiets Heiligenblut. Jeder Tag läuft in drei Phasen ab: **Vorbereitung** (morgens, Zeit steht) → **Betrieb** 08:30–16:30 (Zeit läuft, Spieler kann selbst fahren, Kennzahlen live) → **Feierabend** (Tagesbericht, Planung, Nacht-Aufträge) → „Nächster Tag“. Hauptindikator ist die **Gästezufriedenheit**; sie treibt den **Ruf**, der Ruf treibt die Nachfrage. Alles kostet Geld, Einnahmen kommen über Tickets und Nebengeschäfte.
 
@@ -425,3 +425,82 @@ Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenhe
 4. Bei hohem Zeitfaktor (×10/×20) Meldungsklänge zusammenfassen (max. 1 pro Sekunde).
 
 **Abnahme:** Jeder genannte Klang ist auslösbar, Regler wirken und bleiben nach Neuladen erhalten, kein Knacken/Übersteuern bei ×20.
+
+---
+
+## Open World (Etappen 28–31) – gemeinsame Regeln
+
+**Freischaltung:** „Freier Ausbau“ erst, wenn alle Lift- und Pistenprojekte des echten Gebiets gebaut sind (`data.js`, ohne Kabinen-Ausbaustufen); Meldung + Tab „Freier Bau“. Für Tests Schalter in `simtest.mjs`/Konsole (`G.open = true`).
+**Gelände:** DEM deckt x −4,4…+8,5 km, z −6,5…+5,2 km ab, inkl. Gegenhang und Nachbartäler. Bauen nur innerhalb `terrain.inside`, nicht auf Straßen/Gebäuden (`village.blocked`, `props.blocked`), Mindestabstand zu bestehenden Anlagen.
+**Datenmodell:** eigene Anlagen in `G.custom` {lifts[], pistes[], bases[]} mit Punkten in Weltkoordinaten; alle Kennzahlen aus der Geometrie berechnet (Funktion in `biz/`, ohne DOM). Echte Anlagen bleiben unverändert. Alte Spielstände: `migrate()` legt `G.custom` leer an.
+**Preise/Werte** in `data.js` (je Typ: Basis + €/m Länge + €/Hm, Bauzeit über Nacht wie bisher, Wartung, Personal). Simtest-Ziele der Etappen 12–27 bleiben OK (freier Bau ist erst nach Vollausbau aktiv); neue Strategie `openworld` im Simtest.
+**Bedienung:** im Flugmodus (F), Platzieren per Klick, Vorschau live (Linie/Geist-Modell, rot = ungültig mit Grund), Esc bricht ab, Rechtsklick entfernt letzten Punkt, Bestätigen zeigt Kosten/Kennzahlen.
+
+---
+
+## Etappe 28 – Freier Liftbau (inkl. Tal- und Verbindungslifte)
+
+**Ziel:** Eigene Lifte überall im Gelände bauen: im bestehenden Gebiet, als neue Tallifte mit eigener Talstation und als Verbindungslifte zwischen Gebieten.
+
+**Dateien:** neue `src/biz/custom.js` (rein: Geometrie → Kennzahlen, Prüfung, Bau), `src/biz/data.js`, `src/biz/build.js`, `src/biz/sim.js` (`migrate`, Aufrufe), neue `src/biz/ui-custom.js` (Platzier-Modus), `src/biz/bridge.js`, `src/lift.js` (`addSection`, `dressDrag`), `src/station.js`.
+
+**Umsetzen:**
+1. **Typen:** Gondel (8–10er), Sessel (4/6er, neu: offenes Modell mit Bügel), Schlepp, Teller, Seillift. Je Typ max. Länge/Neigung, Tempo, `gap`, `places`, Preis.
+2. **Platzieren:** Talpunkt und Bergpunkt klicken; optional Mittelstation (dritter Punkt). Stützen automatisch nach Geländeprofil (Mindestbodenabstand), Trasse prüfen (Gefälle, Hindernisse, Wald → Rodungskosten).
+3. **Talstationen:** Ein Lift, dessen Talpunkt nicht an einer bestehenden Piste/Station liegt, kann als **Tallift** gebaut werden: Talstation mit Kassa, Wartebereich, Parkplatz (Plätze wählbar, eingeebnet, Zufahrt zur nächsten Straße aus `village.json`). Eintrag in `G.custom.bases` (Name frei wählbar, Vorschlag aus nächstem Ortsnamen/POI).
+4. **Verbindungslifte:** Lift, dessen Endpunkte in zwei verschiedenen Gebieten/Talstationen liegen, wird als Verbindung markiert (Symbol, eigene Farbe im Overlay O).
+5. 3D wie bestehende Lifte (Stationen, Kabinen/Bügel, Wartebereich, Personal), Objektkarte mit Öffnen/Schließen, Revision, Ausbaustufen (Plätze), Abriss (Rückerstattung 20 %).
+6. Sim: eigene Lifte laufen in `assets.js`/`flow.js` wie echte (Abnutzung, Defekte, Kosten, Kapazität aus `gap`/`places`). Gäste nutzen sie in dieser Etappe nur, wenn sie an bestehende Pisten anschließen; volle Netzlogik folgt in 30.
+
+**Abnahme:** Nach Freischaltung lassen sich ein Sessellift im bestehenden Gebiet, ein Tallift mit Parkplatz am Gegenhang und ein Verbindungslift bauen; sie erscheinen in 3D, auf Minikarte/Overlay, in Finanzen und Objektkarte; Spielstand speichern/laden erhält sie; Simtest alle Ziele OK.
+
+---
+
+## Etappe 29 – Freier Pistenbau
+
+**Ziel:** Eigene Pisten zeichnen, die sich in Gelände, Pflege und Beschneiung wie echte verhalten.
+
+**Dateien:** `src/biz/custom.js`, `src/biz/ui-custom.js`, `src/pistes.js`, `src/terrain.js` (Attribut `pist`, `pSurf`/`SURF`), `src/biz/snow.js`, `src/biz/area.js`, `src/scenery.js` (Bäume auf Trasse entfernen).
+
+**Umsetzen:**
+1. **Zeichnen:** Punkte setzen (Start an einer Bergstation/Piste, Ende an Talstation/Lift/Piste), Spline glätten, Breite 20–60 m wählbar. Schwierigkeit automatisch aus Gefälle (blau ≤ 25 %, rot ≤ 40 %, schwarz darüber; Anzeige je Abschnitt), Name frei.
+2. **Gelände:** Piste ins Pisten-Attribut eintragen, Bäume auf der Trasse entfernen (Rodung kostet je m²), leichte Einebnung quer zur Fahrtrichtung. `pSurf`/`SURF` erweitern (Textur oder größeres Array), damit ≥ 64 Pisten Zustände haben.
+3. Pflege/Beschneiung/Mittagspräparierung/Abnutzung wie echte Pisten (`snow.js`), Kanonen je Piste, Anteil in `area.js`.
+4. Eigene Pisten nur im Manager; Freies Fahren bleibt unverändert und lädt keinen `biz`-Code.
+5. Objektkarte, Pisten-Overlay, Minikarte, Pistenliste links.
+
+**Abnahme:** Eine rote Piste vom neuen Tallift zur Talstation lässt sich zeichnen, wird präpariert/beschneit, zeigt Zustand im Overlay, Gäste fahren sie ab (über bestehende Logik, sofern verbunden); ≥ 64 Pisten-Zustände ohne Shaderfehler; FPS stabil.
+
+---
+
+## Etappe 30 – Netzlogik: Gäste wählen Talstation, Lifte und Pisten
+
+**Ziel:** Gäste bewegen sich in einem beliebigen Netz aus echten und eigenen Anlagen und verteilen sich nach Spaß und Wollen auf alle Talstationen.
+
+**Dateien:** `src/biz/flow.js`, `src/biz/demand.js`, `src/biz/side.js` (Parkplätze), neue `src/biz/net.js` (Graph: Knoten Stationen/Pistenenden, Kanten Lift/Piste/Fußweg), `src/crowd.js`, `src/village.js` (Autos zu allen Parkplätzen), `tools/simtest.mjs`.
+
+**Umsetzen:**
+1. **Graph** aus echten + eigenen Anlagen (`net.js`), automatisch neu bei Bau/Abriss/Öffnen/Schließen; Erreichbarkeit je Talstation.
+2. **Wahl der Talstation** je Gruppe bei Ankunft (Logit/Gewichtung): **Spaß** = erreichbare Pistenkilometer je Schwierigkeit passend zur Zielgruppe, Abwechslung, Schneezustand; **Wollen** = erwartete Wartezeit an Kassa/Lift, Parkplatz frei/Preis, Anfahrt (Entfernung vom Ort), Ruf der Talstation. Gäste merken sich gute Tage (leichter Bonus nächster Besuch).
+3. **Routenwahl** an jedem Knoten nach denselben Faktoren (bisheriges `decide` erweitert): Zielgruppen-Vorlieben, Wartezeiten, Hütten in Reichweite, Rückweg zur eigenen Talstation vor Liftschluss (Verbindungslifte zurück nutzen, sonst Shuttle-Kosten/Unzufriedenheit).
+4. **Nachfrage:** zusätzliche Talstationen und Verbindungen erhöhen Angebot (`offerF`), Parkplätze begrenzen Anreise je Talstation; Gebietsgröße steigert Ruf langsam.
+5. 3D: Autos zu allen Parkplätzen, Gäste an allen Talstationen, Panel zeigt Gäste/Wartezeit je Talstation.
+6. Simtest: Strategie `openworld` (baut ab Vollausbau Tallift + 2 Pisten + Verbindung) – Gäste verteilen sich auf ≥ 2 Talstationen, kein Stau-Kollaps, Gewinn plausibel.
+
+**Abnahme:** Mit zweiter Talstation verteilen sich Gäste sichtbar; schließt man dort den Lift, wechseln sie zur anderen; Verbindungslift wird in beide Richtungen genutzt; Simtest alle Ziele OK + `openworld` plausibel.
+
+---
+
+## Etappe 31 – Zweites Skigebiet, Hütten und Balancing
+
+**Ziel:** Ein komplett eigenes Gebiet am Gegenhang (oder Nachbartal) fühlt sich vollwertig an und ist wirtschaftlich ausbalanciert.
+
+**Dateien:** `src/biz/custom.js`, `src/biz/side.js`, `src/biz/data.js`, `src/biz/ui-custom.js`, `src/scenery.js`, `src/biz/view3d.js`, `tools/simtest.mjs`.
+
+**Umsetzen:**
+1. **Eigene Hütten** frei platzieren (Größe S/M/L, Plätze, Preisniveau), Optik wie bestehende Hütten; Verleih/Skischule je Talstation.
+2. **Gebiete benennen**, Gebietskarte (Overlay) mit allen Talstationen, Liften, Pisten, Verbindungen; Kennzahlen je Gebiet in Finanzen/Saisonbilanz.
+3. **Balancing:** Kosten je Meter/Hm, Nachfragezuwachs, Abnehmender Ertrag großer Gebiete, Kreditrahmen wächst mit Anlagevermögen. Ziel: freier Ausbau lohnt sich langfristig, aber nicht sofort; Ziele für `openworld` in Abschnitt B ergänzen.
+4. Optik am Gegenhang prüfen (Satellitenbild gröber → Schneetextur stärker überblenden, Bäume vorhanden).
+
+**Abnahme:** Ein zweites Gebiet mit Tallift, 3 Liften, 4 Pisten, Hütte und Verbindung ist spielbar; Saisonbilanz je Gebiet; Simtest alle Ziele + `openworld`-Ziele OK; FPS stabil.
