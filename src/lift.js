@@ -5,7 +5,7 @@ import { createStationKit } from './station.js';
 import { consume, down } from './input.js';
 import { D } from './biz/data.js';
 
-const RIDE = Object.fromEntries(D.lifts.map(l => [l.id, l]));
+const RIDE = new Proxy({}, { get: (_, id) => D.lifts.find(l => l.id === id) });
 
 const GAUGE = 3;
 const ROPE = 5.4;
@@ -31,7 +31,7 @@ const STATIONS = [
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o });
 
-function buildSection(sec, terrain, base, avoid) {
+export function buildSection(sec, terrain, base, avoid) {
   const [ax, az] = sec.a, [bx, bz] = sec.b;
   const len = Math.hypot(bx - ax, bz - az);
   const dx = (bx - ax) / len, dz = (bz - az) / len, px = -dz, pz = dx;
@@ -163,6 +163,17 @@ export function createLift(terrain, pistes, exp) {
     B(0.6, 0.12, 0.6, 0, 1.22, 0)
   ]);
   const roofTop = mat(0xf2f2ef, { roughness: 0.4 });
+  const CW = 6 * 0.62;
+  const chairSeat = mergeGeometries([B(CW, 0.12, 0.55, 0, -0.45, 0.05), B(CW, 0.62, 0.1, 0, -0.08, -0.26).rotateX(-0.12)]);
+  const chairFrame = mergeGeometries([
+    new THREE.CylinderGeometry(0.06, 0.06, 3.2, 6).translate(0, 1.9, -0.36),
+    B(0.3, 0.28, 0.9, 0, 3.58, -0.2),
+    B(CW + 0.1, 0.07, 0.07, 0, 0.3, -0.36),
+    ...[-1, 1].flatMap(a => [B(0.06, 0.85, 0.06, a * (CW / 2 + 0.03), -0.1, -0.33), B(0.06, 0.06, 0.95, a * (CW / 2 + 0.03), -0.52, 0.1), B(0.05, 0.05, 0.75, a * (CW / 2 + 0.03), 0.28, 0.02).rotateX(0)]),
+    B(CW + 0.1, 0.05, 0.05, 0, 0.28, 0.42),
+    ...[-0.25, 0.25].map(o => B(0.05, 1.1, 0.05, o * CW, -0.27, 0.42)),
+    B(CW * 0.7, 0.05, 0.2, 0, -0.82, 0.48)
+  ]);
   const kit = createStationKit(terrain);
   const centers = STATIONS.map(st => { const d = SECTIONS[st.s], l = Math.hypot(d.b[0] - d.a[0], d.b[1] - d.a[1]); return [st.c[0] + (d.b[0] - d.a[0]) / l * st.off, st.c[1] + (d.b[1] - d.a[1]) / l * st.off]; });
   const spots = [];
@@ -231,7 +242,13 @@ export function createLift(terrain, pistes, exp) {
     }
     sec.tw = tw;
     if (sec.drag) { dressDrag(sec, g); sec.mesh = g; group.add(g); return; }
-    if (sec.count) {
+    if (sec.count && sec.chair) {
+      const cSeat = new THREE.InstancedMesh(chairSeat, mat(sec.color ?? 0x2a2f36, { roughness: 0.7 }), sec.count);
+      const cFrame = new THREE.InstancedMesh(chairFrame, steel, sec.count);
+      for (const m of [cSeat, cFrame]) { m.castShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; }
+      g.add(cSeat, cFrame);
+      sec.cabs = [cSeat, cFrame];
+    } else if (sec.count) {
       const cBody = new THREE.InstancedMesh(body, mat(sec.color ?? 0xc8202a, { roughness: 0.35, metalness: 0.15 }), sec.count);
       const cGlass = new THREE.InstancedMesh(glass, glassMat, sec.count);
       const cRoof = new THREE.InstancedMesh(roof, roofTop, sec.count);
@@ -277,6 +294,25 @@ export function createLift(terrain, pistes, exp) {
     for (const r of added.get(id)) { r.g.visible = true; halls.push(r.h); }
     api.onAdd?.(sec);
     return sec;
+  }
+
+  function addCustom(d) {
+    let sec = planned.find(s => s.id === d.id);
+    if (sec) return sec;
+    sec = buildSection({ ...d, st: null }, terrain, [terrain.heightAt(...d.a), terrain.heightAt(...d.b)], avoid);
+    sec.custom = true;
+    planned.push(sec);
+    return sec;
+  }
+
+  function dropCustom(id) {
+    const sec = planned.find(s => s.id === id);
+    if (!sec) return;
+    removeSection(id);
+    site(id, false);
+    if (sec.mesh) group.remove(sec.mesh);
+    added.delete(id);
+    planned.splice(planned.indexOf(sec), 1);
   }
 
   function removeSection(id) {
@@ -522,6 +558,6 @@ export function createLift(terrain, pistes, exp) {
 
   const cabinU = (sec, i) => { const u = (sec.phase + i * (sec.L / sec.count)) % sec.L; return u < 0 ? u + sec.L : u; };
 
-  const api = { group, sections, all, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, site, riding: () => !!ride, valleySpawn, spots, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
+  const api = { group, sections, all, planned, update, collide, leave, clear, shut, stop, setOpen, addSection, removeSection, addCustom, dropCustom, site, riding: () => !!ride, valleySpawn, spots, cabinAt, cabinU, rideCabin: () => ride, onAdd: null, pace: null };
   return api;
 }

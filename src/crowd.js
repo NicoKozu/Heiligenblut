@@ -679,6 +679,7 @@ export function createCrowd(terrain, pistes, lift, assets) {
       stand(m, sec.heading, false);
       return;
     }
+    if (sec.chair) { const o = (s % 6 - 2.5) * 0.62; ground(m, v3.x + sec.px * o + sec.dx * 0.1, v3.z + sec.pz * o + sec.dz * 0.1, v3.y - 0.9); stand(m, sec.heading, true); m.cab = 1; return; }
     const [a, b] = SEATS[s & 3], c = (s >> 2) & 1 ? 0.25 : 0;
     ground(m, v3.x + sec.dx * (a - Math.sign(a) * c) + sec.px * b * 0.6, v3.z + sec.dz * (a - Math.sign(a) * c) + sec.pz * b * 0.6, v3.y - 0.9 + 0.3 * (s >> 3));
     stand(m, sec.heading + (b < 0 ? Math.PI / 2 : -Math.PI / 2), true);
@@ -987,8 +988,8 @@ export function createCrowd(terrain, pistes, lift, assets) {
     lift.cabinAt(sec, c.i, v3);
     const t = Math.max(0, 1 - (L - p) / Math.max(6, sec.speed * 0.8));
     g.m.forEach((m, j) => {
-      const q = c.s + j, [a, b] = SEATS[q & 3], o = (q >> 2) & 1 ? 0.25 : 0, sx = v3.x + sec.dx * (a - Math.sign(a) * o) + sec.px * b * 0.6, sy = v3.y - 0.9 + 0.3 * (q >> 3), sz = v3.z + sec.dz * (a - Math.sign(a) * o) + sec.pz * b * 0.6;
-      if (c.st) { m.pos.set(sx, sy, sz); stand(m, sec.heading + (b < 0 ? Math.PI / 2 : -Math.PI / 2), true); m.cab = 1; }
+      const q = c.s + j, [a, b] = SEATS[q & 3], o = (q >> 2) & 1 ? 0.25 : 0, ch = sec.chair ? (q % 6 - 2.5) * 0.62 : 0, sx = sec.chair ? v3.x + sec.px * ch + sec.dx * 0.1 : v3.x + sec.dx * (a - Math.sign(a) * o) + sec.px * b * 0.6, sy = sec.chair ? v3.y - 0.9 : v3.y - 0.9 + 0.3 * (q >> 3), sz = sec.chair ? v3.z + sec.pz * ch + sec.dz * 0.1 : v3.z + sec.dz * (a - Math.sign(a) * o) + sec.pz * b * 0.6;
+      if (c.st) { m.pos.set(sx, sy, sz); stand(m, sec.chair ? sec.heading : sec.heading + (b < 0 ? Math.PI / 2 : -Math.PI / 2), true); m.cab = 1; }
       else {
         boardAt(sec, m, B);
         m.pos.set(B.x + (sx - B.x) * t, B.y + (sy - B.y) * t, B.z + (sz - B.z) * t);

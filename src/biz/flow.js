@@ -1,5 +1,5 @@
 import { D } from './data.js';
-import { DIRS, keys } from './area.js';
+import { DIRS, keys, LIFTX } from './area.js';
 import { running, pisteOpen, pay } from './assets.js';
 import { wear } from './snow.js';
 import { cashCap } from './staff.js';
@@ -9,7 +9,7 @@ import { next } from './rng.js';
 import { grp } from './people.js';
 
 const F = D.flow;
-const LIFT = Object.fromEntries(DIRS.map(l => [l.id, l]));
+const LIFT = LIFTX;
 const PISTE = Object.fromEntries(D.pistes.map(p => [p.id, p]));
 const LV = ['leicht', 'mittel', 'schwer'];
 const smooth = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);

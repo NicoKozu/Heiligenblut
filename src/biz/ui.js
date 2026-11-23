@@ -287,7 +287,7 @@ export function createUI(h) {
     boxes.forEach((e, i) => { if (ht[i] !== last[i]) { last[i] = ht[i]; e.innerHTML = ht[i]; } });
   }
 
-  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee'], ['side', 'Gastro & Service'], ['fin', 'Finanzen'], ['build', 'Bau']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
+  const tabs = () => '<div class="tabs">' + [['over', 'Übersicht'], ['assets', 'Anlagen'], ['prices', 'Preise'], ['staff', 'Personal'], ['mkt', 'Marketing'], ['snow', 'Schnee'], ['side', 'Gastro & Service'], ['fin', 'Finanzen'], ['build', 'Bau'], ['custom', 'Freier Bau']].map(([k, v]) => '<button data-tab="' + k + '" class="' + (tab === k ? 'on' : '') + '">' + v + '</button>').join('') + '</div>';
 
   function overview(G) {
     const r = report(G), dem = D.demand[calPhase(G.date)];
@@ -449,7 +449,7 @@ export function createUI(h) {
   }
 
   const H = () => ({ eur, tr, num, dec, fmtDate, fc: X0 => forecast(X0).n });
-  const body = G => tab === 'fin' ? finTab(G, H()) : tab === 'build' ? buildTab(G, H()) : tab === 'side' ? sideTab(G) : tab === 'mkt' ? mkt(G) : tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : null;
+  const body = G => tab === 'fin' ? finTab(G, H()) : tab === 'build' ? buildTab(G, H()) : tab === 'side' ? sideTab(G) : tab === 'mkt' ? mkt(G) : tab === 'staff' ? staffTab(G) : tab === 'prices' ? prices(G) : tab === 'assets' ? assets(G) : tab === 'snow' ? snow(G) : tab === 'custom' && h.custom ? h.custom(G, H()) : null;
 
   function prep(G) {
     return '<h1>Vorbereitung</h1><p class="sub">' + fmtDate(G.date) + ' · Betrieb 08:30–16:30</p>' + tabs() +

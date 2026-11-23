@@ -13,15 +13,15 @@
 - **Immer mergen:** Jede Änderung (auch kleine Zusätze außerhalb von Etappen) per PR nach `main` und selbst mergen, ohne Rückfrage.
 - Nächste Etappe erst nach „weiter“/„Etappe XX“. Vorher diese Datei aktualisieren (Stand 2–4 Zeilen; Details nach `HISTORY.md`).
 - Bei „Etappe XX“: aus `MANAGER.md` nur Abschnitt A, B, bei 28–31 zusätzlich „Open World – gemeinsame Regeln“, und den Etappen-Abschnitt lesen, umsetzen, Abnahme-Liste prüfen.
-- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~70 s, 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen; jsdelivr ist gesperrt → three@0.170.0 per npm in den Scratchpad und per `page.route` ausliefern; SwiftShader ~0,2 FPS).
+- Prüfen: `node --check` + `node tools/simtest.mjs --check` (~2–3 min, 6 Strategien × 5 Saisonen, alle Ziele OK). Zum Probieren `--seeds 1,2`. Wo sinnvoll (UI, 3D, Bedienung) zusätzlich Browser-Test mit Playwright (vorinstalliertes Chromium, lokaler Server, Screenshot/Konsolenfehler prüfen; jsdelivr ist gesperrt → three@0.170.0 per npm in den Scratchpad und per `page.route` ausliefern; SwiftShader ~0,2 FPS).
 - Spiel muss nach jeder Etappe lauffähig bleiben; Freies Fahren lädt keinen `biz`-Code; alte Spielstände laden (`migrate()` in `sim.js`).
 - Pro Etappe neuen Chat starten (spart Tokens).
 
 ## Offene Etappen (Reihenfolge)
 22 Ereignisse und Entscheidungen · 23b Dashboard (Diagramme, KPI), Panel konfigurierbar, Tutorial · 25 Tageslicht nach Uhrzeit, Feierabend, Nacht mit Pistengeräten/Beschneiung, besondere Tage · 26 Berater mit Ursachen/Vorschlägen, „Warum?“, Meilensteine, Saisonziele · 27 Sound: synthetische Effekte, Umgebungsklang nach Kamera, Lautstärke.
-- **Open World** (nach Vollausbau freigeschaltet, direkt per „Etappe 28“ startbar): 28 freier Liftbau inkl. neuer Tallifte mit Talstation/Parkplatz und Verbindungslifte · 29 freier Pistenbau · 30 Netzlogik: Gäste wählen Talstation/Route nach Spaß + Wollen · 31 zweites Gebiet, Hütten, Balancing. Spezifikation in `MANAGER.md` (Abschnitt „Open World“ + Etappe).
+- **Open World** (nach Vollausbau freigeschaltet): 29 freier Pistenbau · 30 Netzlogik: Gäste wählen Talstation/Route nach Spaß + Wollen · 31 zweites Gebiet, Hütten, Balancing. Spezifikation in `MANAGER.md` (Abschnitt „Open World“ + Etappe).
 
-## Stand (Etappen 1–21, 23, 24 fertig, Details `HISTORY.md`)
+## Stand (Etappen 1–21, 23, 24, 28 fertig, Details `HISTORY.md`)
 - 3D: echtes DEM (15-m-Gelände, Satellitenbild Sentinel-2, Panorama bis 56 km), Fahrphysik Ski/Board, Pisten/Lifte/Hütten aus OSM, Bäume/Gebäude/Felsen, Gäste 1:1 als Figuren (Manager), Flugmodus (F), Menü, Audio.
 - Manager-Sim (`src/biz/`, rein, headless testbar): Zeit/Phasen, Nachfrage je Zielgruppe, Flussmodell, Anlagen/Defekte, Zufriedenheit/Ruf, Wetter/Schnee, Personal, Marketing/Konkurrenz, Nebengeschäfte, Bau/Kredit/AfA. Start nur mit Gondel Rossbach + Piste 10 + Rossbach Alm (Kasse 1,5 Mio, Kredit bis 6 Mio), Rest sind Bauprojekte.
 - Etappe 20b: `tools/simtest.mjs` + Balancing. Werte in `data.js` (nicht MANAGER.md B) maßgeblich: Bauprojekte ~50 %, Nachfrage ×0,65, Lift-Wartung je Lift `maint`, Gästebetrieb 15 €/Gast, Preis-Note bis −50, Grundwartung nachts bis 70 %. Ohne offene Piste keine Nachfrage; Folgeprojekte im Sommer vorbestellbar.
@@ -51,6 +51,8 @@
 - Zufriedenheit transparent (Zusatz): `segZ` liefert wirksame Teilnoten (Zielgruppen-Mix inkl. Preis je Gruppe, Hütten-Niveau, Parkpreis), Gewichte, Schnitt `avg`, Abzug schwächster Wert `pen`, je Gruppe `low`; `parts()` in `ui.js` zeigt das + Zielgruppen-Karten. Service = 70 % Gastro + 30 % Verleih/Skischule (Kassa steckt in Wartezeit, Moral entfällt); Abzug schwächster Wert erst ab `worstLo` −40 gedeckelt; Tagesnote nutzt echten Pistenanteil wie live.
 - Schlepplift-Ausbau (Zusatz): Schlepp-/Teller-/Seillifte je 3 Ausbaustufen (`cab:<lift>:<n>`, Plätze je Takt ×2/×3/×4, Preis Liftprojekt × (0,6 + 0,4·Stufe)), z. B. Kidsworld 1→2→3→4 für 14k/20k/25k.
 - Sport-Marketing (Zusatz): Kampagnen `sportmag` (4.000 €/Woche, Sportliche +18 %) und `race` Rennwochenende (7.000 €, +35 % für 2 Wochen, ab 7 Tagen), Familien 0; Marketing-Tab zeigt Anteil je Zielgruppe.
+- Etappe 28 (freier Liftbau): `biz/custom.js` (rein) `G.custom` {lifts, pistes, bases, n}, `G.open` (Freischaltung `unlock` nach allen echten Lift-/Pistenprojekten); `sync(G)` hängt eigene Lifte als Segmente (`u<n>`, mit Mittelstation `u<n>-2`) in `D.lifts`/`D.nodes`/Bauprojekte (Ausbaustufen über `addCabs` in data.js) und baut `area.js` `DIRS`/`LIFTX` neu. `quote` (Kennzahlen/Preis aus Geometrie, Prüfung), `place` (Bau über Nacht via `order`), `snap` (Endpunkt ≤ 120 m an Station → Anschluss), `areas`/Verbindungslift (`link`), `demolish` (20 % Rückerstattung, nur außerhalb Betrieb). Typen/Preise `D.custom` (Gondel 8→10, Sessel 4→6, Schlepp/Teller/Seil), Talstation+Kassa+Parkplatz+Zufahrt (`D.custom.base`), Knotenpunkte `D.nodeAt`, Gebiete `D.areas`.
+- 3D/UI 28: `biz/ui-custom.js` Platzier-Modus im Flugmodus (Klick Tal/Berg/[Mitte], Rechtsklick zurück, Esc/Enter, Vorschau mit Stützen grün/rot, Prüfung Gelände/Gebäude/Straße/andere Lifte/Wald), Panel mit Kennzahlen/Kosten, Tab „Freier Bau“, Talstation-Parkplatz eingeebnet (`terrain.groom`) + Zufahrt, Markierung Verbindungslifte (orange, ⇄) + Minikarte (`hud.lines`). `lift.js` `addCustom/dropCustom`, Sessel-Modell (`chair`), `buildSection` exportiert; `crowd` Sitzplätze im Sessel; Objektkarte mit Typ/Abriss. Simtest-Strategie `openworld` (S3 3 eigene Lifte, Sessellift genutzt).
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur
@@ -77,6 +79,7 @@
 - `weather.js` · `snow.js` (`night, setGroom, setGun, groomPlan, gunPlan, nightTemp`) · `staff.js` (`needs, hire, fire, setWage, bonus, seasonEnd`) · `marketing.js` (`act`, Konkurrenz `G.comp`) · `side.js` (Hütten, Verleih, Schule, Parkplatz)
 - `build.js` `check(G, id, summer), order, buildDay, borrow, repay, depreciate, solvency, groomer, cannon, pipe, seasonPL, benefit` · `area.js` `pl(G), DIRS, keys, baseKm`
 - `season.js` Saisonbilanz/Revision/Sommerkosten · `ui-season.js` Bilanz- und Sommer-Ansicht
+- `custom.js` Open World: eigene Lifte/Talstationen (`G.custom`), `ui-custom.js` Platzier-Modus/Tab „Freier Bau“/Basis-3D
 - `bridge.js` Brücke zur 3D-Welt · `ui.js`, `ui-build.js` Panel/Overlays/Tabs · `view3d.js` Objektkarte, Status-Symbole, Overlay (three + DOM)
 - `tools/simtest.mjs` Headless-Balancingtest
 

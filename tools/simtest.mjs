@@ -8,6 +8,7 @@ import { setLevel, setSidePrice, HUTS } from '../src/biz/side.js';
 import { check, order, borrow, repay, seasonPL, groomer } from '../src/biz/build.js';
 import { seasonOf } from '../src/biz/calendar.js';
 import { pl } from '../src/biz/area.js';
+import { place, quote, segIds } from '../src/biz/custom.js';
 
 const argv = process.argv.slice(2);
 const opt = k => { const i = argv.indexOf('--' + k); return i < 0 ? null : argv[i + 1]; };
@@ -129,7 +130,28 @@ function investor() {
   return sensible({ name: 'investor', reserve: 100000, buffer: 50000, repayAbove: 130000, maxLoan: D.start.credit, now: true, repayFrom: 2, finishFrom: 2, mkt: 0, plan: [ALL] });
 }
 
-const STRATS = { 'vernünftig': () => sensible(), abwarten: waiting, gierig: greedy, geizig: stingy, investor };
+const REST = ['tauernberg', 'p2c', 'viehbuehel', 'p8', 'schulwiese', 'kidsworld', 'ederfeld', 'p2b', 'p1a'];
+const OWN = [
+  { type: 'chair', name: 'Sessellift Rossbach-Express', pts: [[-140, 1312, -90], [600, 1745, -900]] },
+  { type: 'gondola', name: 'Gegenhangbahn', pts: [[-1100, 1350, 300], [-1900, 1900, 600]], base: { name: 'Talstation Gegenhang', spots: 150 } },
+  { type: 'gondola', name: 'Verbindung Dorf–Gegenhang', pts: [[-440, 1246, 60], [-1890, 1898, 590]] }
+];
+
+function openworld() {
+  const s = sensible({ name: 'openworld', reserve: 100000, buffer: 100000, repayAbove: 130000, maxLoan: [D.start.credit, 800000], now: true, repayFrom: 3, finishFrom: 4, mkt: 0, plan: [ALL, [], REST] });
+  const m = s.morning;
+  s.morning = G => {
+    if (sIdx(G, s) >= 2) {
+      G.open = true;
+      const o = OWN.find(o => !G.custom.lifts.some(c => c.name === o.name)), q = o && quote(G, o);
+      if (q && !q.why && afford(G, q.price + 150000, s.c)) place(G, o);
+    }
+    m(G);
+  };
+  return s;
+}
+
+const STRATS = { 'vernünftig': () => sensible(), abwarten: waiting, gierig: greedy, geizig: stingy, investor, openworld };
 
 function run(name, seed, seasons, maxDays, daily) {
   const s = STRATS[name](), G = newGame(seed), out = [], days = [];
@@ -170,6 +192,8 @@ function run(name, seed, seasons, maxDays, daily) {
       cur.faults += h.faults || 0;
       cur.acc += h.sat?.hits?.accident || 0;
       cur.loanMax = Math.max(cur.loanMax, G.loan);
+      cur.own = G.custom.lifts.filter(c => G.build.done.includes(c.id)).length;
+      cur.ownRides = (cur.ownRides || 0) + G.custom.lifts.flatMap(segIds).reduce((a, id) => a + (h.rides?.[id] || 0), 0);
       for (const id of G.build.done) if (!doneSeen.has(id)) { doneSeen.add(id); cur.built.push(short(id) + '@' + cur.day); }
       if (daily) days.push({ strat: name, seed, date: h.date, guests: h.guests, rev: h.revenue, cost: h.cost, cash: G.cash, z: h.sat?.z ?? 0, rep: G.rep, wait: h.avgWait || 0 });
       if (cur.day > 200) throw new Error('Saison > 200 Tage ' + name + ' Seed ' + seed);
@@ -198,7 +222,7 @@ function agg(runs, i) {
   if (!S.length) return null;
   const f = key => { const v = S.map(s => s[key]); return { m: v.reduce((a, b) => a + b, 0) / v.length, lo: Math.min(...v), hi: Math.max(...v) }; };
   const o = {};
-  for (const key of ['exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
+  for (const key of ['own', 'ownRides', 'exp', 'guests', 'R', 'C', 'result', 'cash', 'loan', 'loanMax', 'avgZ', 'rep', 'faults', 'acc', 'peak', 'wait', 'days']) o[key] = f(key);
   o.insolv = runs.filter(r => r.seasons[i]?.insolvent).length;
   o.n = S.length;
   o.built = S[0].built.join(' ');
@@ -270,6 +294,10 @@ if (flag('check')) {
   for (let i = 0; i < seasons; i++) if (A[I]?.[i]) rows.push([I, i + 1, 'keine Insolvenz', A[I][i].insolv, A[I][i].insolv === 0]);
   if (A[I]?.[2] && A[V]?.[2]) rows.push([I, 3, 'Ergebnis > vernünftig − 0,1 Mio', M(g(I, 2, 'result')) + ' / ' + M(g(V, 2, 'result')), g(I, 2, 'result') > g(V, 2, 'result') - 1e5]);
   if (A[I]?.[2]) rows.push([I, 3, 'Kredit sinkt ggü. Saison 2', M(g(I, 2, 'loan')) + ' / ' + M(g(I, 1, 'loan')), g(I, 2, 'loan') < g(I, 1, 'loan')]);
+  const O = 'openworld';
+  for (let i = 0; i < seasons; i++) if (A[O]?.[i]) rows.push([O, i + 1, 'keine Insolvenz', A[O][i].insolv, A[O][i].insolv === 0]);
+  add(O, 3, 'eigene Lifte gebaut = 3', 'own', v => v === 3, N);
+  add(O, 2, 'eigener Sessellift genutzt', 'ownRides', ge(1000), K);
   for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.1e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;

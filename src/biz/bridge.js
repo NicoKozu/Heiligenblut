@@ -8,9 +8,11 @@ import * as X from './side.js';
 import * as B from './build.js';
 import { consume } from '../input.js';
 import { createView3d } from './view3d.js';
+import { createCustom } from './ui-custom.js';
+import * as CU from './custom.js';
 
-export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain, village }) {
-  const ui = createUI({ refresh: () => ui.render(G), action, price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
+export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scene, terrain, village, props, hud }) {
+  const ui = createUI({ refresh: () => ui.render(G), action, custom: (g, h) => cust.tab(g, h), price: (k, v) => { if (k.startsWith('side:')) X.setSidePrice(G, k.slice(5), v); else S.setPrice(G, k, v); save(); ui.render(G); } });
   const clk = S.clock();
   const keys = [];
   let G = null, active = false, hold = false, acc = 0, htxt = '';
@@ -24,6 +26,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (!e.repeat && e.code === 'KeyO') keys.push('o');
   });
   const v3 = createView3d({ scene, cam, terrain, lift, pistes, scenery, act: a => action(a) });
+  const cust = createCustom({ scene, cam, terrain, lift, village, props, hud, scenery, act: a => action(a), note: (t, s) => note(t, s) });
   function mgr(on) {
     if (on === v3.mgr) return;
     v3.setMgr(on);
@@ -59,6 +62,9 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (a.startsWith('mach:')) { if (B.groomer(G, Number(a.slice(5)))) save(); }
     else if (a.startsWith('can:')) { const [, id, d] = a.split(':'); if (B.cannon(G, id, Number(d))) save(); }
     else if (a.startsWith('pipe:')) { if (B.pipe(G, a.slice(5))) save(); }
+    else if (a.startsWith('cplace:')) { if (cust.start(a.slice(7))) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }
+    else if (a.startsWith('cdemo:')) { if (CU.demolish(G, a.slice(6))) { save(); note('Lift abgerissen', 2); } }
+    else if (a === 'custom:built') save();
     else if (a === 'newgame') { begin(true); note('Neues Spiel', 2); return; }
     ui.render(G);
   }
@@ -99,6 +105,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
       const lb = N.label(o), C = D.cover;
       pistes.setSurface(p.id, o.groomed && lb !== 'pulvrig' ? Math.min(1, Math.max(0, (o.cond - 40) / 45)) : 0, lb === 'pulvrig' ? 0 : Math.min(1, Math.max(0, (88 - o.cond) / 50)), Math.min(1, Math.max(0, (C.thin - o.snow) / (C.thin - C.minOpen + 6))));
     }
+    cust.sync(G, active);
     env?.set(active ? G.weather?.today : null);
     if (scenery) scenery.wind = active && G.weather?.today ? G.weather.today.wind / 70 : 0.2;
     if (scenery?.setHut) for (const h of D.side.huts) scenery.setHut(h.name, !active || (G.side.huts[h.id].open && G.side.huts[h.id].own && G.phase !== 'closed'));
@@ -142,6 +149,8 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
   function update(dt) {
     if (!active) return;
     mgr(cam.mode === 'fly');
+    cust.setOn(v3.mgr);
+    cust.update(G, dt);
     while (keys.length) {
       const k = keys.shift();
       if (k === '+' || k === '-') { const f = S.setFactor(G, k === '+' ? 1 : -1); note(f < 1 ? 'Zeitfaktor Echtzeit' : 'Zeitfaktor ×' + f, 1.2); }
@@ -175,7 +184,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     hold = want;
     if (hold) {
       const v = G.fin?.over ? 'over' : G.summer ? (G.summer.stage === 'plan' ? 'summer' : 'season') : G.phase === 'prep' ? 'prep' : 'daily';
-      if (ui.view !== v) ui.open(v);
+      if (ui.view !== v && !cust.active) ui.open(v);
       if (player.state.noteT > 0) player.state.noteT -= dt;
     } else if (G.phase === 'closed') player.state.hint = 'Lifte geschlossen – Fahrt endet an der Bergstation';
 

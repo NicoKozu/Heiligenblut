@@ -329,22 +329,40 @@ export const D = {
   },
   costLabels: { admin: 'Verwaltung', maint: 'Wartung Lifte', power: 'Strom Lifte', repair: 'Reparaturen', inspect: 'Lift-Revision', interest: 'Kreditzinsen', groom: 'Präparierung', snowmaking: 'Beschneiung', staff: 'Personal', severance: 'Abfindungen', bonus: 'Prämien', marketing: 'Marketing', goods: 'Wareneinsatz Gastro', side: 'Betrieb Hütten/Verleih/Parkplatz', rentalBuy: 'Verleih Service/Neukauf', guest: 'Gästebetrieb (Tickets, Versicherung, Reinigung)' },
   liftStatus: { run: 'in Betrieb', closed: 'geschlossen', fault: 'Störung', repair: 'Reparatur', insp: 'Inspektion', wind: 'Sturm', staff: 'kein Personal', build: 'Umbau' },
-  phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' }
+  phaseLabels: { prep: 'Vorbereitung', open: 'Betrieb', closed: 'Feierabend' },
+  nodeAt: {
+    tal: [[-158, -109], [-74, 251], [-457, 56]], rossbach: [[617, -921], [635, -923], [690, -979]], schareck: [[1110, -2861], [1099, -2892]], fallbichl: [[40, -3263], [-4, -3341]],
+    fleissalm: [[2150, -1274], [2103, -1297], [2140, -1212]], fleisstop: [[3990, -2003], [3996, -2031]], hochfleiss: [[5031, -2540]], tauern: [[723, -549]], seppen: [[1235, -1543]],
+    vieh: [[-51, -3970]], eder: [[2451, -1514]], schule: [[-10, 119]], kids: [[-423, -16]]
+  },
+  areas: {
+    hb: { label: 'Heiligenblut', nodes: ['tal', 'rossbach', 'schareck', 'fallbichl', 'tauern', 'seppen', 'vieh', 'schule', 'kids'] },
+    fleiss: { label: 'Fleißtal', nodes: ['fleissalm', 'fleisstop', 'hochfleiss', 'eder'] }
+  },
+  custom: {
+    types: {
+      gondola: { label: 'Gondelbahn', short: 'Gondel', places: 8, max: 10, gap: 14, speed: 6, staff: 3, base: 90000, perM: 70, perHm: 60, maint: [800, 0.6], len: [300, 4500], slope: 1.2, mid: true, drag: false, color: 0x2f6fd0 },
+      chair: { label: 'Sessellift', short: 'Sessel', places: 4, max: 6, gap: 8, speed: 5, staff: 2, base: 60000, perM: 45, perHm: 40, maint: [500, 0.45], len: [200, 2800], slope: 0.85, mid: true, drag: false, chair: true, color: 0x2a2f36 },
+      drag: { label: 'Schlepplift', short: 'Schlepp', places: 2, gap: 5, speed: 3, staff: 2, base: 20000, perM: 35, perHm: 30, maint: [250, 0.3], len: [150, 1500], slope: 0.6, drag: true, h: 7 },
+      plate: { label: 'Tellerlift', short: 'Teller', places: 1, gap: 5, speed: 2.5, staff: 1, base: 10000, perM: 25, perHm: 20, maint: [120, 0.3], len: [80, 700], slope: 0.45, drag: true, h: 6 },
+      rope: { label: 'Seillift', short: 'Seillift', places: 1, gap: 3, speed: 1.5, staff: 1, base: 6000, perM: 40, perHm: 0, maint: [80, 0.3], len: [40, 250], slope: 0.35, drag: true, h: 1.6 }
+    },
+    snap: 120, near: 30, minRise: 10, mid: 40000, clear: 8, exposed: 2200, kwK: 0.000409, kwBase: 20,
+    base: { price: 60000, perSpot: 250, spots: [50, 600], step: 50, def: 150, road: 120, maxRoad: 2500 },
+    refund: 0.2, life: 20, max: 30, linkColor: '#ff8a1e'
+  }
 };
 
 for (const l of D.lifts) l.cap = Math.round(3600 / l.gap * l.places);
 export const cabId = (lid, n) => lid === 'rossbach' && n === 6 ? 'rossbach10' : 'cab:' + lid + ':' + n;
-for (const l of D.lifts.filter(x => !x.drag)) {
-  const base = l.proj ? D.build.projects[l.proj].price : 300000;
-  for (let n = l.places + 2; n <= 20; n += 2) {
+export function addCabs(l, base, max = 20, x = {}) {
+  if (!l.drag) for (let n = l.places + 2; n <= max; n += 2) {
     const prev = n - 2 > l.places ? [cabId(l.id, n - 2)] : l.proj ? [l.proj] : [];
-    D.build.projects[cabId(l.id, n)] = { label: l.name + ' ' + n + 'er-Kabinen', price: Math.round(base * (1 + 0.4 * (n - l.places - 2) / 2) / 5000) * 5000, life: 20, needs: prev.length ? prev : undefined, places: { [l.id]: n }, from: n - 2, cab: l.id, info: n + ' statt ' + (n - 2) + ' Plätze je Kabine, +' + Math.round(200 / (n - 2)) + ' % Kapazität.' };
+    D.build.projects[cabId(l.id, n)] = { label: l.name + ' ' + n + 'er-' + (l.chair ? 'Sessel' : 'Kabinen'), price: Math.round(base * (1 + 0.4 * (n - l.places - 2) / 2) / 5000) * 5000, life: 20, needs: prev.length ? prev : undefined, places: { [l.id]: n }, from: n - 2, cab: l.id, info: n + ' statt ' + (n - 2) + ' Plätze je ' + (l.chair ? 'Sessel' : 'Kabine') + ', +' + Math.round(200 / (n - 2)) + ' % Kapazität.', ...x };
   }
-}
-for (const l of D.lifts.filter(x => x.drag)) {
-  const base = D.build.projects[l.proj].price;
-  for (let k = 1; k <= 3; k++) {
+  else for (let k = 1; k <= 3; k++) {
     const n = l.places * (k + 1), was = l.places * k;
-    D.build.projects[cabId(l.id, n)] = { label: l.name + ' Ausbau Stufe ' + k, price: Math.round(base * (0.6 + 0.4 * k) / 1000) * 1000, life: 20, needs: [k > 1 ? cabId(l.id, was) : l.proj], places: { [l.id]: n }, from: was, cab: l.id, info: 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s, +' + Math.round(100 / k) + ' % Kapazität.' };
+    D.build.projects[cabId(l.id, n)] = { label: l.name + ' Ausbau Stufe ' + k, price: Math.round(base * (0.6 + 0.4 * k) / 1000) * 1000, life: 20, needs: [k > 1 ? cabId(l.id, was) : l.proj], places: { [l.id]: n }, from: was, cab: l.id, info: 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s, +' + Math.round(100 / k) + ' % Kapazität.', ...x };
   }
 }
+for (const l of D.lifts) addCabs(l, l.proj ? D.build.projects[l.proj].price : 300000);

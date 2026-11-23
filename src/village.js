@@ -963,5 +963,5 @@ export function createVillage(terrain, data, built) {
     }
     crowd.setExtra?.(() => walkers.map(w => w.m));
   }
-  return { group, update, blocked, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
+  return { group, update, blocked, roads: data.roads, attach, setSource: fn => { src = fn; }, setScale: k => { tscale = Math.max(1, k || 1); }, lot: { center: P.c, stalls: stalls.length } };
 }
