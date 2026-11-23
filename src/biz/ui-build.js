@@ -3,6 +3,7 @@ import * as B from './build.js';
 import { cannons } from './snow.js';
 import { pl } from './area.js';
 import { fixed } from './season.js';
+import { areaTable, seasonAreas } from './ui-hut.js';
 
 const P = D.build.projects;
 const cache = new Map();
@@ -17,7 +18,7 @@ export function finTab(G, h) {
   const warn = G.fin.insolv > 0 || (G.cash < 0 && B.room(G) <= 0) ? '<p class="note biz-bad">Kasse im Minus und Kreditrahmen ausgeschöpft – nach ' + D.fin.insolvDays + ' Tagen droht die Insolvenz (Tag ' + G.fin.insolv + ').</p>' : '';
   return warn + '<h2>Bilanz</h2><table>' + tr('Kasse', eur(G.cash)) + tr('Anlagevermögen (Buchwert)', eur(bv)) + tr('<b>Aktiva</b>', '<b>' + eur(G.cash + bv) + '</b>', 'sum') +
     tr('Kredit', eur(G.loan)) + tr('Eigenkapital', '<span class="' + (G.cash + bv - G.loan >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(G.cash + bv - G.loan) + '</span>') + '</table>' +
-    '<h2>Kredit</h2><table>' + tr('Stand / Rahmen', eur(G.loan) + ' / ' + eur(D.start.credit)) + tr('Zins', dec(rate * 100) + ' % p. a. · ' + eur(G.loan * rate / 365) + ' je Tag') +
+    '<h2>Kredit</h2><table>' + tr('Stand / Rahmen', eur(G.loan) + ' / ' + eur(B.credit(G)) + (G.open ? ' (wächst mit eigenem Anlagevermögen)' : '')) + tr('Zins', dec(rate * 100) + ' % p. a. · ' + eur(G.loan * rate / 365) + ' je Tag') +
     tr('Aufnehmen', btn(s1, '+ ' + eur(s1), B.room(G) <= 0) + ' ' + btn(s2, '+ ' + eur(s2), B.room(G) <= 0)) +
     tr('Tilgen', btn(-s1, '− ' + eur(s1), G.loan <= 0 || G.cash <= 0) + ' ' + btn(-s2, '− ' + eur(s2), G.loan <= 0 || G.cash <= 0) + ' ' + btn('all', 'alles', G.loan <= 0 || G.cash <= 0)) + '</table>' +
     '<h2>Gewinn- und Verlustrechnung Saison ' + G.season + '/' + String(G.season + 1).slice(2) + '</h2><table>' +
@@ -28,6 +29,7 @@ export function finTab(G, h) {
     tr('Sommer: Verwaltung + Zinsen (geschätzt, fällig zum Saisonstart)', eur(-sf)) +
     tr('<b>Jahresergebnis (Stand heute)</b>', '<b class="' + (pl_.result - sf >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(pl_.result - sf) + '</b>', 'sum') +
     tr('Investitionen (nicht im Ergebnis)', eur(pl_.invest)) + tr('Betriebstage · Gäste', pl_.days + ' · ' + h.num(pl_.guests)) + '</table>' +
+    (areaTable(G, seasonAreas(G), h) ? '<h2>Gebiete (Saison)</h2>' + areaTable(G, seasonAreas(G), h) + '<button class="btn" data-act="amap">Gebietskarte</button>' : '') +
     '<h2>Anlagenspiegel</h2><table>' + G.fin.items.map(x => tr(x.label + (x.n != null ? ' (' + x.n + ')' : ''), 'Buchwert ' + eur(x.val) + ' · Anschaffung ' + eur(x.cost) + ' · ' + x.life + ' J.')).join('') + '</table>' +
     '<p class="note">Abschreibung linear (Lifte ' + P.tunnelbahn.life + ' Jahre), je Betriebstag 1/' + D.fin.days + ' des Jahresbetrags. Kasse unter 0 → Kredit wird automatisch erhöht, bis der Rahmen ausgeschöpft ist.</p>';
 }

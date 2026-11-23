@@ -5,12 +5,19 @@ import { grp } from './people.js';
 import { mark } from './flow.js';
 
 const X = D.side;
-export const HUTS = X.huts.map(h => h.id);
-export const HUT = Object.fromEntries(X.huts.map(h => [h.id, h]));
+export const HUTS = [], HUT = {}, NODES = new Set();
 export const AREAS = Object.keys(X.areas);
-export const NODES = new Set(X.huts.map(h => h.node));
 const nodeSeats = n => X.huts.filter(h => h.node === n).reduce((a, h) => a + h.seats, 0);
-const SEATMAX = Math.max(...[...NODES].map(nodeSeats));
+const SEATMAX = Math.max(...[...new Set(X.huts.map(h => h.node))].map(nodeSeats));
+export function rehut(G) {
+  HUTS.length = 0;
+  for (const k in HUT) delete HUT[k];
+  NODES.clear();
+  for (const h of X.huts) { HUTS.push(h.id); HUT[h.id] = h; NODES.add(h.node); }
+  if (G?.side) for (const id in G.side.huts) if (!HUT[id]) delete G.side.huts[id];
+  if (G?.side) for (const h of X.huts) if (!G.side.huts[h.id]) G.side.huts[h.id] = { open: false, level: 'normal', extra: 0, own: false };
+}
+rehut();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lin = (v, a, b) => clamp((b - v) / (b - a), 0, 1) * 100;
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -29,13 +36,14 @@ export function sideFlow(f) {
     f.hutQ = Object.fromEntries(HUTS.map(id => [id, 0]));
     f.hutWait = Object.fromEntries(HUTS.map(id => [id, 0]));
   }
+  for (const id of HUTS) if (!(id in f.hut)) { f.hut[id] = 0; f.HQ[id] = []; f.hutQ[id] = 0; f.hutWait[id] = 0; }
   if (f.cars == null) Object.assign(f, { cars: 0, school: 0 });
   if (!f.carsB) f.carsB = { tal: f.cars };
   return f;
 }
 
-export const seats = (G, id) => HUT[id].seats + (G.side.huts[id].extra || 0);
-export const hutOpen = (G, id) => G.side.huts[id].open && G.side.huts[id].own;
+export const seats = (G, id) => (HUT[id]?.seats || 0) + (G.side.huts[id]?.extra || 0);
+export const hutOpen = (G, id) => !!(G.side.huts[id]?.open && G.side.huts[id].own && HUT[id]);
 export const hutNeed = (G, id) => Math.ceil(seats(G, id) / X.seatsPerStaff);
 export const gastroNeed = G => HUTS.filter(id => hutOpen(G, id)).reduce((a, id) => a + hutNeed(G, id), 0);
 export const staffRatio = G => { const n = gastroNeed(G); return n ? Math.min(1, duty(G, 'gastro') / n) : 1; };
@@ -95,8 +103,17 @@ export function rentShare(G) {
   return R.share * Math.pow(Math.max(1, s.price) / R.price, -R.el) * (R.cond[0] + R.cond[1] * s.cond / 100);
 }
 
-export function guests(G, f, full, all) {
-  const r = all * rentShare(G);
+export function svcK(G, got) {
+  const B = G.custom?.bases || [], k = D.custom.svc.k;
+  let n = 0, w = 0;
+  for (const b in got || {}) { const v = got[b] || 0; n += v; const o = B.find(x => x.id === b); w += v * (!o || o.svc ? 1 : k); }
+  return n > 0 ? w / n : 1;
+}
+
+export function guests(G, f, full, all, got) {
+  const sk = svcK(G, got);
+  full *= sk;
+  const r = all * rentShare(G) * sk;
   if (r > 0) { earn(G, 'rental', r * G.side.rental.price); pay(G, 'side', r * X.rental.upkeep); bump(G, 'rent', r); }
   const S = X.school, want = full * S.share * Math.pow(Math.max(1, G.side.school.price) / S.price, -S.el);
   const cap = duty(G, 'instructor') * D.staff.pupils, b = Math.max(0, Math.min(want, cap - f.school));
@@ -143,6 +160,7 @@ export function hutStep(G, f, t, back, rnd) {
   let pk = 0;
   const M = grp(f);
   for (const id of HUTS) {
+    if (!f.HQ[id]) { f.HQ[id] = []; f.hut[id] = 0; f.hutQ[id] = 0; f.hutWait[id] = 0; }
     const Q = f.HQ[id], eff = seatsEff(G, id);
     if (Q.length && (eff <= 0 || f.hutWait[id] > X.maxWait)) {
       for (let j = 0; j < Q.length; j++) {
@@ -211,7 +229,7 @@ export function levelAdj(G, sg) {
 export const parkAdj = G => clamp(-X.parking.satK * (G.side.park.price - X.parking.price), -25, 6);
 
 export function dayStart(G) {
-  pay(G, 'side', HUTS.filter(id => hutOpen(G, id)).length * X.hutFix + X.parking.fix);
+  pay(G, 'side', HUTS.filter(id => hutOpen(G, id)).reduce((a, id) => a + (HUT[id].fix ?? X.hutFix), 0) + X.parking.fix);
 }
 
 export function evening(G) {

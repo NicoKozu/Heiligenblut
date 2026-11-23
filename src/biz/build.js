@@ -31,7 +31,9 @@ function legacy(G) {
 
 export const done = (G, id) => G.build.done.includes(id);
 export const job = (G, id) => G.build.jobs.find(j => j.id === id);
-export const room = G => Math.max(0, D.start.credit - G.loan);
+const ownBook = G => G.fin ? G.fin.items.reduce((a, x) => a + (P[x.id]?.custom ? x.val : 0), 0) : 0;
+export const credit = G => D.start.credit + (G.open ? Math.floor(D.custom.creditK * ownBook(G) / D.custom.creditStep) * D.custom.creditStep : 0);
+export const room = G => Math.max(0, credit(G) - G.loan);
 
 export function post(G, k, v) {
   G.cash += k === 'invest' ? -v : v;
@@ -79,6 +81,7 @@ function applyDone(G, id) {
   const p = P[id];
   for (const lid of p.lifts || []) if (!G.lifts.some(l => l.id === lid)) G.lifts.push({ id: lid, name: D.lifts.find(l => l.id === lid).name, open: true, cond: 100, run: 0, util: 0 });
   for (const lid in p.places || {}) { const l = G.lifts.find(x => x.id === lid); if (l) l.places = Math.max(l.places || 0, p.places[lid]); }
+  if (p.svc) { const b = G.custom?.bases.find(x => x.id === p.svc); if (b) b.svc = true; }
   if (p.hut && G.side?.huts[p.hut]) { const h = G.side.huts[p.hut]; if (!h.own) { h.own = true; h.open = true; } }
 }
 

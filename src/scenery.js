@@ -544,6 +544,33 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
   }
 
   const setHut = (name, open) => huts.find(h => h.name === name)?.setOpen(open);
+  function addHut(o) {
+    const b = buildHut(o, mats), y = terrain.heightAt(o.x, o.z), n = terrain.normalAt(o.x, o.z), heading = o.rot ?? Math.atan2(n.x, n.z);
+    const box = [o.x - b.reach - 30, o.z - b.reach - 30, o.x + b.reach + 30, o.z + b.reach + 30], undo = terrain.snapshot(box);
+    b.group.position.set(o.x, y, o.z);
+    b.group.rotation.y = heading;
+    group.add(b.group);
+    const h = { ...b, name: o.name, x: o.x, z: o.z, y, dx: Math.sin(heading), dz: Math.cos(heading), custom: true, undo };
+    huts.push(h);
+    terrain.groom((x, z, yy) => {
+      const d = Math.hypot(x - h.x, z - h.z);
+      if (d > h.reach + 25) return null;
+      const w = 1 - THREE.MathUtils.smoothstep(d, h.reach, h.reach + 25);
+      return [yy + (h.y - yy) * w, w * 0.5];
+    }, box);
+    cut('hut:' + o.name, (x, z) => Math.hypot(x - h.x, z - h.z) < h.reach + 8);
+    return h;
+  }
+  function removeHut(name) {
+    const i = huts.findIndex(h => h.name === name && h.custom);
+    if (i < 0) return;
+    const h = huts[i];
+    huts.splice(i, 1);
+    group.remove(h.group);
+    h.group.traverse(o => o.geometry?.dispose());
+    h.undo?.();
+    cut('hut:' + name, null);
+  }
   let wind = 0.2;
   let hid = null;
   const cuts = new Map(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -562,5 +589,5 @@ export function createScenery(terrain, pistes, lift, assets, blocked) {
     lx = Infinity;
   }
 
-  return { group, update, collide, huts, setHut, cut, treeCount: N, set wind(v) { wind = Math.max(0, Math.min(1, v)); } };
+  return { group, update, collide, huts, setHut, addHut, removeHut, cut, treeCount: N, set wind(v) { wind = Math.max(0, Math.min(1, v)); } };
 }

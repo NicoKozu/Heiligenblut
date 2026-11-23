@@ -41,7 +41,9 @@ export function openPistes(G) {
 const KM = baseKm;
 const prefKm = (list, sg) => list.reduce((a, p) => a + p.km * D.segs[sg].pref[p.level] * (p.exp ? M.expW : 1), 0);
 const SKM = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes.filter(p => !p.exp && !p.of), s)]));
-export const segOffer = (G, sg, open = openPistes(G)) => prefKm(open, sg) / SKM[sg];
+const FULL = Object.fromEntries(SEGS.map(s => [s, prefKm(D.pistes.filter(p => !p.of && !p.custom), s) / SKM[s]]));
+const dim = (o, F) => { const k = D.custom.dim * F; return o <= F ? o : F + k * (1 - Math.exp(-(o - F) / k)); };
+export const segOffer = (G, sg, open = openPistes(G)) => dim(prefKm(open, sg) / SKM[sg], FULL[sg]);
 export const openKm = G => openPistes(G).reduce((a, p) => a + p.km, 0);
 export const offerShare = G => openKm(G) / KM;
 export const offerF = o => o > 0 ? M.offer[0] + M.offer[1] * o : 0;

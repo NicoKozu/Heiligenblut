@@ -94,7 +94,7 @@ function arrivals(G, f, t, ev) {
   const got = SD.arrive(G, f, nb, net.B), all = sum(Object.values(got)), k = A + H > 0 ? all / (A + H) : 1;
   A *= k;
   H *= k;
-  SD.guests(G, f, A, A + H);
+  SD.guests(G, f, A, A + H, got);
   if (all > 0) { const TB = T.bases || (T.bases = {}); for (const b in got) TB[b] = (TB[b] || 0) + got[b]; }
   const add = (k, n) => { T.types[k] = (T.types[k] || 0) + n; };
   const earn = (k, n) => { const v = n * ticketPrice(G, D.ticketOf[k]); T.revenue[D.ticketOf[k]] = (T.revenue[D.ticketOf[k]] || 0) + v; G.cash += v; };

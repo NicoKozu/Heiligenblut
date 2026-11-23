@@ -223,7 +223,7 @@ export function createUI(h) {
     if (b.dataset.tab) { tab = b.dataset.tab; h.refresh(); }
     else if (b.dataset.act) h.action(b.dataset.act);
   });
-  over.addEventListener('change', e => { const k = e.target.dataset.price; if (k) h.price(k, e.target.value); });
+  over.addEventListener('change', e => { const k = e.target.dataset.price; if (k) h.price(k, e.target.value); const a = e.target.dataset.aname; if (a) h.rename?.(a, e.target.value); });
   over.addEventListener('keydown', e => {
     if (e.target.tagName !== 'INPUT') return;
     e.stopPropagation();
@@ -266,7 +266,7 @@ export function createUI(h) {
       '<h3>Finanzen</h3>' +
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       (g => '<div class="big"><span>Gewinn heute</span><b class="' + (g >= 0 ? 'biz-good' : 'biz-bad') + '">' + (g > 0 ? '+' : '') + eur(g) + '</b></div>')(sumv(G.today.revenue) - c) +
-      (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > D.start.credit * 0.8 ? 'biz-bad' : '') : '') +
+      (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > B.credit(G) * 0.8 ? 'biz-bad' : '') : '') +
       (G.build?.jobs.length ? row('Baustellen', G.build.jobs.map(j => D.build.projects[j.id].label.replace(/ \(.*\)/, '') + ' ' + (j.left == null ? 'Sommer' : j.left + ' T.')).join(', ')) : '') +
       '<div class="sep"></div>' +
       row('Umsatz heute', eur(sumv(G.today.revenue))) +
@@ -297,7 +297,7 @@ export function createUI(h) {
       '<table>' + tr('Saisonphase', dem.label) + tr('Nachfrage-Basis heute', num(G.today.demand) + ' Gäste') + tr('Spieltag', num(G.day)) + '</table>' +
       '<h2>Gäste</h2><table>' + tr('Ruf', '<span class="' + tone(G.rep, 60, 40) + '">' + dec(G.rep) + '</span>') + (G.sat ? tr('Zufriedenheit letzter Tag', '<span class="' + ztone(G.sat.z) + '">' + Math.round(G.sat.z) + '</span> · <span class="stars">' + starStr(stars(G.sat.z)) + '</span>') : '') + tr('Saisonkarten-Anteil', dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' %') + '</table>' +
       '<h2>Finanzen</h2>' +
-      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(D.start.credit)) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
+      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(B.credit(G))) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
       '<h2>Anlagen</h2>' +
       '<table>' + G.lifts.map(l => tr('<i class="biz-dot ' + DOT[status(l)] + '"></i> ' + l.name, D.liftStatus[status(l)] + ' · Zustand <span class="' + tone(l.cond, 75, 50) + '">' + Math.round(l.cond) + ' %</span>')).join('') + '</table>' + logView(G, 6);
   }

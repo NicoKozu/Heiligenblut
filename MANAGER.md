@@ -100,6 +100,10 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 | gierig / geizig | Ruf < 42 | Ruf < 38, Ergebnis < 0 | – | – |
 | investor | Kredit ≥ 0,5 Mio €, keine Insolvenz | – | > vernünftig − 0,1 Mio €, Kredit sinkt | keine Insolvenz |
 
+| openworld (ab S3 zweites Gebiet: Tallift, Sessel, Schlepplift, Verbindung, 4 Pisten, Hütte, Verleih) | – | – | – | S4 (Ausbaujahr) ≤ vollausbau + 0,05 Mio; S5 Ergebnis > vollausbau, Skitage ≥ vollausbau + 20 %, Beitrag 2. Gebiet > 0, keine Insolvenz |
+
+`vollausbau` = gleicher Plan ohne eigenes Gebiet (Vergleich). Open-World-Balancing (Etappe 31): Nachfrage +10 % je weiterer Talstation, +3 % je Verbindungslift (max. +20 %); Pisten-Angebot über dem echten Vollausbau mit abnehmendem Ertrag (`D.custom.dim` 0,6); Kreditrahmen + 50 % des Buchwerts eigener Anlagen.
+
 Allgemein: Kein Tag mit Ø-Wartezeit > 45 min bei „vernünftig“; Zufriedenheit typisch 55–80; keine Strategie erreicht in einer Saison mehr als 1,1 Mio € Gewinn.
 
 ---

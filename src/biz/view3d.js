@@ -58,7 +58,8 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     if (p.hut) HUTP[p.hut] = pid;
   }
   const PROJ = Object.fromEntries(D.pistes.filter(p => p.proj).map(p => [p.id, p.proj]));
-  const HUTS = D.side.huts.map(h => ({ ...h, s: scenery.huts.find(x => x.name === h.name) })).filter(h => h.s);
+  let hk = '', HC = [];
+  const HUTS = () => { const k = D.side.huts.length + ':' + scenery.huts.length; if (k !== hk) { hk = k; HC = D.side.huts.map(h => ({ ...h, s: scenery.huts.find(x => x.name === h.name) })).filter(h => h.s); for (const h of D.side.huts) if (h.custom) HUTP[h.id] = h.id; } return HC; };
   const secs = () => [...lift.all, ...lift.planned.filter(s => !lift.all.includes(s))];
   const built = s => lift.sections.includes(s);
 
@@ -148,7 +149,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     if (!icons || !G) return;
     const cp = camera.position, near = p => mgr || Math.hypot(p.x - cp.x, p.z - cp.z) < 1500;
     for (const s of secs()) show('l:' + s.id, v3.set(s.a[0], terrain.heightAt(...s.a) + 16, s.a[1]).clone(), liftState(G, s), near);
-    for (const h of HUTS) show('h:' + h.id, new THREE.Vector3(h.s.x, h.s.y + h.s.top + 5, h.s.z), hutState(G, h), near);
+    for (const h of HUTS()) show('h:' + h.id, new THREE.Vector3(h.s.x, h.s.y + h.s.top + 5, h.s.z), hutState(G, h), near);
     for (const p of pistes.list) {
       const pid = PROJ[p.id], j = pid && B.job(G, pid);
       if (!j || j.left == null) continue;
@@ -206,7 +207,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       if (b) cand(Math.hypot(mx - b.x, my - b.y), { ...o, x: s.b[0], z: s.b[1] });
       if (a && b && !s.tunnel) cand(segD(mx, my, a, b) + 12, o);
     }
-    for (const h of HUTS) {
+    for (const h of HUTS()) {
       const own = G.side.huts[h.id]?.own;
       if (!own && !mgr) continue;
       const a = scr(h.s.x, h.s.y + 5, h.s.z, pa);
@@ -275,6 +276,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       row('Personal nötig', X.hutNeed(G, id));
     h += '<div class="a">' + btn('tog:hut:' + id, o.open ? 'Schließen' : 'Öffnen', { p: !o.open, off: !!o.build });
     for (const k in lv) h += btn('lvl:' + id + ':' + k, lv[k].label, { p: o.level === k, off: G.phase === 'open', tip: G.phase === 'open' ? 'nur vor/nach dem Betrieb' : '' });
+    if (d.custom) { const why = CU.canDemolishHut(G, id); h += btn('hdemo:' + id, 'Abriss +' + eur(CU.hrefundOf(G, id)), { off: !!why, tip: why }); }
     const up = 'hut:' + id;
     if (D.build.projects[up] && !B.done(G, up)) h += '</div><div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">' + projBody(up, true);
     return h + '</div>';
