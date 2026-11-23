@@ -79,7 +79,7 @@ export const D = {
     variety: 0.6,
     look: 10
   },
-  net: { home: [-158, -109], funEl: 1.2, cond: [0.6, 0.4], variety: 0.25, varRef: 8, waitTau: 15, park: [0.25, 0.75], distTau: 6, memK: 0.3, mem0: 0.5, memA: 0.25, memWait: 30, shuttle: 6, shuttleMin: 20, lastRide: 980, homeBy: 960, early: 12, awayW: 0.15, dead: 0.002, offerBase: 0.1, offerLink: 0.03, offerMax: 0.2, repKm: 0.03, repMax: 0.15 },
+  net: { home: [-158, -109], funEl: 1.2, cond: [0.6, 0.4], variety: 0.25, varRef: 8, waitTau: 15, park: [0.25, 0.75], distTau: 6, memK: 0.3, mem0: 0.5, memA: 0.25, memWait: 30, shuttle: 6, shuttleMin: 20, walk: 60, walkMax: 2500, lastRide: 980, homeBy: 960, early: 12, awayW: 0.15, dead: 0.002, offerBase: 0.1, offerLink: 0.03, offerMax: 0.2, repKm: 0.03, repMax: 0.15 },
   power: { price: 0.24, base: 0.4, load: 0.6 },
   maintPerLift: 2000,
   guestCost: 9,

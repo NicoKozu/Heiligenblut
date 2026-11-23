@@ -176,6 +176,13 @@ function network(G) {
 }
 
 const homeDist = (G, to) => dist(net, to);
+const baseAt = id => net.B.find(b => b.id === id);
+function walkMin(a, b) {
+  const A = baseAt(a), B = baseAt(b);
+  if (!A || !B) return null;
+  const d = Math.hypot(A.x - B.x, A.z - B.z);
+  return d <= NX.walkMax ? d / NX.walk : null;
+}
 
 function hutGoal(G, f, g, node) {
   if (g.hu && SD.seatsEff(G, g.hu) > 0 && homeDist(G, SD.HUT[g.hu].node)[node] != null) return SD.HUT[g.hu].node;
@@ -213,9 +220,9 @@ function decide(G, f, g, node, t) {
   for (const p of net.P[node] || []) o.push({ d: 'p:' + p.id, w: Math.max(0.005, F.pref[LV[g.k]][p.level] * (g.lp === p.id ? F.variety : 1)) * toward(p.to) * (net.isB[p.to] && p.to !== hb && !net.L[p.to].length ? NX.dead : 1) });
   if (!o.length) {
     if (!net.isB[node]) return 'x';
-    if (net.hold[node] && node === hb) return 'w';
-    const alt = [hb, ...net.B.map(b => b.id)].find(b => b !== node && net.L[b]?.length);
-    return alt ? 's:' + alt : net.hold[node] ? 'w' : 'x';
+    const alt = [hb, ...net.B.map(b => b.id)].filter(b => b !== node && net.L[b]?.length).sort((a, b) => (walkMin(node, a) ?? 1e9) - (walkMin(node, b) ?? 1e9))[0];
+    if (alt && (walkMin(node, alt) != null || !(net.hold[node] && node === hb))) return 's:' + alt;
+    return net.hold[node] ? 'w' : 'x';
   }
   return pick(f, o).d;
 }
@@ -252,9 +259,9 @@ function go(G, f, g, node, t, ev, end) {
   const i = d.indexOf(':'), s = i < 0 ? d : d.slice(0, i), id = d.slice(i + 1);
   g.t0 = t;
   g.rb = 0;
-  if (s === 'o' || s === 'x') { if (s === 'o' && node !== (g.b || 'tal')) shuttle(G, g); return drop(G, f, g, s === 'x'); }
+  if (s === 'o' || s === 'x') { if (s === 'o' && node !== (g.b || 'tal') && walkMin(node, g.b || 'tal') == null) shuttle(G, g); return drop(G, f, g, s === 'x'); }
   if (s === 'w') { g.s = 'w'; g.at = node; return; }
-  if (s === 's') { shuttle(G, g); g.s = 'a'; g.at = id; g.t1 = t + NX.shuttleMin; if (g.t1 < end) ev.push(g); return; }
+  if (s === 's') { const w = walkMin(node, id); if (w == null) shuttle(G, g); g.s = 'a'; g.at = id; g.t1 = t + (w ?? NX.shuttleMin); if (g.t1 < end) ev.push(g); return; }
   g.at = id;
   if (s === 'q') { g.s = 'q'; f.Q[id].push(g.i); return; }
   if (s === 'h') { g.s = 'hq'; SD.queueHut(f, id, g.i); return; }
