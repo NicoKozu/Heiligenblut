@@ -156,8 +156,7 @@ export const D = {
     groomed: 92, groomedHard: 82, powder: 62, newSnow: 5, refreeze: 0, settle: 0.5, compact: 0.012,
     q: { pulvrig: 1.0, griffig: 1.0, sulzig: 0.82, eisig: 0.68, abgefahren: 0.85 },
     qLabels: { pulvrig: 'pulvrig', griffig: 'griffig', eisig: 'eisig', sulzig: 'sulzig', abgefahren: 'abgefahren' },
-    depth: [10, 35, 0.45],
-    loose: { keep: 0.6, groom: 0.1, pack: 0.0005, step: 15, max: 2, slow: 0.01, min: 3 }
+    depth: [10, 35, 0.45]
   },
   weather: {
     types: {
