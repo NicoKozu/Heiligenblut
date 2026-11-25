@@ -58,8 +58,8 @@ export function buildTab(G, h) {
   const c = cannons(G), dis = (x) => x ? ' disabled' : '';
   const money = G.cash + B.room(G);
   const rank = id => B.job(G, id) ? 0 : B.done(G, id) ? 3 : /^erst /.test(B.check(G, id)) ? 2 : 1;
-  const ids = Object.keys(P).filter(id => !P[id].custom).filter(id => !P[id].cab || B.done(G, id) || B.job(G, id) || !/^erst /.test(B.check(G, id))).sort((a, b) => rank(a) - rank(b));
-  const fin = ids.filter(id => rank(id) === 3 && !(P[id].cab && ids.some(x => P[x].needs?.includes(id) && B.done(G, x)))).map(id => P[id].label);
+  const ids = Object.keys(P).filter(id => !P[id].custom).filter(id => !(P[id].cab || P[id].chain) || B.done(G, id) || B.job(G, id) || !/^erst /.test(B.check(G, id))).sort((a, b) => rank(a) - rank(b));
+  const fin = ids.filter(id => rank(id) === 3 && !((P[id].cab || P[id].chain) && ids.some(x => P[x].needs?.includes(id) && B.done(G, x)))).map(id => P[id].label);
   return '<h2>Projekte</h2><p class="note">Du startest mit Gondel Rossbach und Talabfahrt. Alles andere wird hier gekauft und gebaut.</p><table>' + ids.filter(id => rank(id) < 3).map(card).join('') + '</table>' +
     (fin.length ? '<p class="note">Fertig: ' + fin.join(', ') + '</p>' : '') +
     '<h2>Beschneiung</h2><table>' + pl(G).map(p => {
