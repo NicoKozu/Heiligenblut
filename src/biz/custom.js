@@ -1,4 +1,4 @@
-import { D, addCabs, cabId } from './data.js';
+import { D, addCabs, cabId, growCabs } from './data.js';
 import { relink, PX } from './area.js';
 import { log, ev } from './assets.js';
 import { order, done, job, room, post, writeoff } from './build.js';
@@ -50,8 +50,7 @@ export function sync(G) {
     const segs = c.pts.slice(1).map((_, i) => segSpec(c, i));
     D.lifts.push(...segs);
     P[c.id] = { label: c.name, price: c.price, life: C.life, lifts: segs.map(s => s.id), park: c.base ? base(G, c.base)?.spots || 0 : 0, custom: true, info: info(c) };
-    const t = T[c.type];
-    for (const s of segs) addCabs(s, Math.max(20000, c.price / segs.length * 0.5), t.max || 20, { custom: true });
+    for (const s of segs) addCabs(s, Math.max(20000, c.price / segs.length * 0.5), { custom: true });
   }
   for (let i = D.pistes.length - 1; i >= 0; i--) if (D.pistes[i].custom) D.pistes.splice(i, 1);
   for (const p of G.custom?.pistes || []) {
@@ -66,6 +65,7 @@ export function sync(G) {
     SH.push({ id: h.id, name: h.name, node: h.node, seats: z.seats, draw: z.draw, fix: z.fix, custom: true });
     P[h.id] = { label: h.name, price: h.price, life: CH.life, hut: h.id, custom: true, info: hinfo(h) };
   }
+  growCabs(G);
   rehut(G);
   relink();
 }

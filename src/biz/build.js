@@ -1,4 +1,4 @@
-import { D } from './data.js';
+import { D, growCabs } from './data.js';
 import { log, ev, initAssets } from './assets.js';
 import { ensureKeys } from './flow.js';
 import { initSnow, startSnow, cannons } from './snow.js';
@@ -16,6 +16,7 @@ export function initBuild(G) {
   for (const h of Object.values(G.side?.huts || {})) if (h.build) { h.open = h.was !== false; delete h.build; delete h.was; }
   if (!G.pipes) G.pipes = [...D.snow.pistes];
   if (!G.fin) G.fin = { items: FN.start.map(x => ({ ...x })), insolv: 0, over: null };
+  growCabs(G);
   G.build.done = G.build.done.filter(id => D.build.projects[id]);
   G.build.jobs = G.build.jobs.filter(j => D.build.projects[j.id]);
   for (const id of G.build.done) applyDone(G, id);
@@ -73,6 +74,7 @@ export function order(G, id, summer) {
   if (G.cash < p.price) borrow(G, Math.ceil((p.price - G.cash) / FN.autoDraw) * FN.autoDraw);
   invest(G, p.price);
   G.build.jobs.push({ id, left: summer ? null : 1, from: G.date, season: G.season });
+  growCabs(G);
   log(G, 'Bauauftrag: ' + p.label + (summer ? ' (im Sommer)' : ' – fertig über Nacht'), 'info');
   return true;
 }
