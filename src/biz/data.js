@@ -342,8 +342,8 @@ export const D = {
   },
   custom: {
     types: {
-      gondola: { label: 'Gondelbahn', short: 'Gondel', places: 8, max: 10, gap: 14, speed: 6, staff: 3, base: 90000, perM: 70, perHm: 60, maint: [800, 0.6], len: [300, 4500], slope: 1.2, mid: true, drag: false, color: 0x2f6fd0 },
-      chair: { label: 'Sessellift', short: 'Sessel', places: 4, max: 6, gap: 8, speed: 5, staff: 2, base: 60000, perM: 45, perHm: 40, maint: [500, 0.45], len: [200, 2800], slope: 0.85, mid: true, drag: false, chair: true, color: 0x2a2f36 },
+      gondola: { label: 'Gondelbahn', short: 'Gondel', places: 8, gap: 14, speed: 6, staff: 3, base: 90000, perM: 70, perHm: 60, maint: [800, 0.6], len: [300, 4500], slope: 1.2, mid: true, drag: false, color: 0x2f6fd0 },
+      chair: { label: 'Sessellift', short: 'Sessel', places: 4, gap: 8, speed: 5, staff: 2, base: 60000, perM: 45, perHm: 40, maint: [500, 0.45], len: [200, 2800], slope: 0.85, mid: true, drag: false, chair: true, color: 0x2a2f36 },
       drag: { label: 'Schlepplift', short: 'Schlepp', places: 2, gap: 5, speed: 3, staff: 2, base: 20000, perM: 35, perHm: 30, maint: [250, 0.3], len: [150, 1500], slope: 0.6, drag: true, h: 7 },
       plate: { label: 'Tellerlift', short: 'Teller', places: 1, gap: 5, speed: 2.5, staff: 1, base: 10000, perM: 25, perHm: 20, maint: [120, 0.3], len: [80, 700], slope: 0.45, drag: true, h: 6 },
       rope: { label: 'Seillift', short: 'Seillift', places: 1, gap: 3, speed: 1.5, staff: 1, base: 6000, perM: 40, perHm: 0, maint: [80, 0.3], len: [40, 250], slope: 0.35, drag: true, h: 1.6 }
@@ -360,15 +360,24 @@ export const D = {
 };
 
 for (const l of D.lifts) l.cap = Math.round(3600 / l.gap * l.places);
+D.cabGrow = 1.35;
 export const cabId = (lid, n) => lid === 'rossbach' && n === 6 ? 'rossbach10' : 'cab:' + lid + ':' + n;
-export function addCabs(l, base, max = 20, x = {}) {
-  if (!l.drag) for (let n = l.places + 2; n <= max; n += 2) {
-    const prev = n - 2 > l.places ? [cabId(l.id, n - 2)] : l.proj ? [l.proj] : [];
-    D.build.projects[cabId(l.id, n)] = { label: l.name + ' ' + n + 'er-' + (l.chair ? 'Sessel' : 'Kabinen'), price: Math.round(base * (1 + 0.4 * (n - l.places - 2) / 2) / 5000) * 5000, life: 20, needs: prev.length ? prev : undefined, places: { [l.id]: n }, from: n - 2, cab: l.id, info: n + ' statt ' + (n - 2) + ' Plätze je ' + (l.chair ? 'Sessel' : 'Kabine') + ', +' + Math.round(200 / (n - 2)) + ' % Kapazität.', ...x };
-  }
-  else for (let k = 1; k <= 3; k++) {
-    const n = l.places * (k + 1), was = l.places * k;
-    D.build.projects[cabId(l.id, n)] = { label: l.name + ' Ausbau Stufe ' + k, price: Math.round(base * (0.6 + 0.4 * k) / 1000) * 1000, life: 20, needs: [k > 1 ? cabId(l.id, was) : l.proj], places: { [l.id]: n }, from: was, cab: l.id, info: 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s, +' + Math.round(100 / k) + ' % Kapazität.', ...x };
+const CAB = {};
+const sig = v => { const m = 10 ** Math.max(3, Math.floor(Math.log10(v)) - 1); return Math.round(v / m) * m; };
+function cabMake(lid, k) {
+  const { l, base, x } = CAB[lid], st = l.drag ? l.places : 2, n = l.places + st * k, was = n - st, id = cabId(lid, n);
+  if (D.build.projects[id]) return;
+  const need = k > 1 ? [cabId(lid, was)] : l.proj ? [l.proj] : undefined, kind = l.chair ? 'Sessel' : 'Kabine';
+  D.build.projects[id] = { label: l.drag ? l.name + ' Ausbau Stufe ' + k : l.name + ' ' + n + 'er-' + (l.chair ? 'Sessel' : 'Kabinen') + ' (Stufe ' + k + ')', price: sig(base * D.cabGrow ** (k - 1)), life: 20, needs: need, places: { [lid]: n }, from: was, cab: lid, stage: k, info: (l.drag ? 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s' : n + ' statt ' + was + ' Plätze je ' + kind) + ', +' + Math.round(100 * st / was) + ' % Kapazität. Jede Stufe kostet ' + Math.round((D.cabGrow - 1) * 100) + ' % mehr als die vorige.', ...x };
+}
+export function addCabs(l, base, x = {}) { CAB[l.id] = { l, base, x }; cabMake(l.id, 1); }
+export function growCabs(G) {
+  const ids = [...(G.build?.done || []), ...(G.build?.jobs || []).map(j => j.id)];
+  for (const id of ids) {
+    const m = id === 'rossbach10' ? ['', 'rossbach', '6'] : /^cab:(.+):(\d+)$/.exec(id), c = m && CAB[m[1]];
+    if (!c) continue;
+    const k = Math.round((+m[2] - c.l.places) / (c.l.drag ? c.l.places : 2));
+    for (let i = 1; i <= k + 1; i++) cabMake(m[1], i);
   }
 }
 for (const l of D.lifts) addCabs(l, l.proj ? D.build.projects[l.proj].price : 300000);
