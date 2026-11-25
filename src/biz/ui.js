@@ -15,7 +15,7 @@ import { finTab, buildTab, overView } from './ui-build.js';
 import { seasonView, summerView, drawSeason } from './ui-season.js';
 import { curvesView, CURVE_CSS } from './ui-price.js';
 import { baseStats } from './net.js';
-import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, kFactor, mFactor, wearF } from './marketing.js';
+import { SEGS, CAMPAIGNS, status as mStatus, weeklyCost, pending, canEarly, earlyQuote, mFactor, wearF } from './marketing.js';
 
 const CSS = `
 .biz-box{position:fixed;z-index:3;box-sizing:border-box;padding:10px 14px;background:rgba(12,32,54,.82);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font:14px system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.3);backdrop-filter:blur(6px)}
@@ -391,10 +391,9 @@ export function createUI(h) {
     const lsd = G.history[G.history.length - 1];
     return '<h2>Kampagnen</h2><table>' + CAMPAIGNS.map(id => tr('<b>' + C[id].label + '</b><br><small style="opacity:.7">' + C[id].info + ' · ' + (C[id].kind === 'pre' ? '+' + Math.round(C[id].eff * 100) + ' % Nachfrage, +' + Math.round(C[id].share * 100) + ' Pp. Saisonkarten' : '+' + Math.round(C[id].eff * 100) + ' %') + '</small>', cost(id) + '<br>' + st(id) + ' ' + btn(id))).join('') + '</table>' +
       '<h2>Budget</h2><table>' + tr('Ausgaben Saison', eur(G.mkt.spent)) + tr('Laufende Wochenkosten', eur(weeklyCost(G))) + tr('Abnutzung', 'nach ' + D.mkt.wear.after + ' Tagen Dauerschaltung ' + pct(D.mkt.wear.f) + ' Wirkung') + '</table>' +
-      '<h2>Geschätzte Wirkung ' + fmtDate(fc.date) + '</h2><table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(fc.seg[s]) + ' Gäste (' + Math.round(100 * fc.seg[s] / Math.max(1, fc.n)) + ' %) · Marketing ' + pct(mFactor(G, fc.date, s)) + ' · Konkurrenz ' + pct(kFactor(G, s, x.snow)))).join('') +
+      '<h2>Geschätzte Wirkung ' + fmtDate(fc.date) + '</h2><table>' + SEGS.map(s => tr('<i class="biz-dot" style="background:' + D.segs[s].color + '"></i> ' + D.segs[s].label, num(fc.seg[s]) + ' Gäste (' + Math.round(100 * fc.seg[s] / Math.max(1, fc.n)) + ' %) · Marketing ' + pct(mFactor(G, fc.date, s)))).join('') +
       tr('Gesamt', num(fc.n) + ' (ohne Marketing ' + num(fc.base) + ', <span class="' + (fc.n >= fc.base ? 'biz-good' : 'biz-bad') + '">' + (fc.n >= fc.base ? '+' : '−') + num(Math.abs(fc.n - fc.base)) + '</span>)', 'sum') + '</table>' +
       '<h2>Zielgruppen</h2><table>' + SEGS.map(s => tr(D.segs[s].label + '<br><small style="opacity:.7">' + D.segs[s].info + '</small>', 'Preisempfindlichkeit ' + dec(D.segs[s].el) + (lsd?.sat?.seg ? ' · Zufriedenheit <span class="' + ztone(lsd.sat.seg[s]) + '">' + Math.round(lsd.sat.seg[s]) + '</span>' : ''))).join('') + '</table>' +
-      '<h2>Konkurrenz</h2><table>' + G.comp.map(c => tr(D.mkt.comp.list.find(b => b.id === c.id).name, 'Tageskarte ' + eur(c.price) + ' · Schnee <span class="' + (c.snow >= 0.9 ? 'biz-good' : c.snow >= 0.6 ? 'biz-warn' : 'biz-bad') + '">' + (c.snow >= 0.9 ? 'gut' : c.snow >= 0.6 ? 'mäßig' : 'schlecht') + '</span>')).join('') + tr('Unsere Tageskarte', eur(G.prices.day) + ' · Schnee ×' + x.snow.toFixed(2)) + '</table>' +
       '<p class="note">Kampagnen wirken je Zielgruppe (Hauptgruppe voll, andere ' + Math.round(D.mkt.spill * 100) + ' %). Wochenkosten werden täglich bei Betriebsbeginn gebucht. „Kinder gratis am Samstag“: Kinderkarten an Samstagen 0 €.</p>';
   }
 

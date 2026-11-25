@@ -40,7 +40,7 @@ export const D = {
     { id: '10t', name: 'Talabfahrt ab Tauernberg', level: 'mittel', km: 1.31, from: 'tauern', to: 'tal', proj: 'tauernberg', of: '10', at: [723.2, -548.8] },
     { id: '11e', name: 'Wiesenabfahrt ab Ederfeld', level: 'leicht', km: 0.46, from: 'eder', to: 'fleissalm', proj: 'ederfeld', of: '11', at: [2451.2, -1514.2] }
   ],
-  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.6, 0.8], offer: [0.3, 0.7], expW: 1.7, eps: [0.9, 1.1] },
+  demandModel: { priceExp: 1.4, priceClamp: [0.3, 1.6], rep: [0.3, 1.4], offer: [0.2, 0.8], expW: 1.7, eps: [0.9, 1.1] },
   flow: {
     arrive: { from: 495, peak: 570, to: 660 },
     half: { from: 690, peak: 720, to: 780 },
@@ -121,6 +121,7 @@ export const D = {
     easter: { label: 'Osterferien', wd: 850, we: 910 },
     late: { label: 'nach Ostern', wd: 200, we: 360 }
   },
+  demandBase: 600,
   demandRef: { rep: 50 },
   febHolidays: [8, 28],
   easterHolidays: [-8, 1],
@@ -201,16 +202,7 @@ export const D = {
       early: { label: 'Frühbucher-Saisonkarte', kind: 'pre', disc: 0.15, cards: 220, share: 0.02, eff: 0.03, info: 'nur vor Saisonstart: −15 %, mehr Stammgäste' }
     },
     spill: 0.25,
-    wear: { after: 4, f: 0.7, recover: 2 },
-    comp: {
-      list: [
-        { id: 'sonnkar', name: 'Sonnkar-Gletscher', price: 66, snow: 1.05 },
-        { id: 'iselberg', name: 'Skiwelt Iselberg', price: 57, snow: 0.95 },
-        { id: 'tauern', name: 'Tauernblick Bergbahnen', price: 63, snow: 1 }
-      ],
-      chance: 0.06, step: [2, 4], drift: 0.15, rho: 0.85, noise: 0.1, snowRange: [0.3, 1.05], newSnow: 0.06, warm: 0.06,
-      k: 0.5, snowK: 0.4, clamp: [0.85, 1.15]
-    }
+    wear: { after: 4, f: 0.7, recover: 2 }
   },
   side: {
     gastro: { perGuest: 19, margin: 0.38, goods: 0.5, lunchRef: 0.55 },

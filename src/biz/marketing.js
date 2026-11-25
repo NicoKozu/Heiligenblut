@@ -3,14 +3,13 @@ import { addDays, weekday, seasonStart } from './calendar.js';
 import { range, int, next as rand } from './rng.js';
 import { pay } from './assets.js';
 
-const M = D.mkt, C = M.campaigns, K = M.comp;
+const M = D.mkt, C = M.campaigns;
 export const SEGS = Object.keys(D.segs);
 export const CAMPAIGNS = Object.keys(C);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export function initMkt(G) {
   if (!G.mkt) G.mkt = { on: {}, orders: [], run: {}, spent: 0, season: G.season, early: null, days: 0 };
-  if (!G.comp) G.comp = K.list.map(c => ({ id: c.id, price: c.price, snow: c.snow }));
 }
 
 const period = (G, id, date) => {
@@ -35,11 +34,6 @@ export function mFactor(G, date, seg) {
   return f;
 }
 
-export function kFactor(G, seg, ourSnow = 1) {
-  const n = G.comp.length, p = G.comp.reduce((a, c) => a + c.price, 0) / n, s = G.comp.reduce((a, c) => a + c.snow, 0) / n;
-  const our = Math.max(1, G.prices.day);
-  return clamp(Math.pow(p / our, K.k * D.segs[seg].el) * Math.pow(Math.max(0.2, ourSnow) / s, K.snowK), K.clamp[0], K.clamp[1]);
-}
 
 export function day(G) {
   const m = G.mkt;
@@ -109,19 +103,4 @@ export function status(G, id, date = G.date) {
   return date < o.from ? 'wirkt ab ' + o.from.slice(8) + '.' + o.from.slice(5, 7) + '.' : 'aktiv bis ' + o.to.slice(8) + '.' + o.to.slice(5, 7) + '.' + (wearF(G, id) < 1 ? ' · abgenutzt' : '');
 }
 
-export function compDay(G) {
-  const w = G.weather?.today;
-  for (const c of G.comp) {
-    const b = K.list.find(x => x.id === c.id);
-    if (rand(G) < K.chance) {
-      const d = int(G, K.step[0], K.step[1]) * (rand(G) < 0.5 ? -1 : 1);
-      c.price = clamp(c.price + d, Math.round(b.price * (1 - K.drift)), Math.round(b.price * (1 + K.drift)));
-    }
-    let s = b.snow + K.rho * (c.snow - b.snow) + range(G, -K.noise, K.noise);
-    if (w?.cm > 0) s += K.newSnow;
-    if (w?.type === 'foehn') s -= K.warm;
-    c.snow = clamp(s, K.snowRange[0], K.snowRange[1]);
-  }
-}
 
-export const compName = id => K.list.find(c => c.id === id).name;

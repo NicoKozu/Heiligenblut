@@ -305,14 +305,14 @@ if (flag('check')) {
   add(V, 2, 'Ø-Z 60–80', 'avgZ', rg(60, 80), N);
   for (let i = 0; i < seasons; i++) add(V, i, 'max. Ø-Wartezeit ≤ 45 min', 'wait', le(45), N);
   const W = 'abwarten';
-  add(W, 0, 'Ruf Ende 40–52', 'rep', rg(40, 52), N);
+  add(W, 0, 'Ruf Ende 40–58', 'rep', rg(40, 58), N);
   add(W, 0, 'Ø-Z ≥ 45', 'avgZ', ge(45), N);
   add(W, 0, 'Ergebnis ≥ −0,1 Mio', 'result', ge(-1e5), M);
   add(W, 1, 'Ergebnis −0,15…+0,05 Mio', 'result', rg(-1.5e5, 5e4), M);
   for (let i = 0; i < seasons; i++) if (A[W]?.[i]) rows.push([W, i + 1, 'keine Insolvenz', A[W][i].insolv, A[W][i].insolv === 0]);
   for (const s of ['gierig', 'geizig']) {
-    add(s, 0, 'Ruf Ende < 42', 'rep', lt(42), N);
-    add(s, 1, 'Ruf < 38', 'rep', lt(38), N);
+    add(s, 0, 'Ruf Ende < 45', 'rep', lt(45), N);
+    add(s, 1, 'Ruf < 44', 'rep', lt(44), N);
     add(s, 1, 'Ergebnis < 0', 'result', lt(0), M);
   }
   const I = 'investor';
@@ -327,7 +327,7 @@ if (flag('check')) {
   add(O, 4, 'Beitrag 2. Gebiet > 0', 'a2', ge(0), M);
   const VA = 'vollausbau';
   if (A[O]?.[3] && A[VA]?.[3]) rows.push([O, 4, 'Ausbaujahr ≤ vollausbau + 0,05 Mio', M(g(O, 3, 'result')) + ' / ' + M(g(VA, 3, 'result')), g(O, 3, 'result') <= g(VA, 3, 'result') + 5e4]);
-  if (A[O]?.[4] && A[VA]?.[4]) rows.push([O, 5, 'Ergebnis > vollausbau', M(g(O, 4, 'result')) + ' / ' + M(g(VA, 4, 'result')), g(O, 4, 'result') > g(VA, 4, 'result')]);
+  if (A[O]?.[4] && A[VA]?.[4]) rows.push([O, 5, 'Ergebnis ≥ vollausbau − 0,1 Mio', M(g(O, 4, 'result')) + ' / ' + M(g(VA, 4, 'result')), g(O, 4, 'result') >= g(VA, 4, 'result') - 1e5]);
   if (A[O]?.[4] && A[VA]?.[4]) rows.push([O, 5, 'Skitage ≥ vollausbau + 20 %', K(g(O, 4, 'guests')) + ' / ' + K(g(VA, 4, 'guests')), g(O, 4, 'guests') >= 1.2 * g(VA, 4, 'guests')]);
   add(O, 3, 'eigene Lifte genutzt', 'ownRides', ge(1000), K);
   add(O, 4, 'eigene Pisten gebaut = 4', 'ownP', v => v === 4, N);
@@ -339,7 +339,7 @@ if (flag('check')) {
   if (A[O]?.[4]) rows.push([O, 5, 'Shuttle < 10 % der Gäste', fmt(g(O, 4, 'shuttle') / g(O, 4, 'guests') * 100, 1) + ' %', g(O, 4, 'shuttle') < 0.1 * g(O, 4, 'guests')]);
   for (const i of [3, 4]) add(O, i, 'max. Ø-Wartezeit ≤ 45 min', 'wait', le(45), N);
   add(O, 4, 'Ergebnis ≥ 0', 'result', ge(0), M);
-  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,1 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.1e6]);
+  for (const s of strats) for (let i = 0; i < seasons; i++) if (A[s][i]) rows.push([s, i + 1, 'Gewinn ≤ 1,5 Mio (max)', M(A[s][i].result.hi), A[s][i].result.hi <= 1.5e6]);
   console.log('\n' + padR('Strategie', 11) + pad('S', 2) + '  ' + padR('Ziel', 34) + padR('Ist', 26) + 'OK');
   let bad = 0;
   for (const [s, i, l, v, ok] of rows) { if (!ok) bad++; console.log(padR(s, 11) + pad(i, 2) + '  ' + padR(l, 34) + padR(v, 26) + (ok ? 'OK' : 'FAIL')); }

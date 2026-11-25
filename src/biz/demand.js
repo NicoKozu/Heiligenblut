@@ -3,7 +3,7 @@ import { baseKm } from './area.js';
 import { baseDemand } from './calendar.js';
 import { range } from './rng.js';
 import { running, pisteOpen } from './assets.js';
-import { mFactor, kFactor, SEGS } from './marketing.js';
+import { mFactor, SEGS } from './marketing.js';
 import { bases, offerBonus } from './net.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -65,19 +65,18 @@ export function segFactors(G, date, sg, extra = {}) {
     weather: 1 + (w - 1) * S.wx,
     snow: extra.snow ?? 1,
     marketing: extra.noMkt ? 1 : mFactor(G, date, sg),
-    K: kFactor(G, sg, extra.snow ?? 1),
     word: wordFactor(G)
   };
 }
 
-const prod = f => f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing * f.K * f.word;
+const prod = f => f.B * f.P * f.R * f.O * f.weather * f.snow * f.marketing * f.word;
 export const expectedSeg = (G, date, extra) => Object.fromEntries(SEGS.map(s => [s, prod(segFactors(G, date, s, extra))]));
 const tot = o => Object.values(o).reduce((a, b) => a + b, 0);
 
 export function factors(G, date, extra = {}) {
   const seg = SEGS.map(s => [s, segFactors(G, date, s, extra)]), n = tot(Object.fromEntries(seg.map(([s, f]) => [s, prod(f)]))) || 1;
   const o = { B: baseDemand(date) };
-  for (const k of ['P', 'R', 'O', 'weather', 'snow', 'marketing', 'K', 'word']) o[k] = seg.reduce((a, [, f]) => a + prod(f) / n * f[k], 0);
+  for (const k of ['P', 'R', 'O', 'weather', 'snow', 'marketing', 'word']) o[k] = seg.reduce((a, [, f]) => a + prod(f) / n * f[k], 0);
   return o;
 }
 
