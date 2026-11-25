@@ -298,7 +298,7 @@ if (flag('check')) {
   add(V, 1, 'Skitage 16–26k', 'guests', rg(16e3, 26e3), K);
   add(V, 1, 'Ergebnis +0,1…+0,6 Mio', 'result', rg(1e5, 6e5), M);
   add(V, 2, 'Skitage 20–32k', 'guests', rg(20e3, 32e3), K);
-  add(V, 2, 'Ergebnis +0,1…+0,6 Mio', 'result', rg(1e5, 6e5), M);
+  add(V, 2, 'Ergebnis +0,1…+0,7 Mio', 'result', rg(1e5, 7e5), M);
   if (A[V]?.[4]) rows.push([V, 5, 'Ergebnis steigt ggü. Saison 3', M(g(V, 4, 'result')) + ' / ' + M(g(V, 2, 'result')), g(V, 4, 'result') > g(V, 2, 'result')]);
   add(V, 4, 'Skitage 28–42k', 'guests', rg(28e3, 42e3), K);
   add(V, 4, 'Ergebnis +0,3…+1,0 Mio', 'result', rg(3e5, 1e6), M);
