@@ -44,8 +44,8 @@ export function initSnow(G, fresh) {
 export function wear(G, id, n) {
   const o = G.pistes[id];
   if (!o || n <= 0) return;
-  const k = C.wearKm / (PISTE[id]?.km || C.wearKm), f = Math.max(0, (o.cond - C.floor) / (C.groomed - C.floor));
-  o.cond = Math.max(0, o.cond - n * C.wear * k * f * (C.wearBy[o.q] || 1) * (o.groomed === false ? C.rough : 1));
+  const k = C.wearKm / (PISTE[id]?.km || C.wearKm), f = Math.max(0, (o.cond - C.floor) / (C.groomed - C.floor)), d = C.wearSnow[0] / Math.max(C.wearSnow[1], o.snow || 0);
+  o.cond = Math.max(0, o.cond - n * C.wear * k * f * d * (C.wearBy[o.q] || 1) * (o.groomed === false ? C.rough : 1));
 }
 
 const MID = D.groom.mid;

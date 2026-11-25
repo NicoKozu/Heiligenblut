@@ -152,7 +152,7 @@ export const D = {
   },
   cover: {
     natural: [25, 0.04], cannonStart: 30, minOpen: 12, thin: 30, melt: 1.6, meltBy: { sun: 1.3, foehn: 1.6 }, rainAt: 1.5, rainMelt: 0.35,
-    wear: 0.016, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45, wearKm: 2, floor: 0, rough: 1.5,
+    wear: 0.016, wearBy: { pulvrig: 1.6, sulzig: 1.4, eisig: 0.7 }, worn: 45, wearKm: 2, wearSnow: [50, 25], floor: 0, rough: 1.5,
     groomed: 92, groomedHard: 82, powder: 62, newSnow: 5, refreeze: 0, settle: 0.5, compact: 0.012,
     q: { pulvrig: 1.0, griffig: 1.0, sulzig: 0.82, eisig: 0.68, abgefahren: 0.85 },
     qLabels: { pulvrig: 'pulvrig', griffig: 'griffig', eisig: 'eisig', sulzig: 'sulzig', abgefahren: 'abgefahren' },
