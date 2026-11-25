@@ -48,8 +48,7 @@ export function phase(s) {
 }
 
 export function baseDemand(s) {
-  const p = D.demand[phase(s)];
-  return weekend(s) ? p.we : p.wd;
+  return D.demandBase;
 }
 
 export function fmtDate(s) {

@@ -9,7 +9,7 @@ import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfacti
 import { initWeather, applyWind } from './weather.js';
 import { initStaff, staffAuto, evening, wages, minute as staffMinute } from './staff.js';
 import { initSnow, night, newSeason, minute as snowMinute, demandExtra, avgSnow } from './snow.js';
-import { initMkt, day as mktDay, compDay, newSeason as mktSeason } from './marketing.js';
+import { initMkt, day as mktDay, newSeason as mktSeason } from './marketing.js';
 import { snapshot, fixed } from './season.js';
 import { initCustom, unlock, areaDay } from './custom.js';
 import { remember } from './net.js';
@@ -162,7 +162,6 @@ export function nextDay(G) {
   overnight(G);
   if (ns) return endSeason(G, d);
   night(G, d);
-  compDay(G);
   buildDay(G, false);
   unlock(G);
   G.date = d;
@@ -196,7 +195,6 @@ export function startSeason(G) {
   if (rec) { rec.sumCosts = { ...S.costs }; rec.sumCost = sum(S.costs); rec.year = rec.result - rec.sumCost; }
   const d = S.next;
   night(G, d);
-  compDay(G);
   G.seasonShare = seasonShare(G.rep);
   newSeason(G);
   buildDay(G, true);

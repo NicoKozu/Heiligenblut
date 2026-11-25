@@ -113,3 +113,9 @@ Quellen: heiligenblut.at (Pisteninfo, Stand 06.04.2026), kaernten.at, schneehoeh
 - Verbindungslifte (Gondel/Sessel, `link`) fahren in beide Richtungen (`both`, `keys` dynamisch aus `LIFTX`). `side.js` Parkplätze je Talstation (`f.carsB`), Überlauf zu anderen Talstationen. `demand.js` Erreichbarkeit ab allen Talstationen.
 - 3D/UI: `crowd` Kassa/Warten an der Talstation des Gasts (`src.base`), `village.setLots` parkt Autos auf eigenen Talstation-Parkplätzen nach Füllgrad, Panel unten Gäste/Wartezeit je Talstation, Tagesbericht Gäste/Shuttle je Talstation.
 - Simtest `openworld` (ab S3: Gegenhangbahn mit Talstation, Gegenhang- + Waldabfahrt, Verbindung Dorf–Gegenhang, optional Sessellift): S5 Anteil 2. Talstation 20 %, Verbindung bergauf 56k/talwärts 52k, Shuttle 3 %, max. Ø-Wartezeit 13 min, Ergebnis +0,6 Mio. Übrige Strategien unverändert OK.
+
+## Nachfrage flach (Zusatz)
+- `calendar.js` `baseDemand` liefert konstant `D.demandBase` 600 (vorher Phase × Wochentag 200–1300, Saisonschnitt ~700); `D.demand` nur noch für Phasen-Labels.
+- Konkurrenz komplett entfernt: Faktor K aus `demand.js`, `kFactor`/`compDay`/`compName` aus `marketing.js`, `D.mkt.comp`, Marketing-Tab ohne Konkurrenz. Alte Spielstände behalten ungenutztes `G.comp`.
+- `demandModel.rep` [0,3, 1,4] (vorher [0,6, 0,8]), `offer` [0,2, 0,8] (vorher [0,3, 0,7]).
+- Simtest S5: vernünftig 37k/+0,86 Mio, investor +0,73, openworld 58k/+0,98 vs vollausbau 47k/+1,05 (mehr Gedränge → Ruf 73 vs 76). Ziele angepasst: Gewinn ≤ 1,5 Mio, abwarten Ruf 40–58, gierig/geizig Ruf < 45 / < 44, openworld S5 ≥ vollausbau − 0,1 Mio.
