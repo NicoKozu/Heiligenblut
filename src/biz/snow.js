@@ -16,10 +16,6 @@ export const area = p => p.km * 1000 * (p.width || S.width);
 export const label = o => o.cond < C.worn ? 'abgefahren' : o.q || 'griffig';
 export const depthF = cm => clamp(C.depth[2] + (1 - C.depth[2]) * (cm - C.depth[0]) / (C.depth[1] - C.depth[0]), C.depth[2], 1);
 export const score = (G, id) => { const o = G.pistes[id]; return clamp((o.cond ?? 0) * (C.q[label(o)] ?? 1) * depthF(o.snow ?? 0), 0, 100); };
-const LV = ['leicht', 'mittel', 'schwer'];
-export const extra = o => Math.min(C.loose.max, (o?.loose || 0) / C.loose.step);
-export const effLevel = (p, o) => LV.indexOf(p.level) + extra(o);
-export const levelName = e => e < 0.5 ? 'leicht' : e < 1.5 ? 'mittel' : e < 2.5 ? 'schwer' : 'extrem';
 export const avgSnow = G => { const L = pl(G); return L.reduce((a, p) => a + p.km * (G.pistes[p.id].snow || 0), 0) / L.reduce((a, p) => a + p.km, 0); };
 const newAt = (cm, h) => cm * clamp(W.lowSnow + (1 - W.lowSnow) * (h - W.ref) / (W.top - W.ref), W.lowSnow, 1.2);
 
@@ -48,9 +44,8 @@ export function initSnow(G, fresh) {
 export function wear(G, id, n) {
   const o = G.pistes[id];
   if (!o || n <= 0) return;
-  const k = C.wearKm / (PISTE[id]?.km || C.wearKm), f = Math.max(0, (o.cond - C.floor) / (C.groomed - C.floor));
-  o.cond = Math.max(0, o.cond - n * C.wear * k * f * (C.wearBy[o.q] || 1) * (o.groomed === false ? C.rough : 1));
-  if (o.loose) { o.loose *= Math.max(0, 1 - n * C.loose.pack * k); if (o.loose < 0.5) o.loose = 0; }
+  const k = C.wearKm / (PISTE[id]?.km || C.wearKm), f = Math.max(0, (o.cond - C.floor) / (C.groomed - C.floor)), d = C.wearSnow[0] / Math.max(C.wearSnow[1], o.snow || 0);
+  o.cond = Math.max(0, o.cond - n * C.wear * k * f * d * (C.wearBy[o.q] || 1) * (o.groomed === false ? C.rough : 1));
 }
 
 const MID = D.groom.mid;
@@ -85,7 +80,6 @@ function midMinute(G) {
   for (const id of G.today.mid) {
     const o = G.pistes[id];
     if (o.cond < MID.target) o.cond += (MID.target - o.cond) / (MID.to - G.min);
-    if (o.loose) o.loose -= o.loose / (MID.to - G.min);
   }
 }
 
@@ -146,7 +140,6 @@ export function night(G, date) {
     if (t > 0) r.melt += C.melt * t * (C.meltBy[prev.type] || 1);
     if (prev.cm > 0 && t > C.rainAt) { r.melt += newAt(prev.cm, pisteH(p)) * C.rainMelt; o.q = 'sulzig'; }
     o.snow = Math.max(0, o.snow * (1 - C.compact) - r.melt);
-    o.loose = t > C.rainAt && prev.cm > 0 ? 0 : (o.loose || 0) * C.loose.keep;
     const q = gunPlan(G, p.id);
     if (q.n && q.h) {
       if (q.cold) { o.snow += q.cm; r.gun = q.cm; rep.m3 += q.m3; rep.gunCost += q.cost; }
@@ -166,11 +159,6 @@ export function night(G, date) {
     const gr = g.list.includes(p.id);
     o.groomed = gr;
     r.groomed = gr;
-    o.loose = (o.loose || 0) + fresh * C.settle;
-    if (gr) o.loose *= C.loose.groom;
-    if (day.cm > 0 && t > C.rainAt) o.loose = 0;
-    o.loose = o.loose < 0.5 ? 0 : Math.round(o.loose * 10) / 10;
-    r.loose = o.loose;
     if (gr) {
       o.cond = warm[p.id] && t <= 0 && !fresh ? C.groomedHard : C.groomed;
       o.q = 'griffig';

@@ -1,7 +1,7 @@
 import { D } from './data.js';
 import { DIRS, keys, LIFTX, PX } from './area.js';
 import { running, pisteOpen, pay } from './assets.js';
-import { wear, effLevel } from './snow.js';
+import { wear } from './snow.js';
 import { cashCap } from './staff.js';
 import { ticketPrice, kidsFree } from './marketing.js';
 import * as SD from './side.js';
@@ -13,8 +13,6 @@ const F = D.flow, NX = D.net;
 const LIFT = LIFTX;
 const PISTE = PX;
 const LV = ['leicht', 'mittel', 'schwer'];
-const lvOf = (G, p) => effLevel(p, G.pistes[p.of || p.id]);
-const prefAt = (k, e) => { const P = F.pref[LV[k]], a = Math.min(2, Math.floor(e)), b = Math.min(2, a + 1), u = Math.min(1, e - a); return (P[LV[a]] * (1 - u) + P[LV[b]] * u) / (1 + Math.max(0, e - 2)); };
 const smooth = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 const unsmooth = u => 0.5 - Math.sin(Math.asin(1 - 2 * Math.min(1, Math.max(0, u))) / 3);
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -219,7 +217,7 @@ function decide(G, f, g, node, t) {
     const w = F.liftW * (s.back ? F.backW : 1) * Math.exp(-(f.wait[s.id] || 0) / F.queueTau) * net.dst[s.to][g.k] * toward(s.to);
     o.push({ d: 'q:' + s.id, w: Math.max(0.02, w) });
   }
-  for (const p of net.P[node] || []) o.push({ d: 'p:' + p.id, w: Math.max(0.005, prefAt(g.k, lvOf(G, p)) * (g.lp === p.id ? F.variety : 1)) * toward(p.to) * (net.isB[p.to] && p.to !== hb && !net.L[p.to].length ? NX.dead : 1) });
+  for (const p of net.P[node] || []) o.push({ d: 'p:' + p.id, w: Math.max(0.005, F.pref[LV[g.k]][p.level] * (g.lp === p.id ? F.variety : 1)) * toward(p.to) * (net.isB[p.to] && p.to !== hb && !net.L[p.to].length ? NX.dead : 1) });
   if (!o.length) {
     if (!net.isB[node]) return 'x';
     const alt = [hb, ...net.B.map(b => b.id)].filter(b => b !== node && net.L[b]?.length).sort((a, b) => (walkMin(node, a) ?? 1e9) - (walkMin(node, b) ?? 1e9))[0];
@@ -239,10 +237,10 @@ function valid(G, f, g, node, d) {
   return false;
 }
 
-function runTime(G, f, g, p) {
-  const o = G.pistes[p.of || p.id], d = effLevel(p, o) - g.k, adj = Math.max(0.35, d > 0 ? 1 - F.over * d * 2 : 1 + F.under * -d);
+function runTime(f, g, p) {
+  const d = LV.indexOf(p.level) - g.k, adj = d > 0 ? 1 - F.over * d * 2 : 1 + F.under * -d;
   const km = p.rk || p.km;
-  return km * (1 + D.cover.loose.slow * (o?.loose || 0)) / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * Math.min(1, km / F.pauseKm) * span(f, [0.5, 1.5]);
+  return km / (F.speed[p.level] * g.v * adj) * 60 + F.pause[p.level] * Math.min(1, km / F.pauseKm) * span(f, [0.5, 1.5]);
 }
 
 function drop(G, f, g, lost) {
@@ -269,7 +267,7 @@ function go(G, f, g, node, t, ev, end) {
   if (s === 'h') { g.s = 'hq'; SD.queueHut(f, id, g.i); return; }
   g.s = 'p';
   g.lp = id;
-  g.t1 = t + runTime(G, f, g, PISTE[id]);
+  g.t1 = t + runTime(f, g, PISTE[id]);
   if (g.t1 < end) ev.push(g);
 }
 

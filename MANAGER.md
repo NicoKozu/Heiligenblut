@@ -95,7 +95,7 @@ Strom 0,24 €/kWh, Lastfaktor 0,4 + 0,6 × Auslastung. Wartung fix 350 €/Lift
 **Balancing-Ziele ab Kurzsaison (1 Spieltag = 6 Kalendertage, Saison ≈ 20 Spieltage, Geldbestände/Investitionen ÷6; prüfen mit `node tools/simtest.mjs --check`, 5 Seeds × 5 Saisonen, Mittelwert, Ergebnis = Jahresergebnis inkl. Sommerkosten):**
 | Strategie | Saison 1 | Saison 2 | Saison 3 | Saison 4–5 |
 |---|---|---|---|---|
-| vernünftig | 9–15k Skitage, −0,2 bis +0,3 Mio €, Ø-Z 55–75, Ruf ≥ 48 | 16–26k, +0,1 bis +0,6 Mio € | 20–32k, +0,1 bis +0,6 Mio €, Ø-Z 60–80 | S5 > S3; S5 28–42k, +0,3 bis +1,0 Mio € |
+| vernünftig | 9–15k Skitage, −0,2 bis +0,3 Mio €, Ø-Z 55–75, Ruf ≥ 48 | 16–26k, +0,1 bis +0,6 Mio € | 20–32k, +0,1 bis +0,7 Mio €, Ø-Z 60–80 | S5 > S3; S5 28–42k, +0,3 bis +1,0 Mio € |
 | abwarten | Ruf 40–58, Ø-Z ≥ 45, ≥ −0,1 Mio € | −0,15 bis +0,05 Mio € | keine Insolvenz | keine Insolvenz |
 | gierig / geizig | Ruf < 45 | Ruf < 44, Ergebnis < 0 | – | – |
 | investor | Kredit ≥ 0,5 Mio €, keine Insolvenz | – | > vernünftig − 0,1 Mio €, Kredit sinkt | keine Insolvenz |
