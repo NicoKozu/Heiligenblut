@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { D } from './data.js';
+import { D, hutNext } from './data.js';
 import * as CU from './custom.js';
 import { status, repairQuote, fmtDur, serviced } from './assets.js';
 import * as X from './side.js';
@@ -128,7 +128,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     return { k: 'wait', w: G.flow?.wait[l.id] || 0 };
   };
   const hutState = (G, h) => {
-    const o = G.side.huts[h.id], pid = HUTP[h.id], j = (pid && B.job(G, pid)) || B.job(G, 'hut:' + h.id);
+    const o = G.side.huts[h.id], pid = HUTP[h.id], j = (pid && B.job(G, pid)) || G.build.jobs.find(x => D.build.projects[x.id]?.hutUp === h.id);
     if (j && j.left != null) return { k: 'build' };
     if (!o?.own) return null;
     if (!o.open) return { k: 'lock' };
@@ -277,8 +277,8 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
     h += '<div class="a">' + btn('tog:hut:' + id, o.open ? 'Schließen' : 'Öffnen', { p: !o.open, off: !!o.build });
     for (const k in lv) h += btn('lvl:' + id + ':' + k, lv[k].label, { p: o.level === k, off: G.phase === 'open', tip: G.phase === 'open' ? 'nur vor/nach dem Betrieb' : '' });
     if (d.custom) { const why = CU.canDemolishHut(G, id); h += btn('hdemo:' + id, 'Abriss +' + eur(CU.hrefundOf(G, id)), { off: !!why, tip: why }); }
-    const up = 'hut:' + id;
-    if (D.build.projects[up] && !B.done(G, up)) h += '</div><div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">' + projBody(up, true);
+    const up = G.build.jobs.find(x => D.build.projects[x.id]?.hutUp === id)?.id || hutNext(G, id);
+    if (up) h += '</div><div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">' + projBody(up, true);
     return h + '</div>';
   }
 

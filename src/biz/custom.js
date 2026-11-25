@@ -1,4 +1,4 @@
-import { D, addCabs, cabId, growCabs } from './data.js';
+import { D, addCabs, cabId, growCabs, addHutUp } from './data.js';
 import { relink, PX } from './area.js';
 import { log, ev } from './assets.js';
 import { order, done, job, room, post, writeoff } from './build.js';
@@ -64,6 +64,8 @@ export function sync(G) {
     const z = CH.sizes[h.size];
     SH.push({ id: h.id, name: h.name, node: h.node, seats: z.seats, draw: z.draw, fix: z.fix, custom: true });
     P[h.id] = { label: h.name, price: h.price, life: CH.life, hut: h.id, custom: true, info: hinfo(h) };
+    const st = Math.max(30, Math.round(z.seats / 20) * 10);
+    addHutUp(h, st, D.side.hutUp * st / D.side.hutStep, [h.id], { custom: true });
   }
   growCabs(G);
   rehut(G);
