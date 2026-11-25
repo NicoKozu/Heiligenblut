@@ -4,7 +4,7 @@ export const D = {
   startDate: '2026-12-01',
   dayStep: 6,
   start: { cash: 250000, loan: 0, credit: 1000000, rate: 0.055, rep: 55, cond: [70, 85] },
-  time: { open: 510, close: 990, gameSecPerSec: 8, factors: [0.125, 1, 2, 5, 10, 20], maxSteps: 40, warn: 15 },
+  time: { open: 510, close: 990, gameSecPerSec: 8, factors: [0.125, 1, 2, 5, 10, 20, 60], maxSteps: 40, warn: 15 },
   lifts: [
     { id: 'rossbach', name: 'Gondel Rossbach', gap: 10, places: 4, kw: 260, staff: 4, maint: 1800, ride: 9, from: 'tal', to: 'rossbach' },
     { id: 'schareck', name: 'Gondel Schareck', gap: 12, places: 4, kw: 300, staff: 4, maint: 2400, ride: 8, from: 'rossbach', to: 'schareck', exposed: true, proj: 'schareck' },
