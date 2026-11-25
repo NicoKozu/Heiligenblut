@@ -9,16 +9,24 @@ const P = D.build.projects;
 const cache = new Map();
 
 export function finTab(G, h) {
-  const { eur, tr, dec } = h, pl_ = B.seasonPL(G), bv = B.bookValue(G), rate = D.start.rate, f = fixed(G), sf = f.admin + f.interest;
+  const { eur, tr, dec } = h, pl_ = B.seasonPL(G), bv = B.bookValue(G), rate = B.rate(G), f = fixed(G), dp = B.dep(G), tier = B.scoreTier(G), sf = f.admin + f.interest;
   const rev = Object.entries(pl_.rev).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const cost = Object.entries(pl_.cost).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const lb = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
+  const lb = k => k === 'dep' ? 'Erträge Geldanlage' : D.tickets[k]?.label || D.side.areas[k]?.label || k;
   const btn = (a, t, dis) => '<button class="btn" data-act="loan:' + a + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>';
-  const [s1, s2] = D.fin.step;
+  const dbtn = (a, t, dis) => '<button class="btn" data-act="dep:' + a + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>';
+  const [s1, s2] = D.fin.step, sc = B.score(G), w = B.depWork(G);
   const warn = G.fin.insolv > 0 || (G.cash < 0 && B.room(G) <= 0) ? '<p class="note biz-bad">Kasse im Minus und Kreditrahmen ausgeschöpft – nach ' + D.fin.insolvDays + ' Tagen droht die Insolvenz (Tag ' + G.fin.insolv + ').</p>' : '';
-  return warn + '<h2>Bilanz</h2><table>' + tr('Kasse', eur(G.cash)) + tr('Anlagevermögen (Buchwert)', eur(bv)) + tr('<b>Aktiva</b>', '<b>' + eur(G.cash + bv) + '</b>', 'sum') +
-    tr('Kredit', eur(G.loan)) + tr('Eigenkapital', '<span class="' + (G.cash + bv - G.loan >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(G.cash + bv - G.loan) + '</span>') + '</table>' +
-    '<h2>Kredit</h2><table>' + tr('Stand / Rahmen', eur(G.loan) + ' / ' + eur(B.credit(G)) + (G.open ? ' (wächst mit eigenem Anlagevermögen)' : '')) + tr('Zins', dec(rate * 100) + ' % p. a. · ' + eur(G.loan * rate / 365) + ' je Tag') +
+  const eq = G.cash + dp + bv - G.loan;
+  return warn + '<h2>Bilanz</h2><table>' + tr('Kasse', eur(G.cash)) + (dp > 0 ? tr('Geldanlage', eur(dp)) : '') + tr('Anlagevermögen (Buchwert)', eur(bv)) + tr('<b>Aktiva</b>', '<b>' + eur(G.cash + dp + bv) + '</b>', 'sum') +
+    tr('Kredit', eur(G.loan)) + tr('Eigenkapital', '<span class="' + (eq >= 0 ? 'biz-good' : 'biz-bad') + '">' + eur(eq) + '</span>') + '</table>' +
+    '<h2>Bonität</h2><table>' + tr('Score', '<b class="' + (tier[2] ? 'biz-' + tier[2] : '') + '">' + Math.round(sc) + '</b> · ' + tier[1]) +
+    tr('Wirkung', 'Kreditzins ×' + dec(B.rateK(G)) + ' · Anlage ' + dec(B.depRate(G) * 100) + ' % je Spieltag · Kreditrahmen ' + eur(B.credit(G))) + '</table>' +
+    '<p class="note">100 = normal. Der Score bildet sich langsam über viele Spieltage: Gewinnmarge, kein oder wenig Kredit (Verschuldung über 40 % der Aktiva drückt) und eine Kasse im Plus heben ihn; Verluste und Minus senken ihn. Besser → weniger Zinsen, höherer Rahmen (bis ' + eur(D.fin.score.creditMax) + '), mehr Anlageertrag.</p>' +
+    '<h2>Geldanlage</h2><table>' + tr('Angelegt', eur(dp) + (dp > w ? ' (davon verzinst ' + eur(w) + ', nur Eigenmittel über dem Kredit)' : '')) + tr('Ertrag', dec(B.depRate(G) * 100) + ' % je Spieltag · ' + eur(w * B.depRate(G)) + ' am Abend') +
+    tr('Anlegen', dbtn(s1, '+ ' + eur(s1), G.cash <= 0) + ' ' + dbtn(s2, '+ ' + eur(s2), G.cash <= 0) + ' ' + dbtn('cash', 'ganze Kasse', G.cash <= 0)) +
+    tr('Abheben', dbtn(-s1, '− ' + eur(s1), dp <= 0) + ' ' + dbtn(-s2, '− ' + eur(s2), dp <= 0) + ' ' + dbtn('all', 'alles', dp <= 0)) + '</table>' +
+    '<h2>Kredit</h2><table>' + tr('Stand / Rahmen', eur(G.loan) + ' / ' + eur(B.credit(G)) + (G.open ? ' (wächst mit eigenem Anlagevermögen)' : '')) + tr('Zins', dec(rate * 100) + ' % p. a. · ' + eur(G.loan * rate * D.dayStep / 365) + ' je Spieltag') +
     tr('Aufnehmen', btn(s1, '+ ' + eur(s1), B.room(G) <= 0) + ' ' + btn(s2, '+ ' + eur(s2), B.room(G) <= 0)) +
     tr('Tilgen', btn(-s1, '− ' + eur(s1), G.loan <= 0 || G.cash <= 0) + ' ' + btn(-s2, '− ' + eur(s2), G.loan <= 0 || G.cash <= 0) + ' ' + btn('all', 'alles', G.loan <= 0 || G.cash <= 0)) + '</table>' +
     '<h2>Gewinn- und Verlustrechnung Saison ' + G.season + '/' + String(G.season + 1).slice(2) + '</h2><table>' +
@@ -31,7 +39,7 @@ export function finTab(G, h) {
     tr('Investitionen (nicht im Ergebnis)', eur(pl_.invest)) + tr('Betriebstage · Gäste', pl_.days + ' · ' + h.num(pl_.guests)) + '</table>' +
     (areaTable(G, seasonAreas(G), h) ? '<h2>Gebiete (Saison)</h2>' + areaTable(G, seasonAreas(G), h) + '<button class="btn" data-act="amap">Gebietskarte</button>' : '') +
     '<h2>Anlagenspiegel</h2><table>' + G.fin.items.map(x => tr(x.label + (x.n != null ? ' (' + x.n + ')' : ''), 'Buchwert ' + eur(x.val) + ' · Anschaffung ' + eur(x.cost) + ' · ' + x.life + ' J.')).join('') + '</table>' +
-    '<p class="note">Abschreibung linear (Lifte ' + P.tunnelbahn.life + ' Jahre), je Betriebstag 1/' + D.fin.days + ' des Jahresbetrags. Kasse unter 0 → Kredit wird automatisch erhöht, bis der Rahmen ausgeschöpft ist.</p>';
+    '<p class="note">Abschreibung linear (Lifte ' + P.tunnelbahn.life + ' Jahre), je Betriebstag 1/' + D.fin.days + ' des Jahresbetrags. Kasse unter 0 → erst Geldanlage aufgelöst, dann Kredit automatisch erhöht, bis der Rahmen ausgeschöpft ist.</p>';
 }
 
 function gainOf(G, id, fc) {

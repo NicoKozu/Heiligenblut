@@ -178,9 +178,9 @@ function run(name, seed, seasons, maxDays, daily) {
   const finish = () => {
     const rec = G.seasons.find(x => x.sy === cur.season);
     const pl = seasonPL(G, cur.season), H = G.history.filter(h => seasonOf(h.date) === cur.season);
-    const flowSum = H.reduce((a, h) => a + h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.sale || 0), 0);
+    const flowSum = H.reduce((a, h) => a + h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.dep || 0) + (h.sale || 0), 0);
     cur.gap = H.length ? (H[H.length - 1].cash - H[0].cashStart) - flowSum : 0;
-    if (process.env.GAP) for (const h of H) { const d = h.cash - h.cashStart - (h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.sale || 0)); if (Math.abs(d) > 1) console.log(name, seed, h.date, Math.round(d)); }
+    if (process.env.GAP) for (const h of H) { const d = h.cash - h.cashStart - (h.revenue - h.cost - (h.invest || 0) + (h.loan || 0) + (h.dep || 0) + (h.sale || 0)); if (Math.abs(d) > 1) console.log(name, seed, h.date, Math.round(d)); }
     Object.assign(cur, { R: pl.R, C: pl.C, result: rec?.year ?? pl.result, winter: pl.result, sumCost: rec?.sumCost || 0, depr: pl.depr, costs: pl.cost, revs: pl.rev, cash: G.cash, loan: G.loan, rep: G.rep, avgZ: cur.z.length ? cur.z.reduce((a, b) => a + b, 0) / cur.z.length : 0, days: cur.day });
     for (const q in cur.parts) cur.parts[q] /= Math.max(1, cur.z.length);
     delete cur.z;

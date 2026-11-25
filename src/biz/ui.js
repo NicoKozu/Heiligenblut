@@ -153,7 +153,7 @@ const row = (k, v, c = '') => '<div class="row"><span>' + k + '</span><b class="
 const mins = w => w < 0.5 ? '–' : Math.round(w) + ' min';
 const wtone = w => w < D.flow.wait[0] ? 'biz-good' : w < D.flow.wait[1] ? 'biz-warn' : 'biz-bad';
 const sumv = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
-const revLabel = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
+const revLabel = k => k === 'dep' ? 'Erträge Geldanlage' : D.tickets[k]?.label || D.side.areas[k]?.label || k;
 const ticketSum = o => Object.entries(o || {}).reduce((a, [k, v]) => a + (k in D.tickets ? v : 0), 0);
 const DOT = { run: '', closed: 'bad', fault: 'bad', repair: 'bad', insp: 'warn', wind: 'bad', staff: 'bad', build: 'warn' };
 const bar = v => '<div class="biz-bar"><i style="width:' + Math.round(Math.max(0, Math.min(100, v))) + '%;background:' + (v >= 75 ? '#7be07b' : v >= 50 ? '#ffd84a' : '#ff6b5a') + '"></i></div>';
@@ -267,6 +267,8 @@ export function createUI(h) {
       row('Kasse', eur(G.cash) + trend(G.cash, p && p.cash), tone(G.cash, 500000, 0)) +
       (g => '<div class="big"><span>Gewinn heute</span><b class="' + (g >= 0 ? 'biz-good' : 'biz-bad') + '">' + (g > 0 ? '+' : '') + eur(g) + '</b></div>')(sumv(G.today.revenue) - c) +
       (G.loan > 0 ? row('Kredit', eur(G.loan), G.loan > B.credit(G) * 0.8 ? 'biz-bad' : '') : '') +
+      (t => row('Bonität', Math.round(B.score(G)) + ' · ' + t[1], t[2] ? 'biz-' + t[2] : ''))(B.scoreTier(G)) +
+      (B.dep(G) > 0 ? row('Geldanlage', eur(B.dep(G))) : '') +
       (G.build?.jobs.length ? row('Baustellen', G.build.jobs.map(j => D.build.projects[j.id].label.replace(/ \(.*\)/, '') + ' ' + (j.left == null ? 'Sommer' : j.left + ' T.')).join(', ')) : '') +
       '<div class="sep"></div>' +
       row('Umsatz heute', eur(sumv(G.today.revenue))) +
@@ -297,7 +299,7 @@ export function createUI(h) {
       '<table>' + tr('Saisonphase', dem.label) + tr('Nachfrage-Basis heute', num(G.today.demand) + ' Gäste') + tr('Spieltag', num(G.day)) + '</table>' +
       '<h2>Gäste</h2><table>' + tr('Ruf', '<span class="' + tone(G.rep, 60, 40) + '">' + dec(G.rep) + '</span>') + (G.sat ? tr('Zufriedenheit letzter Tag', '<span class="' + ztone(G.sat.z) + '">' + Math.round(G.sat.z) + '</span> · <span class="stars">' + starStr(stars(G.sat.z)) + '</span>') : '') + tr('Saisonkarten-Anteil', dec((G.seasonShare ?? D.flow.seasonShare) * 100) + ' %') + '</table>' +
       '<h2>Finanzen</h2>' +
-      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(B.credit(G))) + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
+      '<table>' + tr('Kasse', eur(G.cash)) + tr('Kredit', eur(G.loan)) + tr('Kreditrahmen', eur(B.credit(G))) + tr('Bonität', Math.round(B.score(G)) + ' · ' + B.scoreTier(G)[1]) + (B.dep(G) > 0 ? tr('Geldanlage', eur(B.dep(G))) : '') + (r ? tr('Gäste Vortag', num(r.guests)) + tr('Umsatz Vortag', eur(r.revenue)) + tr('Kosten Vortag', eur(r.cost)) : '') + '</table>' +
       '<h2>Anlagen</h2>' +
       '<table>' + G.lifts.map(l => tr('<i class="biz-dot ' + DOT[status(l)] + '"></i> ' + l.name, D.liftStatus[status(l)] + ' · Zustand <span class="' + tone(l.cond, 75, 50) + '">' + Math.round(l.cond) + ' %</span>')).join('') + '</table>' + logView(G, 6);
   }
