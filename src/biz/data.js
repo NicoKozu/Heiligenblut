@@ -260,6 +260,7 @@ export const D = {
   },
   fin: {
     days: 20, life: { groomer: 8, cannon: 10 }, step: [20000, 200000], autoDraw: 10000, insolvDays: 3,
+    score: { start: 100, min: 0, max: 200, alpha: 0.06, margin: 100, marginMax: 0.8, noLoan: 20, lev: 0.4, levK: 80, minus: 60, rateBase: 2, rateSpan: 50, depRate: 0.05, depMin: 0.2, depMax: 2, creditBook: 0.5, creditMin: 0.5, creditMaxK: 4, creditMax: 10000000, creditStep: 50000, tiers: [[160, 'Money Maker', 'good'], [120, 'sehr gut', 'good'], [90, 'normal', ''], [60, 'schwach', 'warn'], [0, 'Loser', 'bad']] },
     start: [
       { id: 'rossbach', label: 'Gondel Rossbach', cost: 500000, val: 233000, life: 20 },
       { id: 'p10', label: 'Piste 10 Talabfahrt', cost: 55000, val: 33000, life: 25 },

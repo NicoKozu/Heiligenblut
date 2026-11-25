@@ -3,7 +3,7 @@ import { int, seed as newSeed } from './rng.js';
 import { addDays, isSeason, seasonOf, seasonStart, baseDemand, phase as calPhase } from './calendar.js';
 import { defaultPrices, demand, expected, expectedSeg } from './demand.js';
 import { newFlow, step, endFlow, ensureKeys } from './flow.js';
-import { initBuild, buildDay, depreciate, solvency } from './build.js';
+import { initBuild, buildDay, depreciate, solvency, rate as rateOf, depYield, rateDay, dep } from './build.js';
 import { pay, initAssets, liftMinute, dayStart, overnight, running } from './assets.js';
 import { minute as satMinute, endDay as satEnd, seasonShare } from './satisfaction.js';
 import { initWeather, applyWind } from './weather.js';
@@ -54,6 +54,8 @@ function migrate(G) {
   if (!G.ev) G.ev = [];
   if (G.summer === undefined) G.summer = null;
   if (!G.net) G.net = { mem: {} };
+  if (G.fin.score == null) G.fin.score = D.fin.score.start;
+  if (G.fin.dep == null) G.fin.dep = 0;
   for (const l of G.lifts) if (l.boost) { l.places = Math.round(D.lifts.find(x => x.id === l.id).places * (1 + l.boost)); delete l.boost; }
   if (G.today && !G.today.hits) G.today.hits = {};
   if (!G.today || !G.today.types) resetToday(G);
@@ -64,7 +66,7 @@ function migrate(G) {
 function resetToday(G) {
   G.today = {
     date: G.date, cashStart: G.cash, costs: zero(), revenue: {}, guests: 0, demand: baseDemand(G.date), phase: calPhase(G.date),
-    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0, side: {}, invest: 0, depr: 0, loan: 0
+    expected: 0, types: {}, rides: {}, peak: {}, waitSum: 0, boardSum: 0, faults: 0, rescued: 0, lost: 0, hits: {}, sat: null, seg: {}, free: 0, side: {}, invest: 0, depr: 0, loan: 0, dep: 0
   };
 }
 
@@ -72,7 +74,7 @@ export function startDay(G) {
   if (G.phase !== 'prep' || G.fin.over) return false;
   const o = G.today;
   resetToday(G);
-  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue }, invest: o.invest || 0, loan: o.loan || 0, sale: o.sale || 0, depr: o.depr || 0 });
+  if (o && o.date === G.date) Object.assign(G.today, { cashStart: o.cashStart, costs: { ...G.today.costs, ...o.costs }, revenue: { ...o.revenue }, invest: o.invest || 0, loan: o.loan || 0, dep: o.dep || 0, sale: o.sale || 0, depr: o.depr || 0 });
   G.phase = 'open';
   G.min = D.time.open;
   const dm = demand(G, G.date, demandExtra(G, G.date));
@@ -86,7 +88,7 @@ export function startDay(G) {
   staffAuto(G, dm.n);
   pay(G, 'staff', wages(G));
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.lifts.find(x => x.id === l.id).maint ?? D.maintPerLift); }
-  if (G.loan > 0) pay(G, 'interest', G.loan * D.start.rate * D.dayStep / 365);
+  if (G.loan > 0) pay(G, 'interest', G.loan * rateOf(G) * D.dayStep / 365);
   return true;
 }
 
@@ -126,13 +128,15 @@ function close(G) {
   sideEvening(G);
   endFlow(G);
   depreciate(G);
+  depYield(G);
   const t = G.today, cost = sum(t.costs), rev = sum(t.revenue);
   G.history.push({
     date: t.date, guests: t.guests, expected: t.expected || 0, revenue: rev, cost, cash: G.cash, cashStart: t.cashStart, rep: G.rep, costs: { ...t.costs },
     revs: { ...t.revenue }, types: { ...t.types }, peak: { ...t.peak }, rides: { ...t.rides }, runs: { ...(t.runs || {}) }, faults: t.faults || 0, rescued: t.rescued || 0, avgWait: t.boardSum ? t.waitSum / t.boardSum : 0, sat,
-    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, sale: t.sale || 0, debt: G.loan,
+    weather: { ...G.weather.today }, snow: avgSnow(G), aval: G.weather.aval, staff, seg: { ...(t.seg || {}) }, free: t.free || 0, side: { ...(t.side || {}) }, depr: t.depr || 0, invest: t.invest || 0, loan: t.loan || 0, dep: t.dep || 0, sale: t.sale || 0, debt: G.loan, depot: dep(G),
     area: areaDay(G), bases: { ...(t.bases || {}) }, back: { ...(t.back || {}) }, shuttle: { ...(t.shuttle || {}) }
   });
+  rateDay(G, G.history[G.history.length - 1]);
   if (G.history.length > 400) G.history.shift();
 }
 

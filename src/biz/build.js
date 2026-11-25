@@ -32,9 +32,53 @@ function legacy(G) {
 
 export const done = (G, id) => G.build.done.includes(id);
 export const job = (G, id) => G.build.jobs.find(j => j.id === id);
+const SC = FN.score, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ownBook = G => G.fin ? G.fin.items.reduce((a, x) => a + (P[x.id]?.custom ? x.val : 0), 0) : 0;
-export const credit = G => D.start.credit + (G.open ? Math.floor(D.custom.creditK * ownBook(G) / D.custom.creditStep) * D.custom.creditStep : 0);
+export const score = G => G.fin?.score ?? SC.start;
+export const scoreTier = G => SC.tiers.find(t => score(G) >= t[0]);
+export const rateK = G => Math.pow(SC.rateBase, (100 - clamp(score(G), SC.min, SC.max)) / SC.rateSpan);
+export const rate = G => D.start.rate * rateK(G);
+export const depRate = G => SC.depRate * clamp(score(G) / 100, SC.depMin, SC.depMax);
+export const dep = G => G.fin?.dep || 0;
+const base = G => D.start.credit + (G.open ? Math.floor(D.custom.creditK * ownBook(G) / D.custom.creditStep) * D.custom.creditStep : 0);
+export const credit = G => { const s = score(G), k = s >= 100 ? 1 + (SC.creditMaxK - 1) * (s - 100) / (SC.max - 100) : clamp(s / 100, SC.creditMin, 1), b = base(G) + (s > 100 ? SC.creditBook * bookValue(G) * (s - 100) / (SC.max - 100) : 0); return Math.max(D.start.credit * SC.creditMin, Math.min(SC.creditMax, Math.floor(b * k / SC.creditStep) * SC.creditStep)); };
 export const room = G => Math.max(0, credit(G) - G.loan);
+
+export function deposit(G, v) {
+  const a = Math.min(Math.max(0, G.cash), Math.max(0, v));
+  if (a <= 0) return 0;
+  G.fin.dep = dep(G) + a;
+  post(G, 'dep', -a);
+  return a;
+}
+
+export function withdraw(G, v) {
+  const a = Math.min(dep(G), Math.max(0, v));
+  if (a <= 0) return 0;
+  G.fin.dep = dep(G) - a;
+  post(G, 'dep', a);
+  return a;
+}
+
+export const depWork = G => Math.min(dep(G), Math.max(0, G.cash + dep(G) - G.loan));
+
+export function depYield(G) {
+  const v = depWork(G) * depRate(G);
+  if (v <= 0) return 0;
+  G.today.revenue.dep = (G.today.revenue.dep || 0) + v;
+  G.cash += v;
+  return v;
+}
+
+export function rateDay(G, h) {
+  if (!G.fin) return;
+  const R = Math.max(h.revenue, 20000), m = clamp((h.revenue - h.cost - (h.depr || 0)) / R, -SC.marginMax, SC.marginMax);
+  const lev = G.loan / Math.max(1, G.cash + dep(G) + bookValue(G));
+  let t = 100 + SC.margin * m + (G.loan <= 0 ? SC.noLoan : 0) - SC.levK * Math.max(0, lev - SC.lev) - (G.cash < 0 || G.fin.insolv ? SC.minus : 0);
+  t = clamp(t, SC.min, SC.max);
+  G.fin.score = clamp(score(G) + (t - score(G)) * SC.alpha, SC.min, SC.max);
+  h.score = G.fin.score;
+}
 
 export function post(G, k, v) {
   G.cash += k === 'invest' ? -v : v;
@@ -145,6 +189,7 @@ export function depreciate(G) {
 export const bookValue = G => G.fin.items.reduce((a, x) => a + x.val, 0);
 
 export function solvency(G) {
+  if (G.cash < 0 && dep(G) > 0) withdraw(G, -G.cash);
   if (G.cash < 0) {
     const a = borrow(G, Math.ceil(-G.cash / FN.autoDraw) * FN.autoDraw);
     if (a) log(G, 'Kasse im Minus – Kredit automatisch um ' + Math.round(a).toLocaleString('de-DE') + ' € erhöht', 'bad');
@@ -152,7 +197,7 @@ export function solvency(G) {
   if (G.cash < 0) {
     G.fin.insolv++;
     log(G, 'Zahlungsunfähig, Kreditrahmen ausgeschöpft – Tag ' + G.fin.insolv + ' von ' + FN.insolvDays, 'bad');
-    if (G.fin.insolv >= FN.insolvDays) G.fin.over = { date: G.date, cash: G.cash, loan: G.loan, assets: bookValue(G) };
+    if (G.fin.insolv >= FN.insolvDays) G.fin.over = { date: G.date, cash: G.cash + dep(G), loan: G.loan, assets: bookValue(G) };
   } else G.fin.insolv = 0;
 }
 

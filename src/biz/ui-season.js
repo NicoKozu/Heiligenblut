@@ -27,7 +27,7 @@ export function seasonView(G, h) {
   const z = Math.round(s.sat), res = s.year ?? s.result, ores = o ? o.year ?? o.result : null;
   const rev = Object.entries(s.rev).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const cost = Object.entries(s.cost).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const lb = k => D.tickets[k]?.label || D.side.areas[k]?.label || k;
+  const lb = k => k === 'dep' ? 'Erträge Geldanlage' : D.tickets[k]?.label || D.side.areas[k]?.label || k;
   const day = (t, d) => tr(t, fmtDate(d.date) + ' · ' + num(d.guests) + ' Gäste · ' + eur(d.result));
   const seg = Object.entries(s.seg).filter(([, v]) => v > 0);
   const segT = sum(s.seg);
