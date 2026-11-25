@@ -254,6 +254,7 @@ export function createView3d({ scene, cam, terrain, lift, pistes, scenery, act }
       row('Schwierigkeit · Länge', d.level + ' · ' + d.km.toLocaleString('de-DE') + ' km') +
       row('Zustand', '<span style="color:' + ccol(o.cond) + '">' + Math.round(o.cond) + ' % · ' + lb + '</span>') + bar(o.cond, ccol(o.cond)) +
       row('Schneehöhe', Math.round(o.snow || 0) + ' cm') +
+      ((o.loose || 0) >= D.cover.loose.min ? row('Neuschnee (locker)', Math.round(o.loose) + ' cm · fährt sich ' + N.levelName(N.effLevel(d, o))) : '') +
       row('Qualität', Math.round(sc)) +
       row('Gedränge', G.phase === 'open' ? Math.round(crowd) + ' Gäste/km' : '–') +
       row('Präparieren (Nacht)', o.grm ? 'ja' : 'nein') +
