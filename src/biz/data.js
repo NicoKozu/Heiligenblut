@@ -263,7 +263,6 @@ export const D = {
       'hut:schareck': { label: 'Ausbau Panoramarestaurant', price: 60000, life: 25, needs: ['new:schareck'], seats: { schareck: 120 }, info: '+120 Sitzplätze' },
       'hut:spatzl': { label: 'Ausbau Spatzl Alm', price: 60000, life: 25, needs: ['new:spatzl'], seats: { spatzl: 120 }, info: '+120 Sitzplätze' },
       'hut:fleiss': { label: 'Ausbau Skihütte Fleißalm', price: 60000, life: 25, needs: ['new:fleiss'], seats: { fleiss: 120 }, info: '+120 Sitzplätze' },
-      garage: { label: 'Parkhaus', price: 150000, life: 25, park: 500, info: '+500 Stellplätze' }
     },
     pipe: 20000, pipeLife: 20, sell: 0.8, pisteKm: 15000
   },
@@ -370,10 +369,18 @@ function cabMake(lid, k) {
   const need = k > 1 ? [cabId(lid, was)] : l.proj ? [l.proj] : undefined, kind = l.chair ? 'Sessel' : 'Kabine';
   D.build.projects[id] = { label: l.drag ? l.name + ' Ausbau Stufe ' + k : l.name + ' ' + n + 'er-' + (l.chair ? 'Sessel' : 'Kabinen') + ' (Stufe ' + k + ')', price: sig(base * D.cabGrow ** (k - 1)), life: 20, needs: need, places: { [lid]: n }, from: was, cab: lid, stage: k, info: (l.drag ? 'Dichtere Bügelfolge: ' + n + ' statt ' + was + ' Gäste je ' + l.gap + ' s' : n + ' statt ' + was + ' Plätze je ' + kind) + ', +' + Math.round(100 * st / was) + ' % Kapazität. Jede Stufe kostet ' + Math.round((D.cabGrow - 1) * 100) + ' % mehr als die vorige.', ...x };
 }
+function parkMake(k) {
+  const id = k > 1 ? 'garage:' + k : 'garage', P = D.build.projects;
+  if (P[id]) return;
+  P[id] = { label: k > 1 ? 'Parkhaus Ausbau Stufe ' + (k - 1) : 'Parkhaus', price: sig(150000 * D.cabGrow ** (k - 1)), life: 25, park: 500, needs: k > 1 ? [k > 2 ? 'garage:' + (k - 1) : 'garage'] : undefined, chain: true, stage: k, info: '+500 Stellplätze. Jede Stufe kostet ' + Math.round((D.cabGrow - 1) * 100) + ' % mehr als die vorige.' };
+}
 export function addCabs(l, base, x = {}) { CAB[l.id] = { l, base, x }; cabMake(l.id, 1); }
 export function growCabs(G) {
   const ids = [...(G.build?.done || []), ...(G.build?.jobs || []).map(j => j.id)];
+  parkMake(1);
   for (const id of ids) {
+    const g = id === 'garage' ? 1 : +(/^garage:(\d+)$/.exec(id)?.[1] || 0);
+    if (g) { for (let i = 1; i <= g + 1; i++) parkMake(i); continue; }
     const m = id === 'rossbach10' ? ['', 'rossbach', '6'] : /^cab:(.+):(\d+)$/.exec(id), c = m && CAB[m[1]];
     if (!c) continue;
     const k = Math.round((+m[2] - c.l.places) / (c.l.drag ? c.l.places : 2));
@@ -381,3 +388,4 @@ export function growCabs(G) {
   }
 }
 for (const l of D.lifts) addCabs(l, l.proj ? D.build.projects[l.proj].price : 300000);
+parkMake(1);
