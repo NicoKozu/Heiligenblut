@@ -1,5 +1,5 @@
 import { D, growCabs } from './data.js';
-import { log, ev, initAssets } from './assets.js';
+import { log, ev, initAssets, repair } from './assets.js';
 import { ensureKeys } from './flow.js';
 import { initSnow, startSnow, cannons } from './snow.js';
 import { seasonOf } from './calendar.js';
@@ -216,6 +216,15 @@ export function groomer(G, d) {
   if (!machine(G, 'groomer', D.groom.price, FN.life.groomer, 'Pistengeräte', d)) return false;
   G.groom.machines += d > 0 ? 1 : -1;
   log(G, 'Pistengerät ' + (d > 0 ? 'gekauft' : 'verkauft') + ' – jetzt ' + G.groom.machines);
+  return true;
+}
+
+export function crew(G, d) {
+  if (d < 0 && !(G.crew > 0)) return false;
+  if (!machine(G, 'crew', D.crew.price, D.crew.life, 'Reparaturtrupps', d)) return false;
+  G.crew = (G.crew || 0) + (d > 0 ? 1 : -1);
+  log(G, 'Reparaturtrupp ' + (d > 0 ? 'eingestellt' : 'aufgelöst') + ' – jetzt ' + G.crew);
+  if (d > 0) for (const l of G.lifts) if (l.broken && !l.repairLeft) repair(G, l.id, false);
   return true;
 }
 
