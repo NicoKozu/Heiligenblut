@@ -127,6 +127,7 @@ export const D = {
   easterHolidays: [-8, 1],
   seasonEnd: { month: 4, day: 6 },
   staffCost: { lift: 210, tech: 270, groomer: 250, patrol: 240, cashier: 190, instructor: 220, gastro: 185 },
+  crew: { price: 40000, wage: 600, life: 8 },
   groom: { price: 32000, perHour: 190, hoursPerKm: 1.3, start: 1, mid: { from: 690, to: 810, hoursPerKm: 0.5, target: 85 } },
   snow: { perM3: 2.2, price: 9000, m3PerHour: 55, maxTemp: -3, baseCm: 40, start: 10, pistes: ['10'], water: 0.4, kwh: 3.5, width: 40, hours: [0, 12], hStep: 2, night: -4 },
   groomNight: { shift: 8 },

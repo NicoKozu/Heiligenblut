@@ -69,6 +69,7 @@ export function createBiz({ lift, player, crowd, pistes, env, scenery, cam, scen
     else if (a.startsWith('loan:')) { const v = a.slice(5), n = v === 'all' ? -G.loan : Number(v), r = n > 0 ? B.borrow(G, n) : B.repay(G, -n); if (r) { save(); note(n > 0 ? 'Kredit aufgenommen' : 'Kredit getilgt', 1.5); } }
     else if (a.startsWith('dep:')) { const v = a.slice(4), n = v === 'all' ? -B.dep(G) : v === 'cash' ? G.cash : Number(v), r = n > 0 ? B.deposit(G, n) : B.withdraw(G, -n); if (r) { save(); note(n > 0 ? 'Geld angelegt' : 'Geld abgehoben', 1.5); } }
     else if (a.startsWith('mach:')) { if (B.groomer(G, Number(a.slice(5)))) save(); }
+    else if (a.startsWith('crew:')) { if (B.crew(G, Number(a.slice(5)))) save(); }
     else if (a.startsWith('can:')) { const [, id, d] = a.split(':'); if (B.cannon(G, id, Number(d))) save(); }
     else if (a.startsWith('pipe:')) { if (B.pipe(G, a.slice(5))) save(); }
     else if (a === 'hplace') { cust.cancel(); pt.cancel(); if (ht.start()) ui.close(); else note('Freier Ausbau noch nicht freigeschaltet', 2); }

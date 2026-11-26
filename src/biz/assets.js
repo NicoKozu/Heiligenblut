@@ -83,6 +83,7 @@ function breakLift(G, l, ev) {
     log(G, 'Bergung ' + l.name + ': ' + Math.round(n) + ' Gäste aus Kabinen', 'bad');
   }
   ev.push({ t: 'fault', id: l.id });
+  if (G.crew > 0) repair(G, l.id, false);
 }
 
 function fixed(G, l, ev) {
@@ -116,7 +117,7 @@ export function overnight(G) {
 export function repairQuote(l, express, G) {
   if (!l.broken) return null;
   const x = express ? D.express : { cost: 1, time: 1 };
-  return { cost: Math.round(l.broken.cost * x.cost / 100) * 100, min: Math.max(15, Math.round(l.broken.min * x.time * (G ? techFactor(G) : 1))) };
+  return { cost: Math.round(l.broken.cost * x.cost / 100) * 100, min: Math.max(15, Math.round(l.broken.min * x.time * (G ? techFactor(G) / Math.max(1, G.crew || 0) : 1))) };
 }
 
 export function repair(G, id, express) {
@@ -125,7 +126,7 @@ export function repair(G, id, express) {
   const q = repairQuote(l, express, G);
   pay(G, 'repair', q.cost);
   l.repairLeft = q.min;
-  log(G, 'Reparatur ' + l.name + (express ? ' (Express)' : '') + ' beauftragt');
+  log(G, 'Reparatur ' + l.name + (express ? ' (Express)' : G.crew > 0 ? ' automatisch (Reparaturtrupp)' : '') + ' beauftragt');
   return true;
 }
 

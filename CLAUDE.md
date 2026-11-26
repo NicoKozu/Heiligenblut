@@ -66,6 +66,7 @@
 - Bonität & Geldanlage (Zusatz): `G.fin.score` (Start 100, 0–200, `build.js` `rateDay` nach jedem Tag: Ziel aus Marge, kein Kredit +20, Verschuldung > 40 % Aktiva, Kasse < 0; EMA α 0,06), Zins × 2^((100−Score)/50) (`rate`), Kreditrahmen × Score-Faktor (bis ×4, + Buchwert-Anteil) max. 10 Mio (`credit`), Geldanlage `G.fin.dep` (`deposit/withdraw`, Ertrag 5 % × Score/100 je Spieltag am Abend als Erlös `dep`, nur Eigenmittel über Kredit verzinst `depWork`; Kasse < 0 löst zuerst Anlage auf). Werte `D.fin.score`, UI Finanzen-Tab Bonität/Geldanlage, Panel.
 - Endloser Hütten-Ausbau (Zusatz): alle Hütten (auch eigene) unbegrenzt ausbaubar, Ids `hut:<id>` (Stufe 1) / `hut:<id>:<k>`, +`D.side.hutStep` 120 Plätze (eigene: halbe Größe, mind. 30), Preis `D.side.hutUp` 60k × 1,35^(k−1) (eigene anteilig); `data.js` `addHutUp/hutNext`, wächst in `growCabs`; Objektkarte Hütte bietet nächste Stufe, Bau-Tab nur nächste Stufe.
 - Schneehöhe bremst Abnutzung (Zusatz): `snow.js` `wear` × `wearSnow[0]` 50 / max(`wearSnow[1]` 25, Schneehöhe) – linear, 50 cm = bisheriges Tempo, 100 cm halb, 200 cm ein Viertel, unter 50 cm schneller (max. ×2).
+- Reparaturtrupps (Zusatz): `build.js` `crew(G, ±1)` (Kauf wie Pistengerät, `D.crew` 40k, Lohn 600 €/Tag, AfA 8 J.), `G.crew`; ab 1 Trupp startet `assets.js` `breakLift` sofort `repair` (normal), Reparaturzeit ÷ `G.crew`; Bau-Tab Abschnitt Reparaturtrupps.
 - Simtest-Strategien: Aufruf `node tools/simtest.mjs [--strat a,b] [--seasons 3] [--seeds 1,2,3,4,5] [--days N] [--daily] [--check] [--json datei]`.
 
 ## Struktur

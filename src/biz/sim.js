@@ -86,7 +86,7 @@ export function startDay(G) {
   sideStart(G);
   pay(G, 'admin', D.admin + D.adminLift * G.lifts.length);
   staffAuto(G, dm.n);
-  pay(G, 'staff', wages(G));
+  pay(G, 'staff', wages(G) + (G.crew || 0) * D.crew.wage);
   for (const l of G.lifts) { l.run = 0; if (l.open) pay(G, 'maint', D.lifts.find(x => x.id === l.id).maint ?? D.maintPerLift); }
   if (G.loan > 0) pay(G, 'interest', G.loan * rateOf(G) * D.dayStep / 365);
   return true;
